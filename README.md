@@ -1,161 +1,164 @@
-# 🚀 Lovable - AI-Powered Web App Builder
+# TipKoro Waiting List Landing Page
 
-Build beautiful, production-ready web applications using natural language. Just describe what you want, and Lovable creates it for you.
+A responsive, mobile-first landing page for TipKoro — a Bangladeshi-focused creator support platform similar to Ko-fi/BuyMeACoffee.
 
----
+[Go To Project in "Shovon" Profile](https://lovable.dev/projects/5ece1490-d039-4aa8-8ed2-a44e9b3b8e78)
 
-## 🎯 What is Lovable?
+## Features
 
-Lovable is an AI editor that creates and modifies web applications in real-time. Simply chat with the AI, and watch your app come to life in the preview panel on the right side of your screen.
+- **Hero Section**: Promo badge, headline, CTA with payment methods
+- **Billing Timeline**: Visual representation of the Early Creator Offer
+- **Two-Step Signup Flow**: Payment → Details form
+- **Success State**: Confirmation card with confetti animation
+- **Why TipKoro**: Feature cards highlighting platform benefits
+- **Creator Highlights**: Testimonials from creators
 
----
+## Early Creator Offer — Promo Credit Logic
 
-## 🛠️ Tech Stack
+### How It Works
 
-Your Lovable project is built with modern, production-ready technologies:
+1. **Month 1 (Paid)**: Creator pays ৳150 to activate their account
+2. **Month 2 (Free)**: Complimentary — no charge
+3. **Month 3 (Free)**: Complimentary — no charge  
+4. **Month 4+ (Recurring)**: Automatic billing starts at ৳150/month
 
-| Technology | Purpose |
-|------------|---------|
-| **React 18** | UI library |
-| **TypeScript** | Type-safe JavaScript |
-| **Vite** | Fast build tool |
-| **Tailwind CSS** | Utility-first styling |
-| **shadcn/ui** | Beautiful, accessible components |
-| **React Router** | Client-side routing |
-| **TanStack Query** | Data fetching & caching |
+### Backend Metadata Structure
 
----
+When a user signs up, store the following metadata:
 
-## 💬 How to Use Lovable
-
-### Basic Workflow
-
-1. **Describe your vision** - Tell the AI what you want to build in plain language
-2. **Watch it build** - See real-time changes in the preview panel
-3. **Iterate** - Request modifications, fixes, or new features
-4. **Publish** - Deploy your app with one click
-
-### Example Prompts
-
-```
-"Create a landing page for a coffee shop with a hero section and menu"
-"Add a contact form with email validation"
-"Make the navigation sticky and add a mobile hamburger menu"
-"Change the color scheme to dark blue and gold"
+```typescript
+interface CreatorPromoMetadata {
+  promo: boolean;              // true for Early Creator Offer signups
+  signup_date: Date;           // Date of initial payment
+  active_until: Date;          // signup_date + 3 months
+  billing_start: Date;         // signup_date + 3 months (when billing resumes)
+  payment_id: string;          // Transaction ID from Rupantor Pay
+  first_month_paid: boolean;   // true after successful payment
+}
 ```
 
-### Tips for Best Results
+### Clerk User Profile Fields
 
-| Tip | Example |
-|-----|---------|
-| **Be specific** | "Add a call-to-action button in the hero section" vs "Add a button" |
-| **Iterate in steps** | Build features one at a time for better results |
-| **Reference elements** | "Make the header match the footer style" |
-| **Share context** | Upload images or describe your brand |
+```typescript
+interface CreatorProfile {
+  username: string;            // Unique creator handle
+  firstName: string;
+  lastName: string;
+  email: string;
+  bio: string;                 // Max 200 characters
+  category: string;            // Creator category
+  socialLinks: {
+    twitter?: string;
+    instagram?: string;
+    youtube?: string;
+    other?: string;
+  };
+  payoutMethod: 'bkash' | 'nagad' | 'rocket' | 'card' | 'crypto';
+  phone?: string;
+}
+```
 
----
+## Payment Integration
 
-## ☁️ Lovable Cloud
+### Rupantor Pay API
 
-Enable **Lovable Cloud** for backend functionality:
+**Base URL**: `https://payment.rupantorpay.com/api`
 
-- 🗄️ **Database** - PostgreSQL for data persistence
-- 🔐 **Authentication** - User login/signup with email or social providers
-- 📁 **File Storage** - Store images, documents, and more
-- ⚡ **Edge Functions** - Server-side logic for APIs, payments, emails
+#### Create Checkout Session
 
-> Just ask: *"Add user authentication"* or *"Create a database for products"*
+```bash
+POST /payment/checkout
+Headers:
+  Content-Type: application/json
+  X-API-KEY: <YOUR_API_KEY>
+  X-CLIENT: <YOUR_HOST>
 
----
+Body:
+{
+  "fullname": "John Doe",
+  "email": "john@example.com",
+  "amount": 150,
+  "success_url": "https://tipkoro.com/join?step=details",
+  "cancel_url": "https://tipkoro.com/join?step=payment&cancelled=true",
+  "webhook_url": "https://api.tipkoro.com/webhooks/rupantor",
+  "meta_data": {
+    "signup_type": "early_creator_offer",
+    "promo_months": 2
+  }
+}
+```
 
-## 🔗 Integrations
+#### Verify Payment
 
-| Integration | Purpose |
-|-------------|---------|
-| **GitHub** | Sync code, version control |
-| **Stripe** | Payment processing |
-| **OpenAI** | AI features in your app |
-| **ElevenLabs** | Voice & audio generation |
-| **Firecrawl** | Web scraping |
+```bash
+POST /payment/verify-payment
+Body: { "transaction_id": "OVKPXW165414" }
+```
 
----
+## Webhook Payload (Admin Notification)
 
-## 📱 Preview & Testing
+When a new creator signs up, send webhook to admin:
 
-- **Desktop/Mobile views** - Toggle device previews
-- **Live reload** - Changes appear instantly
-- **Console logs** - Debug issues in real-time
-- **Network requests** - Monitor API calls
+```typescript
+interface SignupWebhookPayload {
+  event: 'creator.signup.completed';
+  timestamp: string;
+  creator: {
+    username: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    category: string;
+    bio: string;
+    payoutMethod: string;
+  };
+  payment: {
+    transaction_id: string;
+    amount: number;
+    currency: 'BDT';
+    method: string;
+    status: 'COMPLETED';
+  };
+  promo: {
+    type: 'early_creator_offer';
+    free_months: 2;
+    billing_starts: string; // ISO date
+  };
+  clerk_user_id: string;
+}
+```
 
----
+## Tech Stack
 
-## 🌐 Publishing Your App
+- React 19 + TypeScript
+- Tailwind CSS (custom beige theme)
+- Vite
+- shadcn/ui components
 
-1. Click the **Publish** button (or go to Share → Publish)
-2. Get a free `*.lovable.app` subdomain
-3. Optionally connect a custom domain via **Project → Settings → Domains**
+## Design System
 
-Read more: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+The app uses a warm beige theme with:
+- **Background**: `hsl(40, 33%, 96%)`
+- **Accent (Gold)**: `hsl(45, 92%, 62%)`
+- **Primary (Dark)**: `hsl(30, 10%, 12%)`
+- **Success (Green)**: `hsl(142, 52%, 45%)`
 
----
+Fonts:
+- Display: Bricolage Grotesque
+- Body: DM Sans
 
-## 💻 Local Development
+## Local Development
 
-Want to work locally? Clone this repo and push changes:
-
-```sh
-# Clone the repository
-git clone <YOUR_GIT_URL>
-
-# Navigate to the project
-cd <YOUR_PROJECT_NAME>
-
-# Install dependencies
-npm i
-
-# Start dev server
+```bash
+npm install
 npm run dev
 ```
 
-**Requirements:** Node.js & npm - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Environment Variables (for production)
 
----
-
-## 🎨 Customization
-
-All styling is managed through:
-
-| File | Purpose |
-|------|---------|
-| `src/index.css` | Design system tokens (colors, spacing) |
-| `tailwind.config.ts` | Tailwind configuration |
-| `src/components/ui/` | shadcn component library |
-
----
-
-## 📁 Project Structure
-
+```env
+RUPANTOR_API_KEY=<your_api_key>
+RUPANTOR_CLIENT_HOST=tipkoro.com
+CLERK_SECRET_KEY=<clerk_secret>
+ADMIN_WEBHOOK_URL=<admin_webhook_endpoint>
 ```
-├── src/
-│   ├── components/     # Reusable UI components
-│   │   └── ui/         # shadcn components
-│   ├── pages/          # Route pages
-│   ├── hooks/          # Custom React hooks
-│   ├── lib/            # Utilities
-│   └── assets/         # Images, fonts
-├── public/             # Static assets
-└── supabase/           # Backend (when Cloud enabled)
-    └── functions/      # Edge functions
-```
-
----
-
-## 📚 Resources
-
-- 📖 [Documentation](https://docs.lovable.dev)
-- 💬 [Discord Community](https://discord.gg/lovable)
-- 📝 [Feature Updates](https://docs.lovable.dev/changelog)
-
----
-
-**Happy building!** 🎉 Just start chatting to create something amazing.

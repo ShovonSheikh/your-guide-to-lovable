@@ -1,0 +1,37 @@
+project_id = "bwkrtkalxygmvlkuleoc"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[functions.rupantor-checkout]
+verify_jwt = false
+
+[functions.rupantor-verify]
+verify_jwt = false
+
+[functions.rupantor-webhook]
+verify_jwt = false
+
+[functions.complete-signup]
+verify_jwt = false
+
+[functions.clerk-webhook]
+verify_jwt = false
+
+[functions.debug-config]
+verify_jwt = false
+
+[functions.create-tip]
+verify_jwt = false
