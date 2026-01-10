@@ -49,7 +49,7 @@ export function useCreatorStats() {
 
       // Fetch current month stats using RPC function
       const { data: monthStats, error: monthError } = await supabase
-        .rpc('get_creator_current_month_stats', { p_creator_id: profile.id });
+        .rpc('get_creator_current_month_stats', { creator_profile_id: profile.id });
 
       if (monthError) {
         console.error('Error fetching month stats:', monthError);
@@ -57,10 +57,7 @@ export function useCreatorStats() {
 
       // Fetch monthly earnings history (last 12 months)
       const { data: earningsHistory, error: earningsError } = await supabase
-        .rpc('get_creator_monthly_earnings', { 
-          p_creator_id: profile.id,
-          p_months: 12
-        });
+        .rpc('get_creator_monthly_earnings', { creator_profile_id: profile.id });
 
       if (earningsError) {
         console.error('Error fetching earnings history:', earningsError);
@@ -79,20 +76,24 @@ export function useCreatorStats() {
         console.error('Error fetching recent tips:', tipsError);
       }
 
-      const monthData = monthStats?.[0] || { this_month_total: 0, last_month_total: 0, growth_percentage: 0 };
+      const monthData = monthStats?.[0] || { 
+        current_month_earnings: 0, 
+        previous_month_earnings: 0, 
+        earnings_change_percent: 0 
+      };
 
       setStats({
-        thisMonth: Number(monthData.this_month_total) || 0,
-        lastMonth: Number(monthData.last_month_total) || 0,
-        growthPercentage: Number(monthData.growth_percentage) || 0,
+        thisMonth: Number(monthData.current_month_earnings) || 0,
+        lastMonth: Number(monthData.previous_month_earnings) || 0,
+        growthPercentage: Number(monthData.earnings_change_percent) || 0,
         totalReceived: Number(profile.total_received) || 0,
         totalSupporters: profile.total_supporters || 0,
         monthlyEarnings: (earningsHistory || []).map((e: any) => ({
-          month_start: e.month_start,
-          month_label: e.month_label || '',
-          total_amount: Number(e.total_amount) || 0,
-          tip_count: e.tip_count || 0,
-          unique_supporters: e.unique_supporters || 0,
+          month_start: e.month,
+          month_label: e.month || '',
+          total_amount: Number(e.amount) || 0,
+          tip_count: 0,
+          unique_supporters: 0,
         })),
       });
 
