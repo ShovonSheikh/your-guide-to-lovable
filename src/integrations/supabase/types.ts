@@ -10,55 +10,52 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+    PostgrestVersion: "14.1"
   }
   public: {
     Tables: {
       billing_records: {
         Row: {
           amount: number
-          billing_period_end: string
-          billing_period_start: string
-          created_at: string
-          deducted_from_earnings: boolean | null
+          billing_period_end: string | null
+          billing_period_start: string | null
+          created_at: string | null
+          currency: string | null
           id: string
-          notes: string | null
           payment_method: string | null
-          processed_at: string | null
           profile_id: string
-          status: string
+          status: string | null
           subscription_id: string | null
           transaction_id: string | null
+          updated_at: string | null
         }
         Insert: {
-          amount?: number
-          billing_period_end: string
-          billing_period_start: string
-          created_at?: string
-          deducted_from_earnings?: boolean | null
+          amount: number
+          billing_period_end?: string | null
+          billing_period_start?: string | null
+          created_at?: string | null
+          currency?: string | null
           id?: string
-          notes?: string | null
           payment_method?: string | null
-          processed_at?: string | null
           profile_id: string
-          status?: string
+          status?: string | null
           subscription_id?: string | null
           transaction_id?: string | null
+          updated_at?: string | null
         }
         Update: {
           amount?: number
-          billing_period_end?: string
-          billing_period_start?: string
-          created_at?: string
-          deducted_from_earnings?: boolean | null
+          billing_period_end?: string | null
+          billing_period_start?: string | null
+          created_at?: string | null
+          currency?: string | null
           id?: string
-          notes?: string | null
           payment_method?: string | null
-          processed_at?: string | null
           profile_id?: string
-          status?: string
+          status?: string | null
           subscription_id?: string | null
           transaction_id?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -297,25 +294,31 @@ export type Database = {
       }
       rate_limits: {
         Row: {
-          count: number
-          created_at: string
+          action: string
+          count: number | null
+          created_at: string | null
           id: string
-          key: string
-          window_start: string
+          identifier: string
+          updated_at: string | null
+          window_start: string | null
         }
         Insert: {
-          count?: number
-          created_at?: string
+          action: string
+          count?: number | null
+          created_at?: string | null
           id?: string
-          key: string
-          window_start?: string
+          identifier: string
+          updated_at?: string | null
+          window_start?: string | null
         }
         Update: {
-          count?: number
-          created_at?: string
+          action?: string
+          count?: number | null
+          created_at?: string | null
           id?: string
-          key?: string
-          window_start?: string
+          identifier?: string
+          updated_at?: string | null
+          window_start?: string | null
         }
         Relationships: []
       }
@@ -438,34 +441,43 @@ export type Database = {
     }
     Functions: {
       get_creator_current_month_stats: {
-        Args: { p_creator_id: string }
+        Args: { creator_profile_id: string }
         Returns: {
-          growth_percentage: number
-          last_month_total: number
-          this_month_total: number
+          current_month_earnings: number
+          current_month_tips: number
+          earnings_change_percent: number
+          previous_month_earnings: number
+          previous_month_tips: number
+          tips_change_percent: number
         }[]
       }
       get_creator_monthly_earnings: {
-        Args: { p_creator_id: string; p_months?: number }
+        Args: { creator_profile_id: string }
         Returns: {
-          month_label: string
-          month_start: string
-          tip_count: number
-          total_amount: number
-          unique_supporters: number
+          amount: number
+          month: string
         }[]
       }
       get_supporter_donations: {
-        Args: { p_user_email: string }
+        Args: { supporter_profile_id: string }
         Returns: {
           amount: number
           created_at: string
           creator_avatar: string
           creator_name: string
           creator_username: string
+          currency: string
           id: string
           message: string
         }[]
+      }
+      increment_creator_stats: {
+        Args: {
+          creator_profile_id: string
+          is_new_supporter?: boolean
+          tip_amount: number
+        }
+        Returns: undefined
       }
     }
     Enums: {

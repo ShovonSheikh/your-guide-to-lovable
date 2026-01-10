@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useSupabase } from './useSupabase';
+import { useProfile } from './useProfile';
 
 interface Donation {
   id: string;
@@ -8,6 +9,7 @@ interface Donation {
   creator_name: string;
   creator_avatar: string | null;
   amount: number;
+  currency: string;
   message: string | null;
   created_at: string;
 }
@@ -20,14 +22,14 @@ interface DonationStats {
 
 export function useSupporterDonations() {
   const { user } = useUser();
+  const { profile } = useProfile();
   const supabase = useSupabase();
   const [data, setData] = useState<DonationStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchDonations = useCallback(async () => {
-    const email = user?.primaryEmailAddress?.emailAddress;
-    if (!email) {
+    if (!profile?.id) {
       setLoading(false);
       return;
     }
@@ -38,7 +40,7 @@ export function useSupporterDonations() {
 
       // Fetch supporter's donation history using RPC function
       const { data: donations, error: donationsError } = await supabase
-        .rpc('get_supporter_donations', { p_user_email: email });
+        .rpc('get_supporter_donations', { supporter_profile_id: profile.id });
 
       if (donationsError) {
         console.error('Error fetching donations:', donationsError);
@@ -51,6 +53,7 @@ export function useSupporterDonations() {
         creator_name: d.creator_name || 'Unknown Creator',
         creator_avatar: d.creator_avatar,
         amount: Number(d.amount),
+        currency: d.currency || 'BDT',
         message: d.message,
         created_at: d.created_at,
       }));
@@ -71,7 +74,7 @@ export function useSupporterDonations() {
     } finally {
       setLoading(false);
     }
-  }, [supabase, user?.primaryEmailAddress?.emailAddress]);
+  }, [supabase, profile?.id]);
 
   useEffect(() => {
     fetchDonations();
