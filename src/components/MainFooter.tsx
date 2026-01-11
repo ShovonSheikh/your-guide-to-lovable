@@ -1,12 +1,21 @@
 import React from "react";
-import { Link } from "react-router-dom";
-import { Facebook, Instagram, Youtube, Twitter, Mail } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Facebook, Instagram, Youtube, Twitter } from "lucide-react";
 
 export function MainFooter() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const scrollToSection = (id: string) => {
+    if (location.pathname === '/') {
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      navigate(`/#${id}`);
+    }
+  };
+
   return (
-    <footer className="flex w-full flex-col items-center bg-foreground px-6 py-16 text-background">
+    <footer className="flex w-full flex-col items-center bg-foreground px-6 py-16 text-background mt-auto">
       <div className="flex w-full max-w-[1280px] flex-col gap-12">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
           {/* Brand */}
@@ -35,18 +44,27 @@ export function MainFooter() {
           <div className="flex flex-col gap-4">
             <span className="font-bold text-background font-display">Product</span>
             <div className="flex flex-col gap-2">
-              <a href="#how" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
+              <button 
+                onClick={() => scrollToSection("how")} 
+                className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors text-left"
+              >
                 How it Works
-              </a>
-              <a href="#pricing" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
+              </button>
+              <button 
+                onClick={() => scrollToSection("pricing")} 
+                className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors text-left"
+              >
                 Pricing
-              </a>
-              <a href="#creators" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
-                Creators
-              </a>
-              <a href="#" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
-                Features
-              </a>
+              </button>
+              <Link to="/explore" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
+                Explore Creators
+              </Link>
+              <button 
+                onClick={() => scrollToSection("creators")} 
+                className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors text-left"
+              >
+                For Creators
+              </button>
             </div>
           </div>
           
@@ -92,12 +110,12 @@ export function MainFooter() {
           <div className="flex flex-col gap-4">
             <span className="font-bold text-background font-display">Legal</span>
             <div className="flex flex-col gap-2">
-              <a href="#" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
+              <Link to="/terms-of-service" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
                 Terms of Service
-              </a>
-              <a href="#" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
+              </Link>
+              <Link to="/privacy-policy" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
                 Privacy Policy
-              </a>
+              </Link>
               <a href="#" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
                 Cookie Policy
               </a>
@@ -105,23 +123,6 @@ export function MainFooter() {
                 Licenses
               </a>
             </div>
-          </div>
-        </div>
-        
-        {/* Newsletter */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pt-8 border-t border-background/10">
-          <div className="flex flex-col gap-2">
-            <span className="font-bold text-background font-display">Subscribe to our newsletter</span>
-            <span className="text-sm text-background/70">Get updates on new features and creator stories.</span>
-          </div>
-          <div className="flex gap-2 w-full md:w-auto">
-            <Input 
-              placeholder="Enter your email" 
-              className="bg-background/10 border-background/20 text-background placeholder:text-background/50 w-full md:w-64 focus-visible:ring-tipkoro-gold" 
-            />
-            <Button className="bg-tipkoro-gold text-tipkoro-dark hover:bg-tipkoro-gold-hover font-bold">
-              <Mail className="w-4 h-4 mr-2" /> Subscribe
-            </Button>
           </div>
         </div>
         

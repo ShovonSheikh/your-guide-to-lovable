@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/clerk-react";
 import { HeartIcon } from "./icons/PaymentIcons";
 import { Menu, X, LayoutGrid } from "lucide-react";
@@ -9,9 +9,17 @@ import { Menu, X, LayoutGrid } from "lucide-react";
 export function TopNavbar({ className }: { className?: string }) {
   const { isSignedIn, isLoaded } = useUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const scrollToSection = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    // If we're on the home page, scroll directly
+    if (location.pathname === '/') {
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      // Navigate to home page with hash
+      navigate(`/#${id}`);
+    }
     setMobileMenuOpen(false);
   };
   

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useUser } from "@clerk/clerk-react";
-import { Navigate, Link } from "react-router-dom";
+import { Navigate, Link, useNavigate } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { useCreatorStats } from "@/hooks/useCreatorStats";
 import { TopNavbar } from "@/components/TopNavbar";
@@ -19,7 +19,8 @@ import {
   Settings,
   Wallet,
   Copy,
-  Check
+  Check,
+  ImageIcon
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -28,6 +29,7 @@ export default function Dashboard() {
   const { profile, loading: profileLoading } = useProfile();
   const { stats, recentTips, loading: statsLoading } = useCreatorStats();
   const [copied, setCopied] = useState(false);
+  const navigate = useNavigate();
 
   if (!isLoaded || profileLoading) {
     return (
@@ -41,9 +43,9 @@ export default function Dashboard() {
     return <Navigate to="/" replace />;
   }
 
-  // Show onboarding if not completed
+  // Redirect to complete-profile if onboarding not completed
   if (profile && profile.onboarding_status !== 'completed') {
-    return <Onboarding />;
+    return <Navigate to="/complete-profile" replace />;
   }
 
   const profileUrl = profile?.username 
@@ -63,11 +65,11 @@ export default function Dashboard() {
   const growthPositive = (stats?.growthPercentage || 0) >= 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <TopNavbar />
       <div className="h-24" />
 
-      <main className="container max-w-6xl py-8 px-4">
+      <main className="container max-w-6xl py-8 px-4 flex-1">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
@@ -107,7 +109,7 @@ export default function Dashboard() {
                     <h3 className="font-semibold mb-1">Your TipKoro Page</h3>
                     <p className="text-sm text-muted-foreground">{profileUrl}</p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Button variant="outline" size="sm" onClick={copyProfileUrl} className="gap-2">
                       {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                       {copied ? "Copied!" : "Copy Link"}
@@ -118,6 +120,12 @@ export default function Dashboard() {
                         Visit
                       </Button>
                     </a>
+                    <Link to="/donation-image">
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <ImageIcon className="w-4 h-4" />
+                        Create Image
+                      </Button>
+                    </Link>
                   </div>
                 </div>
               </div>
