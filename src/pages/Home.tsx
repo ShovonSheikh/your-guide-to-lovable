@@ -1,12 +1,11 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Badge } from "@/components/Badge";
 import { Button } from "@/components/ui/button";
 import { IconWithBackground } from "@/components/IconWithBackground";
 import { TopNavbar } from "@/components/TopNavbar";
 import { MainFooter } from "@/components/MainFooter";
 import { LiveTipsFeed } from "@/components/LiveTipsFeed";
-import { Avatar } from "@/components/Avatar";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { SignUpButton } from "@clerk/clerk-react";
 import { FAQSection } from "@/components/FAQSection";
 import {
@@ -22,17 +21,22 @@ import {
   Video,
   Users,
   Shield,
-  Palette,
-  Music,
   Check,
   Clock,
-  ArrowRight,
 } from "lucide-react";
 
 function Index() {
-  const scrollToSection = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-  };
+  const location = useLocation();
+
+  // Handle hash navigation from other pages
+  useEffect(() => {
+    if (location.hash) {
+      const id = location.hash.replace('#', '');
+      setTimeout(() => {
+        document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    }
+  }, [location.hash]);
 
   return (
     <div className="flex h-full w-full flex-col items-center bg-background">

@@ -15,6 +15,8 @@ import Finance from "./pages/Finance";
 import CreatorProfile from "./pages/CreatorProfile";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
+import CompleteProfile from "./pages/CompleteProfile";
+import DonationImage from "./pages/DonationImage";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +34,8 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/finance" element={<Finance />} />
+          <Route path="/complete-profile" element={<CompleteProfile />} />
+          <Route path="/donation-image" element={<DonationImage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-of-service" element={<TermsOfService />} />
           <Route path="/:username" element={<CreatorProfile />} />

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { TopNavbar } from "@/components/TopNavbar";
 import { MainFooter } from "@/components/MainFooter";
@@ -22,9 +22,11 @@ const PaymentSuccess: React.FC = () => {
   const [isVerified, setIsVerified] = useState(false);
   const [paymentType, setPaymentType] = useState<"onboarding" | "tip" | null>(null);
   const [tipData, setTipData] = useState<any>(null);
+  const hasVerified = useRef(false);
 
   useEffect(() => {
     if (!isUserLoaded) return;
+    if (hasVerified.current) return;
 
     const txnId = searchParams.get("transactionId");
     const paymentMethod = searchParams.get("paymentMethod");
@@ -40,8 +42,13 @@ const PaymentSuccess: React.FC = () => {
       return;
     }
 
+    hasVerified.current = true;
+
     const verify = async () => {
       try {
+        // Check for tip data in localStorage FIRST (before any async operations)
+        const storedTipData = localStorage.getItem("tipkoro_tip_data");
+        
         const result = await verifyPayment({
           transaction_id: txnId,
           payment_method: paymentMethod || undefined,
@@ -50,9 +57,6 @@ const PaymentSuccess: React.FC = () => {
 
         if (result.verified) {
           setIsVerified(true);
-
-          // Check for tip data in localStorage (for non-logged-in supporters)
-          const storedTipData = localStorage.getItem("tipkoro_tip_data");
 
           if (storedTipData) {
             // This is a tip payment
@@ -125,6 +129,9 @@ const PaymentSuccess: React.FC = () => {
                 
                 refetchProfile();
               }
+            } else {
+              // No pending subscription found, but user is logged in - this is still onboarding
+              setPaymentType("onboarding");
             }
           }
 
@@ -217,25 +224,21 @@ const PaymentSuccess: React.FC = () => {
           <div className="space-y-3">
             {paymentType === "onboarding" ? (
               <Button
-                onClick={() => navigate("/dashboard")}
+                onClick={() => navigate("/complete-profile")}
                 className="w-full bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover"
               >
                 Complete Profile <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             ) : (
               <>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => {
-                    toast({
-                      title: "Coming Soon",
-                      description: "Donation image generation will be available soon!",
-                    });
-                  }}
-                >
-                  <Download className="w-4 h-4 mr-2" /> Create Donation Image
-                </Button>
+                <Link to="/donation-image" className="block">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <Download className="w-4 h-4 mr-2" /> Create Donation Image
+                  </Button>
+                </Link>
                 <Button
                   variant="outline"
                   className="w-full"
