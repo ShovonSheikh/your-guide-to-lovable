@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_activity_logs: {
+        Row: {
+          action: string
+          admin_id: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          target_id: string | null
+          target_type: string | null
+        }
+        Insert: {
+          action: string
+          admin_id: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_activity_logs_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_records: {
         Row: {
           amount: number
@@ -217,6 +255,85 @@ export type Database = {
           },
         ]
       }
+      notification_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          profile_id: string
+          promotions_enabled: boolean | null
+          tips_enabled: boolean | null
+          updated_at: string | null
+          withdrawals_enabled: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          profile_id: string
+          promotions_enabled?: boolean | null
+          tips_enabled?: boolean | null
+          updated_at?: string | null
+          withdrawals_enabled?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          profile_id?: string
+          promotions_enabled?: boolean | null
+          tips_enabled?: boolean | null
+          updated_at?: string | null
+          withdrawals_enabled?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_settings_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string | null
+          data: Json | null
+          id: string
+          is_read: boolean | null
+          message: string
+          profile_id: string
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          profile_id: string
+          title: string
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          profile_id?: string
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"] | null
@@ -228,6 +345,7 @@ export type Database = {
           first_name: string | null
           id: string
           instagram: string | null
+          is_admin: boolean | null
           is_verified: boolean | null
           last_name: string | null
           onboarding_status:
@@ -252,6 +370,7 @@ export type Database = {
           first_name?: string | null
           id?: string
           instagram?: string | null
+          is_admin?: boolean | null
           is_verified?: boolean | null
           last_name?: string | null
           onboarding_status?:
@@ -276,6 +395,7 @@ export type Database = {
           first_name?: string | null
           id?: string
           instagram?: string | null
+          is_admin?: boolean | null
           is_verified?: boolean | null
           last_name?: string | null
           onboarding_status?:
@@ -291,6 +411,41 @@ export type Database = {
           youtube?: string | null
         }
         Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string | null
+          endpoint: string
+          id: string
+          p256dh: string
+          profile_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string | null
+          endpoint: string
+          id?: string
+          p256dh: string
+          profile_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string | null
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rate_limits: {
         Row: {
