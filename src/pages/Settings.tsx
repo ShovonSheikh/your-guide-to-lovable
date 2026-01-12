@@ -31,7 +31,7 @@ export default function Settings() {
   const isMobile = useIsMobile();
   const [subscription, setSubscription] = useState<any>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
-  
+
   // Notification preferences
   const [notifications, setNotifications] = useState({
     email_tips: true,
@@ -75,7 +75,7 @@ export default function Settings() {
           .eq('profile_id', profile.id)
           .eq('payment_status', 'completed')
           .maybeSingle();
-        
+
         if (!error && data) {
           setSubscription(data);
         }
@@ -164,11 +164,10 @@ export default function Settings() {
               <button
                 key={tab.id}
                 onClick={() => setSearchParams({ tab: tab.id })}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                  currentTab === tab.id
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${currentTab === tab.id
                     ? 'bg-accent text-accent-foreground'
                     : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-                }`}
+                  }`}
               >
                 <tab.icon className="w-4 h-4" />
                 {tab.label}
@@ -181,7 +180,7 @@ export default function Settings() {
             {currentTab === 'profile' && (
               <div className="tipkoro-card space-y-6">
                 <h2 className="text-xl font-semibold">Profile Information</h2>
-                
+
                 {/* Username display with update guide */}
                 <div className="p-4 bg-secondary/50 rounded-xl">
                   <div className="flex items-start gap-3">
@@ -191,25 +190,25 @@ export default function Settings() {
                       <p className="text-sm text-muted-foreground mb-3">
                         Your username is managed through your account settings. To update it:
                       </p>
-                      
+
                       {isMobile ? (
                         <div className="space-y-4">
                           <p className="text-sm font-medium">Follow these steps on mobile:</p>
                           <div className="grid grid-cols-1 gap-3">
                             {[
-                              'https://openpaste.vercel.app/i/e49c46b3',
-                              'https://openpaste.vercel.app/i/4ce9f165',
-                              'https://openpaste.vercel.app/i/c0a9268f',
-                              'https://openpaste.vercel.app/i/90be317c',
-                              'https://openpaste.vercel.app/i/ef19b7b9'
-                            ].map((url, index) => (
-                              <div key={index} className="rounded-lg overflow-hidden border border-border">
-                                <img 
-                                  src={url} 
-                                  alt={`Step ${index + 1}`}
+                              { step: 1, url: "https://openpaste.vercel.app/i/431ce1f4" },
+                              { step: 2, url: "https://openpaste.vercel.app/i/bdc3dd2c" },
+                              { step: 3, url: "https://openpaste.vercel.app/i/c45a265a" },
+                              { step: 4, url: "https://openpaste.vercel.app/i/faa2cf6b" },
+                              { step: 5, url: "https://openpaste.vercel.app/i/4f11ce48" }
+                            ].map(({ step, url }) => (
+                              <div key={step} className="rounded-lg overflow-hidden border border-border">
+                                <img
+                                  src={url}
+                                  alt={`Step ${step}`}
                                   className="w-full h-auto"
                                 />
-                                <p className="text-xs text-center py-2 bg-secondary">Step {index + 1}</p>
+                                <p className="text-xs text-center py-2 bg-secondary">Step {step}</p>
                               </div>
                             ))}
                           </div>
@@ -230,7 +229,7 @@ export default function Settings() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="tipkoro-label">First Name</label>
@@ -273,7 +272,7 @@ export default function Settings() {
                 <p className="text-sm text-muted-foreground">
                   Add your social media links. You don't need to include "https://".
                 </p>
-                
+
                 <div className="space-y-4">
                   <div>
                     <label className="tipkoro-label">Twitter/X</label>
@@ -334,23 +333,19 @@ export default function Settings() {
                 <p className="text-sm text-muted-foreground">
                   Manage how you receive notifications from TipKoro.
                 </p>
-                
+
                 <div className="space-y-4">
                   <div className="flex items-center justify-between py-3 border-b border-border">
                     <div>
                       <p className="font-medium">Tip Notifications</p>
-                      <p className="text-sm text-muted-foreground">
-                        {profile?.account_type === 'creator' 
-                          ? 'Get notified when you receive a tip' 
-                          : 'Get notified when your tip is received'}
-                      </p>
+                      <p className="text-sm text-muted-foreground">{profile?.account_type === 'creator' ? 'Get notified when you receive a tip' : 'Get notified when your tip is received'}</p>
                     </div>
                     <Switch
                       checked={notifications.email_tips}
                       onCheckedChange={(checked) => setNotifications({ ...notifications, email_tips: checked })}
                     />
                   </div>
-                  
+
                   {profile?.account_type === 'creator' && (
                     <div className="flex items-center justify-between py-3 border-b border-border">
                       <div>
@@ -363,7 +358,7 @@ export default function Settings() {
                       />
                     </div>
                   )}
-                  
+
                   <div className="flex items-center justify-between py-3">
                     <div>
                       <p className="font-medium">Promotions & Updates</p>
@@ -375,7 +370,7 @@ export default function Settings() {
                     />
                   </div>
                 </div>
-                
+
                 <p className="text-xs text-muted-foreground">
                   Note: Notification preferences are currently being set up. Changes will be saved once the feature is fully implemented.
                 </p>
@@ -392,7 +387,7 @@ export default function Settings() {
             {currentTab === 'billing' && (
               <div className="tipkoro-card space-y-6">
                 <h2 className="text-xl font-semibold">Billing & Subscription</h2>
-                
+
                 {profile?.account_type === 'creator' ? (
                   <div className="space-y-6">
                     {/* Plan Info */}
@@ -403,7 +398,7 @@ export default function Settings() {
                       </div>
                       <p className="text-2xl font-bold font-display">৳150<span className="text-base font-normal text-muted-foreground">/month</span></p>
                     </div>
-                    
+
                     {/* Subscription Details */}
                     {subscriptionLoading ? (
                       <div className="animate-pulse bg-secondary/50 rounded-xl p-4 h-32" />
@@ -426,7 +421,7 @@ export default function Settings() {
                             <p className="font-medium">{formatDate(subscription.active_until)}</p>
                           </div>
                         </div>
-                        
+
                         {subscription.promo && (
                           <div className="p-3 bg-success/10 rounded-lg border border-success/20">
                             <p className="text-sm text-success font-medium">
@@ -434,7 +429,7 @@ export default function Settings() {
                             </p>
                           </div>
                         )}
-                        
+
                         <div className="p-4 bg-secondary/30 rounded-xl">
                           <p className="text-sm text-muted-foreground mb-2">Payment Method Used</p>
                           <p className="font-medium capitalize">{subscription.payment_method || 'Mobile Payment'}</p>
@@ -443,7 +438,7 @@ export default function Settings() {
                     ) : (
                       <p className="text-muted-foreground">No active subscription found.</p>
                     )}
-                    
+
                     <div className="pt-4 border-t border-border">
                       <h3 className="font-medium mb-2">How Billing Works</h3>
                       <ul className="space-y-2 text-sm text-muted-foreground">
@@ -458,7 +453,7 @@ export default function Settings() {
                   <div className="text-center py-8">
                     <p className="text-muted-foreground mb-4">You're on the free Supporter plan.</p>
                     <p className="text-sm text-muted-foreground">
-                      As a supporter, you can tip your favorite creators for free. 
+                      As a supporter, you can tip your favorite creators for free.
                       Want to receive tips? Upgrade to a Creator account!
                     </p>
                   </div>
