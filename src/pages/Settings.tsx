@@ -196,14 +196,20 @@ export default function Settings() {
                         <div className="space-y-4">
                           <p className="text-sm font-medium">Follow these steps on mobile:</p>
                           <div className="grid grid-cols-1 gap-3">
-                            {[1, 2, 3, 4, 5].map((step) => (
-                              <div key={step} className="rounded-lg overflow-hidden border border-border">
+                            {[
+                              'https://openpaste.vercel.app/i/e49c46b3',
+                              'https://openpaste.vercel.app/i/4ce9f165',
+                              'https://openpaste.vercel.app/i/c0a9268f',
+                              'https://openpaste.vercel.app/i/90be317c',
+                              'https://openpaste.vercel.app/i/ef19b7b9'
+                            ].map((url, index) => (
+                              <div key={index} className="rounded-lg overflow-hidden border border-border">
                                 <img 
-                                  src={`/images/username-update/step-${step}.png`} 
-                                  alt={`Step ${step}`}
+                                  src={url} 
+                                  alt={`Step ${index + 1}`}
                                   className="w-full h-auto"
                                 />
-                                <p className="text-xs text-center py-2 bg-secondary">Step {step}</p>
+                                <p className="text-xs text-center py-2 bg-secondary">Step {index + 1}</p>
                               </div>
                             ))}
                           </div>
