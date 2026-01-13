@@ -20,15 +20,15 @@ import {
 interface User {
   id: string;
   user_id: string;
-  email: string;
+  email: string | null;
   first_name: string | null;
   last_name: string | null;
   username: string | null;
-  account_type: string;
-  is_verified: boolean;
-  is_admin: boolean;
-  total_received: number;
-  total_supporters: number;
+  account_type: string | null;
+  is_verified: boolean | null;
+  is_admin: boolean | null;
+  total_received: number | null;
+  total_supporters: number | null;
   created_at: string;
 }
 
@@ -51,7 +51,7 @@ export default function AdminUsers() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setUsers(data || []);
+      setUsers((data || []) as unknown as User[]);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({

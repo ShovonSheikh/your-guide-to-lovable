@@ -34,7 +34,8 @@ export function Onboarding() {
   useEffect(() => {
     if (profile && !isInitialized) {
       const status = profile.onboarding_status;
-      if (status === 'pending' || status === 'account_type') {
+      // If account_type is null or status is account_type, show account type selection
+      if (status === 'pending' || status === 'account_type' || !profile.account_type) {
         setCurrentStep('account_type');
       } else if (status === 'payment') {
         setCurrentStep('payment');

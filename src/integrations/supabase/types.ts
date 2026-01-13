@@ -613,6 +613,7 @@ export type Database = {
           month: string
         }[]
       }
+      get_current_profile_id: { Args: never; Returns: string }
       get_supporter_donations: {
         Args: { supporter_profile_id: string }
         Returns: {
@@ -634,6 +635,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       account_type: "supporter" | "creator"
