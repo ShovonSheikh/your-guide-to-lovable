@@ -13,14 +13,14 @@ import { toast } from "@/hooks/use-toast";
 interface Creator {
   id: string;
   user_id: string;
-  email: string;
+  email: string | null;
   first_name: string | null;
   last_name: string | null;
   username: string | null;
   bio: string | null;
-  is_verified: boolean;
-  total_received: number;
-  total_supporters: number;
+  is_verified: boolean | null;
+  total_received: number | null;
+  total_supporters: number | null;
   created_at: string;
   twitter: string | null;
   instagram: string | null;
@@ -45,7 +45,7 @@ export default function AdminCreators() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setCreators(data || []);
+      setCreators((data || []) as unknown as Creator[]);
     } catch (error) {
       console.error('Error fetching creators:', error);
       toast({
@@ -58,22 +58,23 @@ export default function AdminCreators() {
     }
   };
 
-  const toggleVerification = async (creatorId: string, currentStatus: boolean) => {
+  const toggleVerification = async (creatorId: string, currentStatus: boolean | null) => {
+    const newStatus = !currentStatus;
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ is_verified: !currentStatus })
+        .update({ is_verified: newStatus })
         .eq('id', creatorId);
 
       if (error) throw error;
 
       setCreators(creators.map(c => 
-        c.id === creatorId ? { ...c, is_verified: !currentStatus } : c
+        c.id === creatorId ? { ...c, is_verified: newStatus } : c
       ));
 
       toast({
         title: "Success",
-        description: `Creator ${!currentStatus ? 'verified' : 'unverified'} successfully`,
+        description: `Creator ${newStatus ? 'verified' : 'unverified'} successfully`,
       });
     } catch (error) {
       console.error('Error updating verification:', error);

@@ -4,13 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/clerk-react";
 import { HeartIcon } from "./icons/PaymentIcons";
-import { Menu, X, LayoutGrid } from "lucide-react";
+import { useProfile } from "@/hooks/useProfile";
+import { Menu, X, LayoutGrid, Shield } from "lucide-react";
 
 export function TopNavbar({ className }: { className?: string }) {
   const { isSignedIn, isLoaded } = useUser();
+  const { profile } = useProfile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  
+  const isAdmin = profile?.is_admin;
 
   const scrollToSection = (id: string) => {
     // If we're on the home page, scroll directly
@@ -63,6 +67,14 @@ export function TopNavbar({ className }: { className?: string }) {
               <>
                 {isSignedIn ? (
                   <div className="flex items-center gap-3">
+                    {isAdmin && (
+                      <Link to="/admin">
+                        <Button variant="outline" className="rounded-full px-4 h-9 gap-2">
+                          <Shield className="w-4 h-4" />
+                          Admin
+                        </Button>
+                      </Link>
+                    )}
                     <Link to="/dashboard">
                       <Button variant="outline" className="rounded-full px-4 h-9">
                         Dashboard
@@ -75,6 +87,13 @@ export function TopNavbar({ className }: { className?: string }) {
                           labelIcon={<LayoutGrid className="w-4 h-4" />}
                           href="/dashboard"
                         />
+                        {isAdmin && (
+                          <UserButton.Link
+                            label="Admin Panel"
+                            labelIcon={<Shield className="w-4 h-4" />}
+                            href="/admin"
+                          />
+                        )}
                       </UserButton.MenuItems>
                     </UserButton>
                   </div>
@@ -137,21 +156,40 @@ export function TopNavbar({ className }: { className?: string }) {
               {isLoaded && (
                 <>
                   {isSignedIn ? (
-                    <div className="flex items-center justify-between">
-                      <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
-                        <Button variant="outline" className="rounded-xl">
-                          Dashboard
-                        </Button>
-                      </Link>
-                      <UserButton afterSignOutUrl="/">
-                        <UserButton.MenuItems>
-                          <UserButton.Link
-                            label="Dashboard"
-                            labelIcon={<LayoutGrid className="w-4 h-4" />}
-                            href="/dashboard"
-                          />
-                        </UserButton.MenuItems>
-                      </UserButton>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex gap-2">
+                          {isAdmin && (
+                            <Link to="/admin" onClick={() => setMobileMenuOpen(false)}>
+                              <Button variant="outline" className="rounded-xl gap-2">
+                                <Shield className="w-4 h-4" />
+                                Admin
+                              </Button>
+                            </Link>
+                          )}
+                          <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                            <Button variant="outline" className="rounded-xl">
+                              Dashboard
+                            </Button>
+                          </Link>
+                        </div>
+                        <UserButton afterSignOutUrl="/">
+                          <UserButton.MenuItems>
+                            <UserButton.Link
+                              label="Dashboard"
+                              labelIcon={<LayoutGrid className="w-4 h-4" />}
+                              href="/dashboard"
+                            />
+                            {isAdmin && (
+                              <UserButton.Link
+                                label="Admin Panel"
+                                labelIcon={<Shield className="w-4 h-4" />}
+                                href="/admin"
+                              />
+                            )}
+                          </UserButton.MenuItems>
+                        </UserButton>
+                      </div>
                     </div>
                   ) : (
                     <div className="flex gap-2">

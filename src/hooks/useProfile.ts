@@ -11,7 +11,7 @@ export interface Profile {
   username: string | null;
   bio: string | null;
   avatar_url: string | null;
-  account_type: 'supporter' | 'creator';
+  account_type: 'supporter' | 'creator' | null;
   onboarding_status: 'pending' | 'account_type' | 'payment' | 'profile' | 'completed';
   twitter: string | null;
   instagram: string | null;
@@ -19,6 +19,7 @@ export interface Profile {
   facebook: string | null;
   other_link: string | null;
   is_verified: boolean;
+  is_admin: boolean;
   total_received: number;
   total_supporters: number;
   created_at: string;
@@ -52,7 +53,7 @@ export function useProfile() {
       username,
       avatar_url: user.imageUrl || null,
       onboarding_status: 'account_type' as const,
-      account_type: 'supporter' as const,
+      // Don't set account_type - let user choose during onboarding
     };
     
     const { data, error } = await supabase

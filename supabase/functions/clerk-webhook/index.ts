@@ -100,8 +100,9 @@ Deno.serve(async (req: Request) => {
         username,
         bio: null,
         avatar_url: userData.image_url || null,
-        // default onboarding_status to account_type step if creating
+        // Set onboarding_status to account_type step - user must choose account type
         onboarding_status: 'account_type',
+        // DO NOT set account_type here - let user choose during onboarding
         // keep social fields if Clerk provides (Clerk may not)
         twitter: userData.twitter || null,
         instagram: userData.instagram || null,

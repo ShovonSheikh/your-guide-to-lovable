@@ -86,7 +86,7 @@ export default function AdminWithdrawals() {
   const handleAction = (withdrawal: Withdrawal, action: 'approve' | 'reject' | 'complete') => {
     setSelectedWithdrawal(withdrawal);
     setActionType(action);
-    setAdminNotes(withdrawal.admin_notes || "");
+    setAdminNotes(withdrawal.notes || "");
     setActionDialogOpen(true);
   };
 
@@ -114,7 +114,7 @@ export default function AdminWithdrawals() {
         .from('withdrawal_requests')
         .update({
           status: newStatus,
-          admin_notes: adminNotes || null,
+          notes: adminNotes || null,
           processed_at: newStatus === 'completed' || newStatus === 'rejected' ? new Date().toISOString() : null,
         })
         .eq('id', selectedWithdrawal.id);
@@ -124,7 +124,7 @@ export default function AdminWithdrawals() {
       // Update local state
       setWithdrawals(withdrawals.map(w =>
         w.id === selectedWithdrawal.id
-          ? { ...w, status: newStatus, admin_notes: adminNotes, processed_at: new Date().toISOString() }
+          ? { ...w, status: newStatus, notes: adminNotes, processed_at: new Date().toISOString() }
           : w
       ));
 
@@ -258,7 +258,9 @@ export default function AdminWithdrawals() {
                             <Badge variant="secondary">{withdrawal.payout_method}</Badge>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate">
-                            {withdrawal.payout_details}
+                            {typeof withdrawal.payout_details === 'object' 
+                              ? JSON.stringify(withdrawal.payout_details) 
+                              : String(withdrawal.payout_details || '')}
                           </TableCell>
                           <TableCell>{getStatusBadge(withdrawal.status)}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">
@@ -342,7 +344,11 @@ export default function AdminWithdrawals() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Account</p>
-                  <p className="font-medium">{selectedWithdrawal.payout_details}</p>
+                  <p className="font-medium">
+                    {typeof selectedWithdrawal.payout_details === 'object' 
+                      ? JSON.stringify(selectedWithdrawal.payout_details) 
+                      : String(selectedWithdrawal.payout_details || '')}
+                  </p>
                 </div>
               </div>
 
