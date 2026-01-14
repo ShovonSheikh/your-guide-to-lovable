@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { createCheckout } from "@/lib/api";
+import { createTipCheckout } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { 
   Heart, 
@@ -127,10 +127,11 @@ export default function CreatorProfile() {
         supporter_email: email
       }));
 
-      const result = await createCheckout({
+      const result = await createTipCheckout({
         fullname: fullName,
         email,
         amount,
+        creator_id: creator?.id,
       });
 
       if (result.payment_url) {

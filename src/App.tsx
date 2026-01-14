@@ -4,8 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
-import PaymentSuccess from "./pages/PaymentSuccess";
-import PaymentCancel from "./pages/PaymentCancel";
 import Explore from "./pages/Explore";
 import Components from "./pages/Components";
 import NotFound from "./pages/NotFound";
@@ -17,6 +15,11 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import CompleteProfile from "./pages/CompleteProfile";
 import DonationImage from "./pages/DonationImage";
+// Payment pages - separate flows for creator fee and tips
+import CreatorPaymentSuccess from "./pages/payments/CreatorPaymentSuccess";
+import CreatorPaymentFailed from "./pages/payments/CreatorPaymentFailed";
+import TipPaymentSuccess from "./pages/payments/TipPaymentSuccess";
+import TipPaymentFailed from "./pages/payments/TipPaymentFailed";
 // Admin pages
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -37,8 +40,12 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/explore" element={<Explore />} />
-          <Route path="/payment/success" element={<PaymentSuccess />} />
-          <Route path="/payment/cancel" element={<PaymentCancel />} />
+          {/* Creator fee payment routes */}
+          <Route path="/payments/creator/success" element={<CreatorPaymentSuccess />} />
+          <Route path="/payments/creator/failed" element={<CreatorPaymentFailed />} />
+          {/* Tips payment routes */}
+          <Route path="/payments/tips/success" element={<TipPaymentSuccess />} />
+          <Route path="/payments/tips/failed" element={<TipPaymentFailed />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/finance" element={<Finance />} />
