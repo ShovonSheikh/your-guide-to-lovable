@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { HeartIcon } from "./icons/PaymentIcons";
 import { toast } from "@/hooks/use-toast";
-import { createCheckout } from "@/lib/api";
+import { createCreatorCheckout, PLATFORM_FEE } from "@/lib/api";
 import { useUser } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import { Heart, Rocket, Link as LinkIcon, ArrowLeft, Check, Loader2 } from "lucide-react";
@@ -34,8 +34,11 @@ export function Onboarding() {
   useEffect(() => {
     if (profile && !isInitialized) {
       const status = profile.onboarding_status;
-      // If account_type is null or status is account_type, show account type selection
-      if (status === 'pending' || status === 'account_type' || !profile.account_type) {
+      
+      // Check if creator already paid - skip payment step
+      if (profile.account_type === 'creator' && status === 'payment') {
+        checkIfAlreadyPaid();
+      } else if (status === 'pending' || status === 'account_type' || !profile.account_type) {
         setCurrentStep('account_type');
       } else if (status === 'payment') {
         setCurrentStep('payment');
@@ -46,11 +49,29 @@ export function Onboarding() {
     }
   }, [profile, isInitialized]);
 
+  const checkIfAlreadyPaid = async () => {
+    if (!profile?.id) return;
+    
+    const { data: subscription } = await supabase
+      .from('creator_subscriptions')
+      .select('payment_status')
+      .eq('profile_id', profile.id)
+      .eq('payment_status', 'completed')
+      .maybeSingle();
+    
+    if (subscription) {
+      // Already paid, go to profile step
+      setCurrentStep('profile');
+      await updateProfile({ onboarding_status: 'profile' });
+    } else {
+      setCurrentStep('payment');
+    }
+  };
+
   const handleAccountTypeSelect = async (type: 'supporter' | 'creator') => {
     setIsLoading(true);
     try {
       if (type === 'supporter') {
-        // Supporters skip to profile completion (which is now simpler)
         await updateProfile({
           account_type: 'supporter',
           onboarding_status: 'profile'
@@ -89,9 +110,9 @@ export function Onboarding() {
       // Create pending subscription record BEFORE redirecting to payment
       const { error: subscriptionError } = await supabase.from('creator_subscriptions').insert({
         profile_id: profile.id,
-        amount: 10,
+        amount: PLATFORM_FEE,
         payment_status: 'pending',
-        promo: true
+        promo: false // No promo - fixed pricing
       });
 
       if (subscriptionError) {
@@ -101,10 +122,9 @@ export function Onboarding() {
         }
       }
 
-      const result = await createCheckout({
+      const result = await createCreatorCheckout({
         fullname: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Creator',
         email: user?.primaryEmailAddress?.emailAddress || '',
-        amount: 10,
         reference_id: profile.id
       });
 
@@ -160,7 +180,6 @@ export function Onboarding() {
       return link.replace(/^https?:\/\//, '').trim() || null;
     };
 
-    // Build update object - username is already set via Clerk webhook
     const profileUpdates: any = {
       bio: formData.bio || null,
       twitter: cleanLink(formData.twitter),
@@ -185,7 +204,6 @@ export function Onboarding() {
         description: "Your account is now set up."
       });
       refetch();
-      // Navigate to dashboard after successful completion
       navigate('/dashboard');
     }
     setIsLoading(false);
@@ -274,10 +292,7 @@ export function Onboarding() {
                   <div>
                     <h3 className="font-semibold text-lg">Creator</h3>
                     <p className="text-sm text-muted-foreground">
-                      ৳150/month. Get your own page and receive tips from fans.
-                    </p>
-                    <p className="text-xs text-accent-foreground mt-1 font-medium">
-                      🎉 Early offer: Pay ৳10 now, 2 months free!
+                      ৳{PLATFORM_FEE}/month. Get your own page and receive tips from fans.
                     </p>
                   </div>
                 </button>
@@ -305,22 +320,17 @@ export function Onboarding() {
 
               <div className="text-center">
                 <h2 className="text-2xl font-display font-bold mb-2">Activate Your Creator Account</h2>
-                <p className="text-muted-foreground">Pay ৳10 to get started with 3 months access</p>
+                <p className="text-muted-foreground">Pay the platform fee to get started</p>
               </div>
               
               <div className="bg-secondary/50 rounded-xl p-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Month 1</span>
-                  <span className="font-medium">৳10</span>
+                <div className="flex justify-between font-semibold text-lg">
+                  <span>Platform Fee</span>
+                  <span>৳{PLATFORM_FEE}</span>
                 </div>
-                <div className="flex justify-between text-sm text-success">
-                  <span>Months 2-3 (Free)</span>
-                  <span className="font-medium">৳0</span>
-                </div>
-                <div className="border-t border-border pt-2 flex justify-between font-semibold">
-                  <span>Total Today</span>
-                  <span>৳10</span>
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  Monthly subscription. Cancel anytime.
+                </p>
               </div>
               
               <Button 
@@ -334,7 +344,7 @@ export function Onboarding() {
                     Processing...
                   </>
                 ) : (
-                  "Pay ৳10 & Activate"
+                  `Pay ৳${PLATFORM_FEE} & Activate`
                 )}
               </Button>
               
@@ -375,7 +385,6 @@ export function Onboarding() {
                 </p>
               </div>
               
-              {/* Show username from Clerk */}
               {profile?.username && (
                 <div className="p-4 bg-secondary/50 rounded-xl">
                   <p className="text-sm text-muted-foreground mb-1">Your TipKoro URL</p>
@@ -398,7 +407,6 @@ export function Onboarding() {
                   <p className="text-xs text-muted-foreground mt-1">{formData.bio.length}/300</p>
                 </div>
                 
-                {/* Social links - only show for creators */}
                 {isCreator && (
                   <div className="space-y-3">
                     <label className="tipkoro-label flex items-center gap-2">
