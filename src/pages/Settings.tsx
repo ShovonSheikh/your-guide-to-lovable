@@ -32,7 +32,7 @@ export default function Settings() {
   const isMobile = useIsMobile();
   const [subscription, setSubscription] = useState<any>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
-  
+
   // Push notification hook
   const {
     settings: notificationSettings,
@@ -80,7 +80,7 @@ export default function Settings() {
           .eq('profile_id', profile.id)
           .eq('payment_status', 'completed')
           .maybeSingle();
-        
+
         if (!error && data) {
           setSubscription(data);
         }
@@ -169,11 +169,10 @@ export default function Settings() {
               <button
                 key={tab.id}
                 onClick={() => setSearchParams({ tab: tab.id })}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                  currentTab === tab.id
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${currentTab === tab.id
                     ? 'bg-accent text-accent-foreground'
                     : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-                }`}
+                  }`}
               >
                 <tab.icon className="w-4 h-4" />
                 {tab.label}
@@ -186,7 +185,7 @@ export default function Settings() {
             {currentTab === 'profile' && (
               <div className="tipkoro-card space-y-6">
                 <h2 className="text-xl font-semibold">Profile Information</h2>
-                
+
                 {/* Username display with update guide */}
                 <div className="p-4 bg-secondary/50 rounded-xl">
                   <div className="flex items-start gap-3">
@@ -196,7 +195,7 @@ export default function Settings() {
                       <p className="text-sm text-muted-foreground mb-3">
                         Your username is managed through your account settings. To update it:
                       </p>
-                      
+
                       {isMobile ? (
                         <div className="space-y-4">
                           <p className="text-sm font-medium">Follow these steps on mobile:</p>
@@ -209,8 +208,8 @@ export default function Settings() {
                               'https://openpaste.vercel.app/i/ef19b7b9'
                             ].map((url, index) => (
                               <div key={index} className="rounded-lg overflow-hidden border border-border">
-                                <img 
-                                  src={url} 
+                                <img
+                                  src={url}
                                   alt={`Step ${index + 1}`}
                                   className="w-full h-auto"
                                 />
@@ -235,7 +234,7 @@ export default function Settings() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="tipkoro-label">First Name</label>
@@ -278,7 +277,7 @@ export default function Settings() {
                 <p className="text-sm text-muted-foreground">
                   Add your social media links. You don't need to include "https://".
                 </p>
-                
+
                 <div className="space-y-4">
                   <div>
                     <label className="tipkoro-label">Twitter/X</label>
@@ -339,50 +338,89 @@ export default function Settings() {
                 <p className="text-sm text-muted-foreground">
                   Manage how you receive notifications from TipKoro.
                 </p>
-                
+
                 {/* Push Notification Permission Section */}
                 <div className="p-4 border rounded-xl bg-secondary/30">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       {permission === 'granted' && isSubscribed ? (
-                        <BellRing className="w-5 h-5 text-success" />
+                        <div className="w-10 h-10 rounded-full bg-success/20 flex items-center justify-center">
+                          <BellRing className="w-5 h-5 text-success" />
+                        </div>
+                      ) : permission === 'denied' ? (
+                        <div className="w-10 h-10 rounded-full bg-destructive/20 flex items-center justify-center">
+                          <BellOff className="w-5 h-5 text-destructive" />
+                        </div>
                       ) : (
-                        <BellOff className="w-5 h-5 text-muted-foreground" />
+                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                          <Bell className="w-5 h-5 text-muted-foreground" />
+                        </div>
                       )}
                       <div>
                         <p className="font-medium">Push Notifications</p>
                         <p className="text-sm text-muted-foreground">
-                          {permission === 'granted' && isSubscribed 
-                            ? 'Enabled - You will receive browser notifications'
+                          {permission === 'granted' && isSubscribed
+                            ? 'Enabled - You will receive browser notifications even when the site is closed'
                             : permission === 'denied'
-                              ? 'Blocked - Please enable in browser settings'
-                              : 'Enable to receive instant updates'}
+                              ? 'Blocked - Please enable notifications in your browser settings'
+                              : 'Enable to receive instant updates on your device'}
                         </p>
                       </div>
                     </div>
+                  </div>
+                  <div className="flex gap-2">
                     {permission !== 'denied' && (
                       permission === 'granted' && isSubscribed ? (
-                        <Button variant="outline" size="sm" onClick={unsubscribe}>
-                          Disable
-                        </Button>
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              // Test notification using the Notification API directly
+                              if ('Notification' in window && Notification.permission === 'granted') {
+                                new Notification('Test Notification 🔔', {
+                                  body: 'Push notifications are working! You will receive notifications like this.',
+                                  icon: '/favicon.ico',
+                                  tag: 'test',
+                                });
+                                toast({
+                                  title: "Test Sent",
+                                  description: "Check for the notification on your device.",
+                                });
+                              }
+                            }}
+                          >
+                            <Bell className="h-4 w-4 mr-2" />
+                            Send Test
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={unsubscribe}>
+                            Disable
+                          </Button>
+                        </>
                       ) : (
                         <Button size="sm" onClick={subscribe}>
                           <Bell className="h-4 w-4 mr-2" />
-                          Enable
+                          Enable Notifications
                         </Button>
                       )
                     )}
+                    {permission === 'denied' && (
+                      <p className="text-xs text-destructive">
+                        To enable notifications, click the lock icon in your browser's address bar and allow notifications.
+                      </p>
+                    )}
                   </div>
                 </div>
-                
+
                 {/* Notification Type Toggles */}
                 <div className="space-y-4">
+                  <h3 className="font-medium text-muted-foreground text-sm">Notification Types</h3>
                   <div className="flex items-center justify-between py-3 border-b border-border">
                     <div>
                       <p className="font-medium">Tip Notifications</p>
                       <p className="text-sm text-muted-foreground">
-                        {profile?.account_type === 'creator' 
-                          ? 'Get notified when you receive a tip' 
+                        {profile?.account_type === 'creator'
+                          ? 'Get notified when you receive a tip'
                           : 'Get notified when your tip is received'}
                       </p>
                     </div>
@@ -392,7 +430,7 @@ export default function Settings() {
                       disabled={notificationsLoading}
                     />
                   </div>
-                  
+
                   {profile?.account_type === 'creator' && (
                     <div className="flex items-center justify-between py-3 border-b border-border">
                       <div>
@@ -406,7 +444,7 @@ export default function Settings() {
                       />
                     </div>
                   )}
-                  
+
                   <div className="flex items-center justify-between py-3">
                     <div>
                       <p className="font-medium">Promotions & Updates</p>
@@ -419,7 +457,7 @@ export default function Settings() {
                     />
                   </div>
                 </div>
-                
+
                 <p className="text-xs text-muted-foreground">
                   Your notification preferences are saved automatically.
                 </p>
@@ -436,7 +474,7 @@ export default function Settings() {
             {currentTab === 'billing' && (
               <div className="tipkoro-card space-y-6">
                 <h2 className="text-xl font-semibold">Billing & Subscription</h2>
-                
+
                 {profile?.account_type === 'creator' ? (
                   <div className="space-y-6">
                     {/* Plan Info */}
@@ -447,7 +485,7 @@ export default function Settings() {
                       </div>
                       <p className="text-2xl font-bold font-display">৳150<span className="text-base font-normal text-muted-foreground">/month</span></p>
                     </div>
-                    
+
                     {/* Subscription Details */}
                     {subscriptionLoading ? (
                       <div className="animate-pulse bg-secondary/50 rounded-xl p-4 h-32" />
@@ -470,7 +508,7 @@ export default function Settings() {
                             <p className="font-medium">{formatDate(subscription.active_until)}</p>
                           </div>
                         </div>
-                        
+
                         {subscription.promo && (
                           <div className="p-3 bg-success/10 rounded-lg border border-success/20">
                             <p className="text-sm text-success font-medium">
@@ -478,7 +516,7 @@ export default function Settings() {
                             </p>
                           </div>
                         )}
-                        
+
                         <div className="p-4 bg-secondary/30 rounded-xl">
                           <p className="text-sm text-muted-foreground mb-2">Payment Method Used</p>
                           <p className="font-medium capitalize">{subscription.payment_method || 'Mobile Payment'}</p>
@@ -487,7 +525,7 @@ export default function Settings() {
                     ) : (
                       <p className="text-muted-foreground">No active subscription found.</p>
                     )}
-                    
+
                     <div className="pt-4 border-t border-border">
                       <h3 className="font-medium mb-2">How Billing Works</h3>
                       <ul className="space-y-2 text-sm text-muted-foreground">
@@ -502,7 +540,7 @@ export default function Settings() {
                   <div className="text-center py-8">
                     <p className="text-muted-foreground mb-4">You're on the free Supporter plan.</p>
                     <p className="text-sm text-muted-foreground">
-                      As a supporter, you can tip your favorite creators for free. 
+                      As a supporter, you can tip your favorite creators for free.
                       Want to receive tips? Upgrade to a Creator account!
                     </p>
                   </div>
