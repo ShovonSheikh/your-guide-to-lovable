@@ -6,6 +6,7 @@ import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/clerk-re
 import { HeartIcon } from "./icons/PaymentIcons";
 import { useProfile } from "@/hooks/useProfile";
 import { Menu, X, LayoutGrid, Shield } from "lucide-react";
+import { NotificationBell } from "./NotificationBell";
 
 export function TopNavbar({ className }: { className?: string }) {
   const { isSignedIn, isLoaded } = useUser();
@@ -80,6 +81,7 @@ export function TopNavbar({ className }: { className?: string }) {
                         Dashboard
                       </Button>
                     </Link>
+                    <NotificationBell />
                     <UserButton afterSignOutUrl="/">
                       <UserButton.MenuItems>
                         <UserButton.Link
@@ -158,7 +160,7 @@ export function TopNavbar({ className }: { className?: string }) {
                   {isSignedIn ? (
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center justify-between">
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
                           {isAdmin && (
                             <Link to="/admin" onClick={() => setMobileMenuOpen(false)}>
                               <Button variant="outline" className="rounded-xl gap-2">
@@ -172,6 +174,7 @@ export function TopNavbar({ className }: { className?: string }) {
                               Dashboard
                             </Button>
                           </Link>
+                          <NotificationBell />
                         </div>
                         <UserButton afterSignOutUrl="/">
                           <UserButton.MenuItems>
