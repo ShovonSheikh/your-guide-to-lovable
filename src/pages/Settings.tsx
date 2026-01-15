@@ -9,9 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { User, Link as LinkIcon, Bell, Shield, CreditCard, ArrowLeft, Info, Calendar, CheckCircle, Clock } from "lucide-react";
+import { User, Link as LinkIcon, Bell, Shield, CreditCard, ArrowLeft, Info, Calendar, CheckCircle, Clock, BellRing, BellOff } from "lucide-react";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useNotifications } from "@/hooks/useNotifications";
 
 const tabs = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -32,12 +33,16 @@ export default function Settings() {
   const [subscription, setSubscription] = useState<any>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   
-  // Notification preferences
-  const [notifications, setNotifications] = useState({
-    email_tips: true,
-    email_withdrawals: true,
-    email_promotions: false,
-  });
+  // Push notification hook
+  const {
+    settings: notificationSettings,
+    updateSettings,
+    permission,
+    isSubscribed,
+    subscribe,
+    unsubscribe,
+    loading: notificationsLoading
+  } = useNotifications();
 
   const [formData, setFormData] = useState({
     first_name: '',
@@ -335,6 +340,42 @@ export default function Settings() {
                   Manage how you receive notifications from TipKoro.
                 </p>
                 
+                {/* Push Notification Permission Section */}
+                <div className="p-4 border rounded-xl bg-secondary/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {permission === 'granted' && isSubscribed ? (
+                        <BellRing className="w-5 h-5 text-success" />
+                      ) : (
+                        <BellOff className="w-5 h-5 text-muted-foreground" />
+                      )}
+                      <div>
+                        <p className="font-medium">Push Notifications</p>
+                        <p className="text-sm text-muted-foreground">
+                          {permission === 'granted' && isSubscribed 
+                            ? 'Enabled - You will receive browser notifications'
+                            : permission === 'denied'
+                              ? 'Blocked - Please enable in browser settings'
+                              : 'Enable to receive instant updates'}
+                        </p>
+                      </div>
+                    </div>
+                    {permission !== 'denied' && (
+                      permission === 'granted' && isSubscribed ? (
+                        <Button variant="outline" size="sm" onClick={unsubscribe}>
+                          Disable
+                        </Button>
+                      ) : (
+                        <Button size="sm" onClick={subscribe}>
+                          <Bell className="h-4 w-4 mr-2" />
+                          Enable
+                        </Button>
+                      )
+                    )}
+                  </div>
+                </div>
+                
+                {/* Notification Type Toggles */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between py-3 border-b border-border">
                     <div>
@@ -346,8 +387,9 @@ export default function Settings() {
                       </p>
                     </div>
                     <Switch
-                      checked={notifications.email_tips}
-                      onCheckedChange={(checked) => setNotifications({ ...notifications, email_tips: checked })}
+                      checked={notificationSettings.tips_enabled}
+                      onCheckedChange={(checked) => updateSettings({ tips_enabled: checked })}
+                      disabled={notificationsLoading}
                     />
                   </div>
                   
@@ -358,8 +400,9 @@ export default function Settings() {
                         <p className="text-sm text-muted-foreground">Get notified when your withdrawal is processed</p>
                       </div>
                       <Switch
-                        checked={notifications.email_withdrawals}
-                        onCheckedChange={(checked) => setNotifications({ ...notifications, email_withdrawals: checked })}
+                        checked={notificationSettings.withdrawals_enabled}
+                        onCheckedChange={(checked) => updateSettings({ withdrawals_enabled: checked })}
+                        disabled={notificationsLoading}
                       />
                     </div>
                   )}
@@ -370,14 +413,15 @@ export default function Settings() {
                       <p className="text-sm text-muted-foreground">Receive news about new features and offers</p>
                     </div>
                     <Switch
-                      checked={notifications.email_promotions}
-                      onCheckedChange={(checked) => setNotifications({ ...notifications, email_promotions: checked })}
+                      checked={notificationSettings.promotions_enabled}
+                      onCheckedChange={(checked) => updateSettings({ promotions_enabled: checked })}
+                      disabled={notificationsLoading}
                     />
                   </div>
                 </div>
                 
                 <p className="text-xs text-muted-foreground">
-                  Note: Notification preferences are currently being set up. Changes will be saved once the feature is fully implemented.
+                  Your notification preferences are saved automatically.
                 </p>
               </div>
             )}
