@@ -37,7 +37,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
 export function useNotifications() {
   const { profile } = useProfile();
   const supabase = useSupabaseWithAuth();
-  
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -88,7 +88,7 @@ export function useNotifications() {
         .from('notification_settings')
         .select('*')
         .eq('profile_id', profile.id)
-        .single();
+        .maybeSingle();
 
       if (!error && data) {
         setSettings({

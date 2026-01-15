@@ -14,7 +14,7 @@ export function TopNavbar({ className }: { className?: string }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   const isAdmin = profile?.is_admin;
 
   const scrollToSection = (id: string) => {
@@ -27,7 +27,7 @@ export function TopNavbar({ className }: { className?: string }) {
     }
     setMobileMenuOpen(false);
   };
-  
+
   return (
     <div className={cn("fixed inset-x-0 top-4 z-50 px-4", className)}>
       <div className="mx-auto max-w-5xl rounded-full border border-border bg-background/80 px-3 shadow-tipkoro backdrop-blur-md">
@@ -39,29 +39,29 @@ export function TopNavbar({ className }: { className?: string }) {
             </div>
             <span className="font-display font-bold text-xl">TipKoro</span>
           </Link>
-          
+
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-3">
-            <button 
-              onClick={() => scrollToSection("how")} 
+            <button
+              onClick={() => scrollToSection("how")}
               className="rounded-full bg-secondary/50 px-4 py-1.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
             >
               How it Works
             </button>
-            <button 
-              onClick={() => scrollToSection("pricing")} 
+            <button
+              onClick={() => scrollToSection("pricing")}
               className="rounded-full bg-secondary/50 px-4 py-1.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
             >
               Pricing
             </button>
-            <Link 
+            <Link
               to="/explore"
               className="rounded-full bg-secondary/50 px-4 py-1.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
             >
               Explore
             </Link>
           </nav>
-          
+
           {/* Right-side actions */}
           <div className="hidden md:flex items-center gap-2">
             {isLoaded && (
@@ -82,22 +82,7 @@ export function TopNavbar({ className }: { className?: string }) {
                       </Button>
                     </Link>
                     <NotificationBell />
-                    <UserButton afterSignOutUrl="/">
-                      <UserButton.MenuItems>
-                        <UserButton.Link
-                          label="Dashboard"
-                          labelIcon={<LayoutGrid className="w-4 h-4" />}
-                          href="/dashboard"
-                        />
-                        {isAdmin && (
-                          <UserButton.Link
-                            label="Admin Panel"
-                            labelIcon={<Shield className="w-4 h-4" />}
-                            href="/admin"
-                          />
-                        )}
-                      </UserButton.MenuItems>
-                    </UserButton>
+                    <UserButton afterSignOutUrl="/" />
                   </div>
                 ) : (
                   <>
@@ -121,7 +106,7 @@ export function TopNavbar({ className }: { className?: string }) {
           </div>
 
           {/* Mobile menu button */}
-          <button 
+          <button
             className="md:hidden p-2 rounded-full hover:bg-secondary"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
@@ -134,26 +119,26 @@ export function TopNavbar({ className }: { className?: string }) {
       {mobileMenuOpen && (
         <div className="md:hidden mt-2 mx-auto max-w-5xl rounded-2xl border border-border bg-background/95 p-4 shadow-tipkoro backdrop-blur-md animate-fade-in">
           <nav className="flex flex-col gap-2">
-            <button 
-              onClick={() => scrollToSection("how")} 
+            <button
+              onClick={() => scrollToSection("how")}
               className="rounded-xl bg-secondary/50 px-4 py-3 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 text-left"
             >
               How it Works
             </button>
-            <button 
-              onClick={() => scrollToSection("pricing")} 
+            <button
+              onClick={() => scrollToSection("pricing")}
               className="rounded-xl bg-secondary/50 px-4 py-3 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 text-left"
             >
               Pricing
             </button>
-            <Link 
+            <Link
               to="/explore"
               onClick={() => setMobileMenuOpen(false)}
               className="rounded-xl bg-secondary/50 px-4 py-3 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
             >
               Explore
             </Link>
-            
+
             <div className="border-t border-border pt-3 mt-2">
               {isLoaded && (
                 <>
@@ -176,22 +161,7 @@ export function TopNavbar({ className }: { className?: string }) {
                           </Link>
                           <NotificationBell />
                         </div>
-                        <UserButton afterSignOutUrl="/">
-                          <UserButton.MenuItems>
-                            <UserButton.Link
-                              label="Dashboard"
-                              labelIcon={<LayoutGrid className="w-4 h-4" />}
-                              href="/dashboard"
-                            />
-                            {isAdmin && (
-                              <UserButton.Link
-                                label="Admin Panel"
-                                labelIcon={<Shield className="w-4 h-4" />}
-                                href="/admin"
-                              />
-                            )}
-                          </UserButton.MenuItems>
-                        </UserButton>
+                        <UserButton afterSignOutUrl="/" />
                       </div>
                     </div>
                   ) : (
