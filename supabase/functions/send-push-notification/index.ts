@@ -25,6 +25,7 @@ async function createVapidJwt(
   audience: string,
   subject: string,
   vapidPrivateKey: string,
+  vapidPublicKey: string,
   expiration: number
 ): Promise<string> {
   const header = {
@@ -42,12 +43,26 @@ async function createVapidJwt(
   const payloadB64 = uint8ArrayToBase64Url(new TextEncoder().encode(JSON.stringify(payload)));
   const unsignedToken = `${headerB64}.${payloadB64}`;
 
-  // Import the private key
-  const privateKeyBytes = base64UrlToUint8Array(vapidPrivateKey);
+  // Import the private key as JWK
+  // VAPID private key is 32 bytes (the "d" parameter)
+  // VAPID public key is 65 bytes (04 + x + y, where x and y are 32 bytes each)
+  const publicKeyBytes = base64UrlToUint8Array(vapidPublicKey);
+
+  // Extract x and y from public key (skip the 0x04 prefix)
+  const x = publicKeyBytes.slice(1, 33);
+  const y = publicKeyBytes.slice(33, 65);
+
+  const jwk = {
+    kty: 'EC',
+    crv: 'P-256',
+    d: vapidPrivateKey, // Already base64url encoded
+    x: uint8ArrayToBase64Url(x),
+    y: uint8ArrayToBase64Url(y),
+  };
 
   const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    privateKeyBytes,
+    'jwk',
+    jwk,
     { name: 'ECDSA', namedCurve: 'P-256' },
     false,
     ['sign']
@@ -199,7 +214,7 @@ async function sendWebPush(
 
     // Create VAPID JWT (valid for 12 hours)
     const expiration = Math.floor(Date.now() / 1000) + 43200;
-    const vapidJwt = await createVapidJwt(audience, vapidSubject, vapidPrivateKey, expiration);
+    const vapidJwt = await createVapidJwt(audience, vapidSubject, vapidPrivateKey, vapidPublicKey, expiration);
 
     // Encrypt the payload
     const { ciphertext, salt, localPublicKey } = await encryptPayload(

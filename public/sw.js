@@ -158,19 +158,7 @@ self.addEventListener('notificationclose', (event) => {
 
 // Handle push subscription change (e.g., when token expires)
 self.addEventListener('pushsubscriptionchange', (event) => {
-  console.log('[SW] Push subscription changed');
-
-  event.waitUntil(
-    self.registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      // The applicationServerKey should match your VAPID public key
-      // This will be set when the user re-subscribes from the app
-    }).then((subscription) => {
-      console.log('[SW] New subscription:', subscription.endpoint);
-      // The app will need to update the subscription in the database
-      // This is handled by the useNotifications hook when the user visits the site
-    }).catch((error) => {
-      console.error('[SW] Failed to resubscribe:', error);
-    })
-  );
+  console.log('[SW] Push subscription changed - user will need to re-subscribe from the app');
+  // The app's useNotifications hook will detect the subscription is gone
+  // and prompt the user to re-subscribe when they visit the settings page
 });

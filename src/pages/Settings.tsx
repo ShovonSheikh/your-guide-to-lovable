@@ -170,8 +170,8 @@ export default function Settings() {
                 key={tab.id}
                 onClick={() => setSearchParams({ tab: tab.id })}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${currentTab === tab.id
-                    ? 'bg-accent text-accent-foreground'
-                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                  ? 'bg-accent text-accent-foreground'
+                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                   }`}
               >
                 <tab.icon className="w-4 h-4" />
@@ -376,16 +376,44 @@ export default function Settings() {
                             variant="outline"
                             size="sm"
                             onClick={async () => {
-                              // Test notification using the Notification API directly
-                              if ('Notification' in window && Notification.permission === 'granted') {
-                                new Notification('Test Notification 🔔', {
-                                  body: 'Push notifications are working! You will receive notifications like this.',
-                                  icon: '/favicon.ico',
-                                  tag: 'test',
-                                });
+                              try {
+                                console.log('[Test Notification] Starting...');
+                                console.log('[Test Notification] Service worker supported:', 'serviceWorker' in navigator);
+                                console.log('[Test Notification] Permission:', Notification.permission);
+
+                                // Use service worker to show notification (more reliable)
+                                if ('serviceWorker' in navigator && Notification.permission === 'granted') {
+                                  const registration = await navigator.serviceWorker.ready;
+                                  console.log('[Test Notification] Service worker ready:', registration);
+                                  console.log('[Test Notification] Showing notification...');
+
+                                  await registration.showNotification('Test Notification 🔔', {
+                                    body: 'Push notifications are working! You will receive notifications like this.',
+                                    icon: '/favicon.ico',
+                                    badge: '/favicon.ico',
+                                    tag: 'test-' + Date.now(), // Unique tag to prevent deduplication
+                                    data: { url: '/dashboard' },
+                                  });
+
+                                  console.log('[Test Notification] showNotification called successfully');
+                                  toast({
+                                    title: "Test Sent",
+                                    description: "Check for the notification on your device.",
+                                  });
+                                } else {
+                                  console.log('[Test Notification] Conditions not met');
+                                  toast({
+                                    title: "Error",
+                                    description: "Notifications are not available. Make sure they are enabled.",
+                                    variant: "destructive",
+                                  });
+                                }
+                              } catch (err) {
+                                console.error('[Test Notification] Error:', err);
                                 toast({
-                                  title: "Test Sent",
-                                  description: "Check for the notification on your device.",
+                                  title: "Error",
+                                  description: "Failed to send test notification: " + (err instanceof Error ? err.message : 'Unknown error'),
+                                  variant: "destructive",
                                 });
                               }
                             }}
