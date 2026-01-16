@@ -211,7 +211,14 @@ const TipPaymentSuccess: React.FC = () => {
           {/* Action Buttons */}
           <div className="space-y-3">
             <Button
-              onClick={() => navigate("/donation-image")}
+              onClick={() => navigate("/donation-image", { 
+                state: { 
+                  amount: String(tipData?.amount || paymentAmount),
+                  recipientName: creatorName,
+                  message: tipData?.message || '',
+                  senderName: tipData?.supporter_name || ''
+                }
+              })}
               className="w-full bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover"
             >
               <ImageIcon className="w-4 h-4 mr-2" /> Create Donation Image

@@ -36,5 +36,5 @@ verify_jwt = false
 [functions.create-tip]
 verify_jwt = false
 
-[functions.send-push-notification]
+[functions.send-email-notification]
 verify_jwt = false

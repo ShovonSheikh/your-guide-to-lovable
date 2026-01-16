@@ -243,30 +243,24 @@ serve(async (req) => {
 
     console.log("Tip created successfully:", tip.id);
 
-    // Send push notification to creator
+    // Send email notification to creator
     try {
-      const notificationBody = is_anonymous 
-        ? `Someone sent you ৳${parsedAmount}!`
-        : `${supporter_name} sent you ৳${parsedAmount}!`;
-      
-      await supabase.functions.invoke('send-push-notification', {
+      await supabase.functions.invoke('send-email-notification', {
         body: {
           profile_id: creator_id,
           type: 'tip_received',
-          title: 'New Tip Received! 💰',
-          body: notificationBody,
           data: {
-            tip_id: tip.id,
             amount: parsedAmount,
             supporter_name: is_anonymous ? 'Anonymous' : supporter_name,
-            url: '/dashboard',
+            message: message || null,
+            tip_id: tip.id,
           },
         },
       });
-      console.log("Push notification sent to creator");
+      console.log("Email notification sent to creator");
     } catch (notifError) {
       // Don't fail the tip creation if notification fails
-      console.log("Notification failed (non-critical):", notifError);
+      console.log("Email notification failed (non-critical):", notifError);
     }
 
     return new Response(
