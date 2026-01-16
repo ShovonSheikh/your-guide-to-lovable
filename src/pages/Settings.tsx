@@ -9,10 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { User, Link as LinkIcon, Bell, Shield, CreditCard, ArrowLeft, Info, Calendar, CheckCircle, Clock, BellRing, BellOff } from "lucide-react";
+import { User, Link as LinkIcon, Bell, Shield, CreditCard, ArrowLeft, Info, Calendar, CheckCircle, Clock, Mail, MailOpen } from "lucide-react";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNotifications } from "@/hooks/useNotifications";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 
 const tabs = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -33,14 +35,10 @@ export default function Settings() {
   const [subscription, setSubscription] = useState<any>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
 
-  // Push notification hook
+  // Notification settings hook
   const {
     settings: notificationSettings,
     updateSettings,
-    permission,
-    isSubscribed,
-    subscribe,
-    unsubscribe,
     loading: notificationsLoading
   } = useNotifications();
 
@@ -197,39 +195,56 @@ export default function Settings() {
                       </p>
 
                       {isMobile ? (
-                        <div className="space-y-4">
-                          <p className="text-sm font-medium">Follow these steps on mobile:</p>
-                          <div className="grid grid-cols-1 gap-3">
-                            {[
-                              'https://openpaste.vercel.app/i/e49c46b3',
-                              'https://openpaste.vercel.app/i/4ce9f165',
-                              'https://openpaste.vercel.app/i/c0a9268f',
-                              'https://openpaste.vercel.app/i/90be317c',
-                              'https://openpaste.vercel.app/i/ef19b7b9'
-                            ].map((url, index) => (
-                              <div key={index} className="rounded-lg overflow-hidden border border-border">
-                                <img
-                                  src={url}
-                                  alt={`Step ${index + 1}`}
-                                  className="w-full h-auto"
-                                />
-                                <p className="text-xs text-center py-2 bg-secondary">Step {index + 1}</p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                        <Accordion type="single" collapsible className="w-full">
+                          <AccordionItem value="username-guide" className="border-0">
+                            <AccordionTrigger className="text-sm font-medium py-2 hover:no-underline">
+                              How to update your username (Mobile)
+                            </AccordionTrigger>
+                            <AccordionContent>
+                              <Carousel className="w-full max-w-xs mx-auto">
+                                <CarouselContent>
+                                  {[
+                                    '/images/username-update/step-1.png',
+                                    '/images/username-update/step-2.png',
+                                    '/images/username-update/step-3.png',
+                                    '/images/username-update/step-4.png',
+                                    '/images/username-update/step-5.png',
+                                  ].map((url, index) => (
+                                    <CarouselItem key={index}>
+                                      <div className="p-1">
+                                        <div className="rounded-lg overflow-hidden border border-border">
+                                          <img src={url} alt={`Step ${index + 1}`} className="w-full h-auto" />
+                                        </div>
+                                        <p className="text-center text-sm font-medium mt-2 text-accent">
+                                          Step {index + 1} of 5
+                                        </p>
+                                      </div>
+                                    </CarouselItem>
+                                  ))}
+                                </CarouselContent>
+                                <CarouselPrevious className="left-0" />
+                                <CarouselNext className="right-0" />
+                              </Carousel>
+                            </AccordionContent>
+                          </AccordionItem>
+                        </Accordion>
                       ) : (
-                        <div className="text-sm text-muted-foreground">
-                          <p className="mb-2">On desktop:</p>
-                          <ol className="list-decimal list-inside space-y-1">
-                            <li>Click on your profile picture in the top right corner</li>
-                            <li>Select "Manage account"</li>
-                            <li>Go to "Username" section</li>
-                            <li>Click "Edit" and enter your new username</li>
-                            <li>Save your changes</li>
-                          </ol>
-                          <p className="mt-2 text-xs italic">Note: Desktop guide images will be added soon.</p>
-                        </div>
+                        <Accordion type="single" collapsible className="w-full">
+                          <AccordionItem value="username-guide" className="border-0">
+                            <AccordionTrigger className="text-sm font-medium py-2 hover:no-underline">
+                              How to update your username (Desktop)
+                            </AccordionTrigger>
+                            <AccordionContent>
+                              <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
+                                <li>Click on your profile picture in the top right corner</li>
+                                <li>Select "Manage account"</li>
+                                <li>Go to "Username" section</li>
+                                <li>Click "Edit" and enter your new username</li>
+                                <li>Save your changes</li>
+                              </ol>
+                            </AccordionContent>
+                          </AccordionItem>
+                        </Accordion>
                       )}
                     </div>
                   </div>
@@ -336,121 +351,38 @@ export default function Settings() {
               <div className="tipkoro-card space-y-6">
                 <h2 className="text-xl font-semibold">Notification Preferences</h2>
                 <p className="text-sm text-muted-foreground">
-                  Manage how you receive notifications from TipKoro.
+                  Manage how you receive email notifications from TipKoro.
                 </p>
 
-                {/* Push Notification Permission Section */}
+                {/* Email Notification Status */}
                 <div className="p-4 border rounded-xl bg-secondary/30">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      {permission === 'granted' && isSubscribed ? (
-                        <div className="w-10 h-10 rounded-full bg-success/20 flex items-center justify-center">
-                          <BellRing className="w-5 h-5 text-success" />
-                        </div>
-                      ) : permission === 'denied' ? (
-                        <div className="w-10 h-10 rounded-full bg-destructive/20 flex items-center justify-center">
-                          <BellOff className="w-5 h-5 text-destructive" />
-                        </div>
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                          <Bell className="w-5 h-5 text-muted-foreground" />
-                        </div>
-                      )}
-                      <div>
-                        <p className="font-medium">Push Notifications</p>
-                        <p className="text-sm text-muted-foreground">
-                          {permission === 'granted' && isSubscribed
-                            ? 'Enabled - You will receive browser notifications even when the site is closed'
-                            : permission === 'denied'
-                              ? 'Blocked - Please enable notifications in your browser settings'
-                              : 'Enable to receive instant updates on your device'}
-                        </p>
-                      </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center">
+                      <Mail className="w-5 h-5 text-accent" />
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    {permission !== 'denied' && (
-                      permission === 'granted' && isSubscribed ? (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={async () => {
-                              try {
-                                console.log('[Test Notification] Starting...');
-                                console.log('[Test Notification] Service worker supported:', 'serviceWorker' in navigator);
-                                console.log('[Test Notification] Permission:', Notification.permission);
-
-                                // Use service worker to show notification (more reliable)
-                                if ('serviceWorker' in navigator && Notification.permission === 'granted') {
-                                  const registration = await navigator.serviceWorker.ready;
-                                  console.log('[Test Notification] Service worker ready:', registration);
-                                  console.log('[Test Notification] Showing notification...');
-
-                                  await registration.showNotification('Test Notification 🔔', {
-                                    body: 'Push notifications are working! You will receive notifications like this.',
-                                    icon: '/favicon.ico',
-                                    badge: '/favicon.ico',
-                                    tag: 'test-' + Date.now(), // Unique tag to prevent deduplication
-                                    data: { url: '/dashboard' },
-                                  });
-
-                                  console.log('[Test Notification] showNotification called successfully');
-                                  toast({
-                                    title: "Test Sent",
-                                    description: "Check for the notification on your device.",
-                                  });
-                                } else {
-                                  console.log('[Test Notification] Conditions not met');
-                                  toast({
-                                    title: "Error",
-                                    description: "Notifications are not available. Make sure they are enabled.",
-                                    variant: "destructive",
-                                  });
-                                }
-                              } catch (err) {
-                                console.error('[Test Notification] Error:', err);
-                                toast({
-                                  title: "Error",
-                                  description: "Failed to send test notification: " + (err instanceof Error ? err.message : 'Unknown error'),
-                                  variant: "destructive",
-                                });
-                              }
-                            }}
-                          >
-                            <Bell className="h-4 w-4 mr-2" />
-                            Send Test
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={unsubscribe}>
-                            Disable
-                          </Button>
-                        </>
-                      ) : (
-                        <Button size="sm" onClick={subscribe}>
-                          <Bell className="h-4 w-4 mr-2" />
-                          Enable Notifications
-                        </Button>
-                      )
-                    )}
-                    {permission === 'denied' && (
-                      <p className="text-xs text-destructive">
-                        To enable notifications, click the lock icon in your browser's address bar and allow notifications.
+                    <div>
+                      <p className="font-medium">Email Notifications</p>
+                      <p className="text-sm text-muted-foreground">
+                        We'll send you email updates based on your preferences below.
                       </p>
-                    )}
+                    </div>
                   </div>
                 </div>
 
                 {/* Notification Type Toggles */}
                 <div className="space-y-4">
-                  <h3 className="font-medium text-muted-foreground text-sm">Notification Types</h3>
+                  <h3 className="font-medium text-muted-foreground text-sm">Email Types</h3>
                   <div className="flex items-center justify-between py-3 border-b border-border">
-                    <div>
-                      <p className="font-medium">Tip Notifications</p>
-                      <p className="text-sm text-muted-foreground">
-                        {profile?.account_type === 'creator'
-                          ? 'Get notified when you receive a tip'
-                          : 'Get notified when your tip is received'}
-                      </p>
+                    <div className="flex items-center gap-3">
+                      <MailOpen className="w-5 h-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">Tip Notifications</p>
+                        <p className="text-sm text-muted-foreground">
+                          {profile?.account_type === 'creator'
+                            ? 'Get an email when you receive a tip'
+                            : 'Get an email when your tip is received'}
+                        </p>
+                      </div>
                     </div>
                     <Switch
                       checked={notificationSettings.tips_enabled}
@@ -461,9 +393,12 @@ export default function Settings() {
 
                   {profile?.account_type === 'creator' && (
                     <div className="flex items-center justify-between py-3 border-b border-border">
-                      <div>
-                        <p className="font-medium">Withdrawal Updates</p>
-                        <p className="text-sm text-muted-foreground">Get notified when your withdrawal is processed</p>
+                      <div className="flex items-center gap-3">
+                        <MailOpen className="w-5 h-5 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium">Withdrawal Updates</p>
+                          <p className="text-sm text-muted-foreground">Get an email when your withdrawal is processed</p>
+                        </div>
                       </div>
                       <Switch
                         checked={notificationSettings.withdrawals_enabled}
@@ -474,9 +409,12 @@ export default function Settings() {
                   )}
 
                   <div className="flex items-center justify-between py-3">
-                    <div>
-                      <p className="font-medium">Promotions & Updates</p>
-                      <p className="text-sm text-muted-foreground">Receive news about new features and offers</p>
+                    <div className="flex items-center gap-3">
+                      <MailOpen className="w-5 h-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">Promotions & Updates</p>
+                        <p className="text-sm text-muted-foreground">Receive news about new features and offers</p>
+                      </div>
                     </div>
                     <Switch
                       checked={notificationSettings.promotions_enabled}

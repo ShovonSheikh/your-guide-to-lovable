@@ -1,6 +1,6 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useUser } from "@clerk/clerk-react";
-import { Navigate, Link } from "react-router-dom";
+import { Navigate, Link, useLocation } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { TopNavbar } from "@/components/TopNavbar";
 import { MainFooter } from "@/components/MainFooter";
@@ -9,14 +9,34 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Download, Share2, ArrowLeft, Heart, Sparkles } from "lucide-react";
 
+interface PrefilledData {
+  amount?: string;
+  recipientName?: string;
+  message?: string;
+  senderName?: string;
+}
+
 export default function DonationImage() {
   const { isSignedIn, isLoaded } = useUser();
   const { profile, loading } = useProfile();
+  const location = useLocation();
+  const prefilledData = location.state as PrefilledData | null;
+
   const [amount, setAmount] = useState("100");
   const [supporterName, setSupporterName] = useState("");
   const [message, setMessage] = useState("");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+
+  // Pre-fill from tip success page
+  useEffect(() => {
+    if (prefilledData) {
+      if (prefilledData.amount) setAmount(prefilledData.amount);
+      if (prefilledData.recipientName) setSupporterName(prefilledData.recipientName);
+      if (prefilledData.senderName) setSupporterName(prefilledData.senderName);
+      if (prefilledData.message) setMessage(prefilledData.message);
+    }
+  }, [prefilledData]);
 
   if (!isLoaded || loading) {
     return (
