@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TipKoro Support Card</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Fredoka', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f5e6d3 0%, #e8d4b8 100%);
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Decorative confetti elements */
+        .confetti {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .confetti-piece {
+            position: absolute;
+            border-radius: 50%;
+        }
+
+        /* Stars */
+        .star {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 14px solid #d4af37;
+            transform: rotate(35deg);
+        }
+
+        .star:before {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 10px solid #d4af37;
+            transform: rotate(-70deg);
+            top: 3px;
+            left: -5px;
+        }
+
+        /* Curved pieces */
+        .curve {
+            width: 30px;
+            height: 12px;
+            border-radius: 50px;
+        }
+
+        /* Position confetti pieces - top row */
+        .piece1 { top: 5%; left: 10%; background: #f4c790; transform: rotate(-25deg); width: 28px; height: 10px; }
+        .piece2 { top: 3%; left: 17%; background: #b8d4c8; transform: rotate(30deg); width: 25px; height: 10px; }
+        .piece3 { top: 7%; left: 25%; background: #f4d0a0; transform: rotate(-15deg); width: 32px; height: 11px; }
+        .piece4 { top: 2%; left: 45%; background: #e8d4b8; width: 10px; height: 10px; }
+        .piece5 { top: 6%; right: 38%; background: #f4c790; transform: rotate(20deg); width: 35px; height: 12px; }
+        .piece6 { top: 3%; right: 25%; background: #e8d4b8; width: 8px; height: 8px; }
+        .piece7 { top: 5%; right: 15%; background: #b8d4c8; transform: rotate(-30deg); width: 30px; height: 10px; }
+        .piece8 { top: 8%; right: 5%; background: #f4d0a0; transform: rotate(25deg); width: 28px; height: 11px; }
+        .piece9 { top: 3%; right: 3%; background: #e8d4b8; width: 9px; height: 9px; }
+        
+        /* Middle and bottom pieces */
+        .piece10 { top: 25%; left: 3%; background: #b8d4c8; transform: rotate(20deg); width: 26px; height: 10px; }
+        .piece11 { bottom: 30%; left: 5%; background: #f4c790; transform: rotate(-35deg); width: 30px; height: 11px; }
+        .piece12 { bottom: 20%; left: 12%; background: #b8d4c8; transform: rotate(15deg); width: 28px; height: 10px; }
+        .piece13 { bottom: 15%; right: 8%; background: #f4d0a0; transform: rotate(-20deg); width: 32px; height: 11px; }
+        .piece14 { bottom: 25%; right: 15%; background: #b8d4c8; transform: rotate(30deg); width: 27px; height: 10px; }
+        .piece15 { top: 35%; right: 2%; background: #e8d4b8; width: 12px; height: 12px; }
+
+        /* Small dots */
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .dot1 { top: 20%; left: 3%; background: #f4c790; }
+        .dot2 { top: 35%; right: 2%; background: #b8d4c8; }
+        .dot3 { bottom: 40%; left: 15%; background: #d4af37; }
+
+        /* Stars positioning */
+        .star1 { top: 8%; left: 32%; transform: scale(0.7) rotate(35deg); }
+        .star2 { top: 4%; right: 45%; transform: scale(0.5) rotate(35deg); }
+        .star3 { top: 12%; right: 10%; transform: scale(0.8) rotate(35deg); }
+        .star4 { bottom: 18%; left: 8%; transform: scale(0.9) rotate(35deg); }
+        .star5 { bottom: 12%; right: 5%; transform: scale(0.8) rotate(35deg); }
+        .star6 { top: 20%; left: 5%; transform: scale(0.6) rotate(35deg); }
+
+        /* Sparkles */
+        .sparkle {
+            position: absolute;
+            width: 3px;
+            height: 20px;
+            background: #d4af37;
+        }
+
+        .sparkle:after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 3px;
+            background: #d4af37;
+            top: 8px;
+            left: -8px;
+        }
+
+        .sparkle1 { top: 12%; left: 30%; transform: scale(0.5); }
+        .sparkle2 { top: 10%; right: 35%; transform: scale(0.4); }
+        .sparkle3 { bottom: 30%; left: 25%; transform: scale(0.6); }
+
+        /* Main card container */
+        .card-container {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Logo circle */
+        .logo-circle {
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90px;
+            height: 90px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            z-index: 2;
+        }
+
+        .logo-inner {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #f5e6d3 0%, #f0d9b8 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            color: #d4a24a;
+        }
+
+        /* Main card */
+        .card {
+            background: white;
+            background-image: url('https://i.ibb.co.com/QjxJWNtb/image.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            border-radius: 30px;
+            padding: 60px 50px 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Bottom gradient overlay */
+        .card:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 200px;
+            background: linear-gradient(to top, rgba(245, 230, 211, 0.6) 0%, rgba(245, 230, 211, 0) 100%);
+            pointer-events: none;
+        }
+
+        /* Title text */
+        .title {
+            font-size: 42px;
+            font-weight: 600;
+            color: #2d1810;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+
+        /* Amount */
+        .amount {
+            font-size: 72px;
+            font-weight: 600;
+            color: #d4a24a;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .currency {
+            font-size: 60px;
+        }
+
+        /* Message section */
+        .message-container {
+            margin: 30px 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .message-icon {
+            position: relative;
+            display: inline-block;
+        }
+
+        .message-bubbles {
+            display: inline-flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .bubble {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e8d4b8;
+            border-radius: 50%;
+            background: white;
+        }
+
+        .bubble:nth-child(2) {
+            width: 50px;
+            height: 50px;
+        }
+
+        .sparkle-small {
+            position: absolute;
+            width: 2px;
+            height: 12px;
+            background: #d4af37;
+            top: -5px;
+            right: 15px;
+        }
+
+        .sparkle-small:after {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 2px;
+            background: #d4af37;
+            top: 5px;
+            left: -5px;
+        }
+
+        .message-text {
+            font-size: 26px;
+            font-weight: 400;
+            color: #2d1810;
+            margin-top: 10px;
+        }
+
+        /* Coin illustration */
+        .coin-line {
+            position: absolute;
+            right: 80px;
+            bottom: 160px;
+            width: 150px;
+            height: 80px;
+        }
+
+        .coin-line svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Date section */
+        .date-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 40px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .date {
+            font-size: 20px;
+            font-weight: 500;
+            color: #5a4a3a;
+        }
+
+        .wheat {
+            width: 35px;
+            height: 35px;
+        }
+
+        @media (max-width: 768px) {
+            .card {
+                padding: 60px 30px 30px;
+            }
+
+            .title {
+                font-size: 32px;
+            }
+
+            .amount {
+                font-size: 56px;
+            }
+
+            .currency {
+                font-size: 48px;
+            }
+
+            .message-text {
+                font-size: 22px;
+            }
+
+            .date {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Decorative confetti background -->
+    <div class="confetti">
+        <!-- Curved pieces -->
+        <div class="confetti-piece curve piece1"></div>
+        <div class="confetti-piece curve piece2"></div>
+        <div class="confetti-piece curve piece3"></div>
+        <div class="confetti-piece curve piece4"></div>
+        <div class="confetti-piece curve piece5"></div>
+        <div class="confetti-piece curve piece6"></div>
+        <div class="confetti-piece curve piece7"></div>
+        <div class="confetti-piece curve piece8"></div>
+        <div class="confetti-piece curve piece9"></div>
+        <div class="confetti-piece curve piece10"></div>
+        <div class="confetti-piece curve piece11"></div>
+        <div class="confetti-piece curve piece12"></div>
+        <div class="confetti-piece curve piece13"></div>
+        <div class="confetti-piece curve piece14"></div>
+        <div class="confetti-piece curve piece15"></div>
+
+        <!-- Dots -->
+        <div class="confetti-piece dot dot1"></div>
+        <div class="confetti-piece dot dot2"></div>
+        <div class="confetti-piece dot dot3"></div>
+
+        <!-- Stars -->
+        <div class="star star1"></div>
+        <div class="star star2"></div>
+        <div class="star star3"></div>
+        <div class="star star4"></div>
+        <div class="star star5"></div>
+        <div class="star star6"></div>
+
+        <!-- Sparkles -->
+        <div class="sparkle sparkle1"></div>
+        <div class="sparkle sparkle2"></div>
+        <div class="sparkle sparkle3"></div>
+    </div>
+
+    <div class="card-container">
+        <!-- Logo circle -->
+        <div class="logo-circle">
+            <div class="logo-inner">TipKoro</div>
+        </div>
+
+        <!-- Main card -->
+        <div class="card">
+            <h1 class="title">
+                You just supported<br>[Creator Name]!
+            </h1>
+
+            <div class="amount">
+                <span class="currency">৳</span><span>150</span>
+            </div>
+
+            <div class="message-container">
+                <div class="message-icon">
+                    <div class="message-bubbles">
+                    </div>
+                    <div class="sparkle-small"></div>
+                </div>
+                <div class="message-text">Message: Great stream today!</div>
+            </div>
+
+            <div class="date-container">
+                <span class="date">14 Jan 2026, 10:06 AM</span>
+
+            </div>
+        </div>
+    </div>
+</body>
+</html>

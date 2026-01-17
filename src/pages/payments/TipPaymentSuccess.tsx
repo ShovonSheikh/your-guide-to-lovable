@@ -7,14 +7,17 @@ import { TopNavbar } from "@/components/TopNavbar";
 import { MainFooter } from "@/components/MainFooter";
 import { Button } from "@/components/ui/button";
 import { Confetti } from "@/components/Confetti";
-import { 
-  Heart, 
-  Loader2, 
-  Share2, 
-  Image as ImageIcon, 
-  Home, 
+import TipKoroCard from "@/components/TipKoroCard";
+import html2canvas from "html2canvas";
+import {
+  Heart,
+  Loader2,
+  Download,
+  Image as ImageIcon,
+  Home,
   XCircle,
-  ExternalLink 
+  ExternalLink,
+  LayoutDashboard
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -29,7 +32,11 @@ const TipPaymentSuccess: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [tipData, setTipData] = useState<any>(null);
   const [creatorName, setCreatorName] = useState<string>("");
+  const [showImageCreator, setShowImageCreator] = useState(false);
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const verificationStarted = useRef(false);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const transactionId = searchParams.get("transactionId");
   const paymentMethod = searchParams.get("paymentMethod");
@@ -103,8 +110,8 @@ const TipPaymentSuccess: React.FC = () => {
 
       if (creator) {
         setCreatorName(
-          creator.first_name 
-            ? `${creator.first_name} ${creator.last_name || ""}`.trim() 
+          creator.first_name
+            ? `${creator.first_name} ${creator.last_name || ""}`.trim()
             : `@${creator.username}`
         );
       }
@@ -121,27 +128,67 @@ const TipPaymentSuccess: React.FC = () => {
     }
   };
 
-  const handleShare = async () => {
-    const shareText = `I just supported ${creatorName} on TipKoro! 💛`;
-    const shareUrl = window.location.origin;
+  const handleCreateImage = () => {
+    setShowImageCreator(true);
+  };
 
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "TipKoro", text: shareText, url: shareUrl });
-      } catch (err) {
-        // User cancelled
-      }
-    } else {
-      await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
-      toast({ title: "Copied to clipboard!", description: "Share it with your friends." });
+  const handleGenerateImage = async () => {
+    if (!cardRef.current) return;
+
+    setIsGenerating(true);
+    try {
+      const canvas = await html2canvas(cardRef.current, {
+        backgroundColor: '#f5e6d3',
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+      });
+      const dataUrl = canvas.toDataURL('image/png');
+      setGeneratedImage(dataUrl);
+    } catch (err) {
+      console.error("Image generation error:", err);
+      toast({
+        title: "Error",
+        description: "Failed to generate image. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
     }
+  };
+
+  const handleDownloadImage = () => {
+    if (!generatedImage) return;
+
+    const link = document.createElement('a');
+    link.download = `tipkoro-donation-${Date.now()}.png`;
+    link.href = generatedImage;
+    link.click();
+
+    toast({
+      title: "Downloaded!",
+      description: "Your donation image has been downloaded.",
+    });
+  };
+
+  const formatTimestamp = () => {
+    const now = new Date();
+    return now.toLocaleString('en-US', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
   };
 
   if (verifying) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <TopNavbar />
-        <main className="flex-1 flex items-center justify-center p-6">
+        <main className="flex-1 flex items-center justify-center p-6 pt-24">
           <div className="tipkoro-card text-center py-12 max-w-md w-full">
             <Loader2 className="w-12 h-12 mx-auto mb-4 animate-spin text-accent" />
             <h2 className="text-xl font-semibold mb-2">Processing Your Tip...</h2>
@@ -157,7 +204,7 @@ const TipPaymentSuccess: React.FC = () => {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <TopNavbar />
-        <main className="flex-1 flex items-center justify-center p-6">
+        <main className="flex-1 flex items-center justify-center p-6 pt-24">
           <div className="tipkoro-card text-center py-12 max-w-md w-full">
             <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-6">
               <XCircle className="w-8 h-8 text-destructive" />
@@ -181,7 +228,7 @@ const TipPaymentSuccess: React.FC = () => {
     <div className="min-h-screen bg-background flex flex-col">
       <Confetti />
       <TopNavbar />
-      <main className="flex-1 flex items-center justify-center p-6">
+      <main className="flex-1 flex flex-col items-center justify-start p-6 pt-24">
         <div className="tipkoro-card text-center py-12 max-w-lg w-full">
           <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
             <Heart className="w-10 h-10 text-primary fill-primary" />
@@ -211,21 +258,14 @@ const TipPaymentSuccess: React.FC = () => {
           {/* Action Buttons */}
           <div className="space-y-3">
             <Button
-              onClick={() => navigate("/donation-image", { 
-                state: { 
-                  amount: String(tipData?.amount || paymentAmount),
-                  recipientName: creatorName,
-                  message: tipData?.message || '',
-                  senderName: tipData?.supporter_name || ''
-                }
-              })}
+              onClick={handleCreateImage}
               className="w-full bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover"
             >
               <ImageIcon className="w-4 h-4 mr-2" /> Create Donation Image
             </Button>
 
-            <Button onClick={handleShare} variant="outline" className="w-full">
-              <Share2 className="w-4 h-4 mr-2" /> Share Your Support
+            <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full">
+              <LayoutDashboard className="w-4 h-4 mr-2" /> Go to Dashboard
             </Button>
 
             <Link to="/explore" className="block">
@@ -239,6 +279,60 @@ const TipPaymentSuccess: React.FC = () => {
             Transaction ID: {transactionId?.slice(0, 16)}...
           </p>
         </div>
+
+        {/* Image Creator Section */}
+        {showImageCreator && (
+          <div className="tipkoro-card mt-8 max-w-xl w-full p-6">
+            <h2 className="text-xl font-semibold mb-4 text-center">Create & Share Your Donation</h2>
+
+            {/* TipKoroCard Preview */}
+            <div className="flex justify-center mb-6 overflow-hidden rounded-xl border border-border">
+              <TipKoroCard
+                ref={cardRef}
+                creatorName={creatorName || "Creator"}
+                tipAmount={String(tipData?.amount || paymentAmount || "0")}
+                userMessage={tipData?.message || ""}
+                timestamp={formatTimestamp()}
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              {!generatedImage ? (
+                <Button
+                  onClick={handleGenerateImage}
+                  className="flex-1 bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover"
+                  disabled={isGenerating}
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...
+                    </>
+                  ) : (
+                    <>
+                      <ImageIcon className="w-4 h-4 mr-2" /> Generate Image
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleDownloadImage}
+                  className="flex-1"
+                >
+                  <Download className="w-4 h-4 mr-2" /> Download Image
+                </Button>
+              )}
+            </div>
+
+            {generatedImage && (
+              <div className="mt-4">
+                <p className="text-sm text-muted-foreground text-center">
+                  ✅ Image ready! Click download to save it.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </main>
       <MainFooter />
     </div>
