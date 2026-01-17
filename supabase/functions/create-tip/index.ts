@@ -243,6 +243,13 @@ serve(async (req) => {
 
     console.log("Tip created successfully:", tip.id);
 
+    // Get creator profile for name
+    const { data: creator_profile } = await supabase
+      .from('profiles')
+      .select('first_name, username')
+      .eq('id', creator_id)
+      .single();
+
     // Send email notification to creator
     try {
       await supabase.functions.invoke('send-email-notification', {
@@ -260,7 +267,25 @@ serve(async (req) => {
       console.log("Email notification sent to creator");
     } catch (notifError) {
       // Don't fail the tip creation if notification fails
-      console.log("Email notification failed (non-critical):", notifError);
+      console.log("Creator email notification failed (non-critical):", notifError);
+    }
+
+    // Send confirmation email to supporter
+    try {
+      await supabase.functions.invoke('send-email-notification', {
+        body: {
+          email: supporter_email, // Direct email for non-registered supporters
+          type: 'tip_sent',
+          data: {
+            amount: parsedAmount,
+            creator_name: creator_profile?.first_name || creator_profile?.username || 'a creator',
+            message: message || null,
+          },
+        },
+      });
+      console.log("Confirmation email sent to supporter");
+    } catch (notifError) {
+      console.log("Supporter email notification failed (non-critical):", notifError);
     }
 
     return new Response(

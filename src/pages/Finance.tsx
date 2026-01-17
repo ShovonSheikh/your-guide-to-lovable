@@ -5,7 +5,6 @@ import { useProfile } from "@/hooks/useProfile";
 import { useCreatorStats } from "@/hooks/useCreatorStats";
 import { useSupabase } from "@/hooks/useSupabase";
 import { TopNavbar } from "@/components/TopNavbar";
-import { MainFooter } from "@/components/MainFooter";
 import { EarningsChart } from "@/components/EarningsChart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -101,6 +100,21 @@ export default function Finance() {
         });
 
       if (error) throw error;
+
+      // Send email notification
+      try {
+        await supabase.functions.invoke('send-email-notification', {
+          body: {
+            profile_id: profile?.id,
+            type: 'withdrawal_submitted',
+            data: {
+              amount,
+            },
+          },
+        });
+      } catch (notifError) {
+        console.log('Notification failed (non-critical):', notifError);
+      }
 
       toast({
         title: "Withdrawal Requested!",
@@ -270,8 +284,6 @@ export default function Finance() {
           </div>
         </div>
       </main>
-
-      <MainFooter />
     </div>
   );
 }

@@ -203,12 +203,12 @@ export default function Settings() {
                             <AccordionContent>
                               <Carousel className="w-full max-w-xs mx-auto">
                                 <CarouselContent>
-                                  {[
-                                    '/images/username-update/step-1.png',
-                                    '/images/username-update/step-2.png',
-                                    '/images/username-update/step-3.png',
-                                    '/images/username-update/step-4.png',
-                                    '/images/username-update/step-5.png',
+                              {[
+                                    'https://openpaste.vercel.app/i/e49c46b3',
+                                    'https://openpaste.vercel.app/i/4ce9f165',
+                                    'https://openpaste.vercel.app/i/c0a9268f',
+                                    'https://openpaste.vercel.app/i/90be317c',
+                                    'https://openpaste.vercel.app/i/ef19b7b9',
                                   ].map((url, index) => (
                                     <CarouselItem key={index}>
                                       <div className="p-1">

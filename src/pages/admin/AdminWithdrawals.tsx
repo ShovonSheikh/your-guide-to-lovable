@@ -121,6 +121,28 @@ export default function AdminWithdrawals() {
 
       if (error) throw error;
 
+      // Send email notification to creator
+      try {
+        const notificationType = newStatus === 'processing' 
+          ? 'withdrawal_processing' 
+          : newStatus === 'completed' 
+            ? 'withdrawal_completed' 
+            : 'withdrawal_rejected';
+        
+        await supabase.functions.invoke('send-email-notification', {
+          body: {
+            profile_id: selectedWithdrawal.profile_id,
+            type: notificationType,
+            data: {
+              amount: selectedWithdrawal.amount,
+              reason: adminNotes || undefined,
+            },
+          },
+        });
+      } catch (notifError) {
+        console.log('Notification failed (non-critical):', notifError);
+      }
+
       // Update local state
       setWithdrawals(withdrawals.map(w =>
         w.id === selectedWithdrawal.id
