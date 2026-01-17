@@ -4,7 +4,6 @@ import { Navigate, Link, useNavigate } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { useCreatorStats } from "@/hooks/useCreatorStats";
 import { TopNavbar } from "@/components/TopNavbar";
-import { MainFooter } from "@/components/MainFooter";
 import { Button } from "@/components/ui/button";
 import { Onboarding } from "@/components/Onboarding";
 import { RecentTipsList } from "@/components/RecentTipsList";
@@ -200,8 +199,6 @@ export default function Dashboard() {
         {/* Supporter Dashboard */}
         {!isCreator && <SupporterDashboard />}
       </main>
-
-      <MainFooter />
     </div>
   );
 }
