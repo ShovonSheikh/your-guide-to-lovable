@@ -236,22 +236,22 @@ export default function AdminDashboard() {
           <CardContent>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Platform Fee Rate</span>
-                <span className="font-medium">8%</span>
+                <span className="text-sm text-muted-foreground">Creator Account Fee</span>
+                <span className="font-medium">৳150/month</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Monthly Subscription</span>
-                <span className="font-medium">৳199/month</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Est. Platform Revenue</span>
-                <span className="font-medium text-green-600">
-                  ৳{Math.round((stats?.totalTipsAmount || 0) * 0.08).toLocaleString()}
-                </span>
+                <span className="text-sm text-muted-foreground">Tip Fee</span>
+                <span className="font-medium text-green-600">0% (Free)</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Active Creators</span>
                 <span className="font-medium">{stats?.totalCreators || 0}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Est. Monthly Revenue</span>
+                <span className="font-medium text-green-600">
+                  ৳{((stats?.totalCreators || 0) * 150).toLocaleString()}
+                </span>
               </div>
             </div>
           </CardContent>
