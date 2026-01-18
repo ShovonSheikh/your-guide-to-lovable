@@ -255,6 +255,122 @@ export type Database = {
           },
         ]
       }
+      email_logs: {
+        Row: {
+          created_at: string | null
+          email_type: string
+          error_message: string | null
+          id: string
+          recipient_email: string
+          resend_id: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          email_type: string
+          error_message?: string | null
+          id?: string
+          recipient_email: string
+          resend_id?: string | null
+          status: string
+        }
+        Update: {
+          created_at?: string | null
+          email_type?: string
+          error_message?: string | null
+          id?: string
+          recipient_email?: string
+          resend_id?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      inbound_emails: {
+        Row: {
+          attachments: Json | null
+          bcc_addresses: Json | null
+          cc_addresses: Json | null
+          created_at: string | null
+          from_address: string
+          from_name: string | null
+          html_body: string | null
+          id: string
+          is_deleted: boolean | null
+          is_read: boolean | null
+          mailbox_id: string
+          message_id: string
+          received_at: string
+          subject: string | null
+          text_body: string | null
+          to_addresses: Json
+        }
+        Insert: {
+          attachments?: Json | null
+          bcc_addresses?: Json | null
+          cc_addresses?: Json | null
+          created_at?: string | null
+          from_address: string
+          from_name?: string | null
+          html_body?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_read?: boolean | null
+          mailbox_id: string
+          message_id: string
+          received_at: string
+          subject?: string | null
+          text_body?: string | null
+          to_addresses: Json
+        }
+        Update: {
+          attachments?: Json | null
+          bcc_addresses?: Json | null
+          cc_addresses?: Json | null
+          created_at?: string | null
+          from_address?: string
+          from_name?: string | null
+          html_body?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_read?: boolean | null
+          mailbox_id?: string
+          message_id?: string
+          received_at?: string
+          subject?: string | null
+          text_body?: string | null
+          to_addresses?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_emails_mailbox_id_fkey"
+            columns: ["mailbox_id"]
+            isOneToOne: false
+            referencedRelation: "mailboxes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mailboxes: {
+        Row: {
+          created_at: string | null
+          display_name: string | null
+          email_address: string
+          id: string
+        }
+        Insert: {
+          created_at?: string | null
+          display_name?: string | null
+          email_address: string
+          id?: string
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: string | null
+          email_address?: string
+          id?: string
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           created_at: string | null
@@ -328,6 +444,41 @@ export type Database = {
           {
             foreignKeyName: "notifications_profile_id_fkey"
             columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_config: {
+        Row: {
+          description: string | null
+          id: string
+          key: string
+          updated_at: string | null
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_config_updated_by_fkey"
+            columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -534,6 +685,60 @@ export type Database = {
           {
             foreignKeyName: "tips_supporter_id_fkey"
             columns: ["supporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      verification_requests: {
+        Row: {
+          admin_notes: string | null
+          created_at: string | null
+          id: string
+          id_back_url: string
+          id_front_url: string
+          profile_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          selfie_url: string
+          status: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string | null
+          id?: string
+          id_back_url: string
+          id_front_url: string
+          profile_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          selfie_url: string
+          status?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string | null
+          id?: string
+          id_back_url?: string
+          id_front_url?: string
+          profile_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          selfie_url?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verification_requests_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "verification_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

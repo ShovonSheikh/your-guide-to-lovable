@@ -33,14 +33,14 @@ export default function AdminSettings() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="tipFee">Tip Fee (%)</Label>
-                <Input id="tipFee" type="number" defaultValue="8" />
-                <p className="text-xs text-muted-foreground">Percentage fee on each tip</p>
+                <Label htmlFor="monthlyFee">Creator Account Fee (৳)</Label>
+                <Input id="monthlyFee" type="number" defaultValue="150" />
+                <p className="text-xs text-muted-foreground">Monthly fee for creator accounts</p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="monthlyFee">Monthly Subscription (৳)</Label>
-                <Input id="monthlyFee" type="number" defaultValue="199" />
-                <p className="text-xs text-muted-foreground">Monthly fee for creators</p>
+              <div className="space-y-2 opacity-50">
+                <Label>Tip Fee</Label>
+                <p className="text-lg font-medium text-green-600">0% (Free)</p>
+                <p className="text-xs text-muted-foreground">No fee on tips - creators keep 100%</p>
               </div>
             </div>
           </CardContent>

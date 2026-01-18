@@ -28,6 +28,8 @@ import AdminCreators from "./pages/admin/AdminCreators";
 import AdminWithdrawals from "./pages/admin/AdminWithdrawals";
 import AdminTips from "./pages/admin/AdminTips";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminVerifications from "./pages/admin/AdminVerifications";
+import AdminMailbox from "./pages/admin/AdminMailbox";
 
 const queryClient = new QueryClient();
 
@@ -58,8 +60,10 @@ const App = () => (
             <Route index element={<AdminDashboard />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="creators" element={<AdminCreators />} />
+            <Route path="verifications" element={<AdminVerifications />} />
             <Route path="withdrawals" element={<AdminWithdrawals />} />
             <Route path="tips" element={<AdminTips />} />
+            <Route path="mailbox" element={<AdminMailbox />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
           <Route path="/:username" element={<CreatorProfile />} />
