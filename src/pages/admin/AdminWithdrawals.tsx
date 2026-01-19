@@ -138,6 +138,31 @@ export default function AdminWithdrawals() {
 
       if (error) throw error;
 
+      // When withdrawal is completed, decrement the creator's total_received
+      if (newStatus === 'completed') {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('total_received')
+          .eq('id', selectedWithdrawal.profile_id)
+          .single();
+
+        if (profileError) {
+          console.error('Error fetching profile:', profileError);
+        } else {
+          const currentTotal = profile?.total_received || 0;
+          const newTotal = Math.max(0, currentTotal - selectedWithdrawal.amount);
+          
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ total_received: newTotal })
+            .eq('id', selectedWithdrawal.profile_id);
+
+          if (updateError) {
+            console.error('Error updating total_received:', updateError);
+          }
+        }
+      }
+
       // Send email notification to creator
       try {
         const notificationType = newStatus === 'processing' 
