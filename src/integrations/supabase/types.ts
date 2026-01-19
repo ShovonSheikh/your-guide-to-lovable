@@ -52,6 +52,54 @@ export type Database = {
           },
         ]
       }
+      admin_roles: {
+        Row: {
+          can_manage_admins: boolean
+          can_manage_creators: boolean
+          can_manage_mailbox: boolean
+          can_manage_settings: boolean
+          can_manage_users: boolean
+          can_manage_verifications: boolean
+          can_manage_withdrawals: boolean
+          can_view_dashboard: boolean
+          can_view_tips: boolean
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          can_manage_admins?: boolean
+          can_manage_creators?: boolean
+          can_manage_mailbox?: boolean
+          can_manage_settings?: boolean
+          can_manage_users?: boolean
+          can_manage_verifications?: boolean
+          can_manage_withdrawals?: boolean
+          can_view_dashboard?: boolean
+          can_view_tips?: boolean
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          can_manage_admins?: boolean
+          can_manage_creators?: boolean
+          can_manage_mailbox?: boolean
+          can_manage_settings?: boolean
+          can_manage_users?: boolean
+          can_manage_verifications?: boolean
+          can_manage_withdrawals?: boolean
+          can_view_dashboard?: boolean
+          can_view_tips?: boolean
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       billing_records: {
         Row: {
           amount: number

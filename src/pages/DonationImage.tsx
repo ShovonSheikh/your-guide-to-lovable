@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Download, Share2, ArrowLeft, Heart, Sparkles } from "lucide-react";
-import html2canvas from "html2canvas";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PrefilledData {
   amount?: string;
@@ -58,30 +58,52 @@ export default function DonationImage() {
   const isCreator = profile?.account_type === 'creator';
 
   const generateImage = async () => {
-    if (!previewRef.current) return;
-    
     setIsGenerating(true);
     
     try {
-      const element = previewRef.current;
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        backgroundColor: null,
-        useCORS: true,
-        logging: false,
-        allowTaint: true,
-        x: 0,
-        y: 0,
-        width: element.offsetWidth,
-        height: element.offsetHeight,
-        scrollX: 0,
-        scrollY: 0,
-        windowWidth: element.offsetWidth,
-        windowHeight: element.offsetHeight,
+      // Call edge function to generate SVG
+      const { data, error } = await supabase.functions.invoke('generate-share-image', {
+        body: {
+          amount,
+          creatorName: displayName,
+          supporterName,
+          message,
+          displayName,
+          username: profile?.username,
+          isCreator,
+        }
       });
+
+      if (error) throw error;
+
+      // Convert SVG response to data URL for preview and download
+      const svgBlob = new Blob([data], { type: 'image/svg+xml' });
+      const svgUrl = URL.createObjectURL(svgBlob);
       
-      const dataUrl = canvas.toDataURL('image/png');
-      setGeneratedImage(dataUrl);
+      // Create an image from SVG to convert to PNG
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 600;
+        canvas.height = 600;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          const pngUrl = canvas.toDataURL('image/png');
+          setGeneratedImage(pngUrl);
+        }
+        URL.revokeObjectURL(svgUrl);
+      };
+      img.onerror = () => {
+        // Fallback: use SVG directly
+        setGeneratedImage(svgUrl);
+      };
+      img.src = svgUrl;
+
+      toast({
+        title: "Image Generated!",
+        description: "Your donation image is ready to download or share.",
+      });
     } catch (error) {
       console.error('Error generating image:', error);
       toast({

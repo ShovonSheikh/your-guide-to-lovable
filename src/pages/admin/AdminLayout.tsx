@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
 import { useUser } from "@clerk/clerk-react";
 import { useProfile } from "@/hooks/useProfile";
+import { useAdminPermissions, permissionMap } from "@/hooks/useAdminPermissions";
 import { 
   LayoutDashboard, 
   Users, 
@@ -13,7 +14,8 @@ import {
   Mail,
   ShieldCheck,
   Menu,
-  LogOut
+  LogOut,
+  Crown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,7 +31,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 
-const navItems = [
+const allNavItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/admin" },
   { id: "users", label: "Users", icon: Users, path: "/admin/users" },
   { id: "creators", label: "Creators", icon: BadgeCheck, path: "/admin/creators" },
@@ -38,6 +40,7 @@ const navItems = [
   { id: "tips", label: "Tips", icon: Receipt, path: "/admin/tips" },
   { id: "mailbox", label: "Mailbox", icon: Mail, path: "/admin/mailbox" },
   { id: "settings", label: "Settings", icon: Settings, path: "/admin/settings" },
+  { id: "admins", label: "Admins", icon: Crown, path: "/admin/admins" },
 ];
 
 export default function AdminLayout() {
@@ -46,11 +49,19 @@ export default function AdminLayout() {
   const location = useLocation();
   const { isLoaded, isSignedIn } = useUser();
   const { profile, loading: profileLoading } = useProfile();
+  const { permissions, loading: permissionsLoading } = useAdminPermissions();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingVerifications, setPendingVerifications] = useState(0);
   const [unreadEmails, setUnreadEmails] = useState(0);
   const isMobile = useIsMobile();
+
+  // Filter nav items based on permissions
+  const navItems = allNavItems.filter(item => {
+    const permKey = permissionMap[item.id];
+    if (!permKey) return true;
+    return permissions[permKey];
+  });
 
   // Fetch counts for badges
   useEffect(() => {
@@ -85,7 +96,7 @@ export default function AdminLayout() {
     }
   }, [isLoaded, isSignedIn, profile, profileLoading, navigate]);
 
-  if (!isLoaded || profileLoading) {
+  if (!isLoaded || profileLoading || permissionsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Spinner className="h-8 w-8" />
