@@ -226,15 +226,6 @@ export default function AdminLayout() {
               <span className="text-muted-foreground text-sm ml-1">/ {getCurrentPageTitle()}</span>
             </div>
           </div>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={() => navigate("/dashboard")}
-            className="text-muted-foreground"
-          >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Exit
-          </Button>
         </div>
       </div>
 

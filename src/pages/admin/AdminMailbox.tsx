@@ -199,13 +199,16 @@ export default function AdminMailbox() {
   }, [fetchMailboxes, fetchEmails]);
 
   // Auto-refresh every 3 seconds (silent to prevent flickering)
+  // Skip refresh when reply sheet is open to prevent re-renders
   useEffect(() => {
     const interval = setInterval(() => {
-      handleRefresh(true);
+      if (!showReplySheet) {
+        handleRefresh(true);
+      }
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [handleRefresh]);
+  }, [handleRefresh, showReplySheet]);
 
   // Real-time subscription using ref to avoid stale closure
   useEffect(() => {
