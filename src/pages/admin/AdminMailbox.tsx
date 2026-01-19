@@ -14,12 +14,14 @@ import {
   ChevronLeft,
   Paperclip,
   Eye,
-  EyeOff
+  EyeOff,
+  Reply
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { ReplyComposer } from "@/components/admin/ReplyComposer";
 
 interface Mailbox {
   id: string;
@@ -72,6 +74,7 @@ export default function AdminMailbox() {
   const [emailsLoading, setEmailsLoading] = useState(false);
   const [showHtml, setShowHtml] = useState(true);
   const [mobileView, setMobileView] = useState<MobileView>('mailboxes');
+  const [showReplyComposer, setShowReplyComposer] = useState(false);
 
   const fetchMailboxes = useCallback(async () => {
     try {
@@ -261,6 +264,7 @@ export default function AdminMailbox() {
   const handleSelectEmail = (email: Email) => {
     setSelectedEmail(email);
     markAsRead(email);
+    setShowReplyComposer(false); // Close reply composer when selecting new email
     if (isMobile) {
       setMobileView('email');
     }
@@ -443,6 +447,15 @@ export default function AdminMailbox() {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
+                  onClick={() => setShowReplyComposer(!showReplyComposer)}
+                  title="Reply"
+                >
+                  <Reply className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
                   onClick={() => toggleRead(selectedEmail)}
                   title={selectedEmail.is_read ? 'Mark as unread' : 'Mark as read'}
                 >
@@ -468,6 +481,14 @@ export default function AdminMailbox() {
           {/* Mobile action bar */}
           {isMobile && (
             <div className="flex items-center justify-end gap-1 p-2 border-b">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setShowReplyComposer(!showReplyComposer)}
+              >
+                <Reply className="h-4 w-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -558,6 +579,18 @@ export default function AdminMailbox() {
               )}
             </ScrollArea>
           </div>
+          
+          {/* Reply Composer */}
+          {showReplyComposer && selectedMailbox && (
+            <ReplyComposer
+              email={selectedEmail}
+              mailboxAddress={selectedMailbox.email_address}
+              onClose={() => setShowReplyComposer(false)}
+              onSent={() => {
+                setShowReplyComposer(false);
+              }}
+            />
+          )}
         </>
       ) : (
         <div className="h-full flex items-center justify-center text-muted-foreground">
