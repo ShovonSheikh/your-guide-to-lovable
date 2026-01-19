@@ -39,56 +39,230 @@ function getSenderEmail(type: string): string {
   }
 }
 
-// Professional email templates
+// Warm-themed email templates matching TipKoro website
 function getEmailContent(type: string, data: EmailNotificationRequest['data'] = {}): { subject: string; html: string } {
   const baseStyle = `
     <style>
-      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0a0a0b; color: #ffffff; margin: 0; padding: 0; line-height: 1.6; }
-      .wrapper { background-color: #0a0a0b; padding: 40px 20px; }
-      .container { max-width: 600px; margin: 0 auto; }
-      .header { text-align: center; padding: 32px 0; }
-      .logo { color: #FBBF24; font-size: 28px; font-weight: bold; letter-spacing: -0.5px; }
-      .logo-subtitle { color: #64748b; font-size: 12px; margin-top: 4px; }
-      .card { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px; padding: 40px 32px; margin-bottom: 24px; }
-      .emoji { font-size: 56px; margin-bottom: 20px; display: block; text-align: center; }
-      .title { color: #ffffff; font-size: 24px; font-weight: 600; margin: 0 0 8px 0; text-align: center; }
-      .subtitle { color: #94a3b8; font-size: 16px; text-align: center; margin: 0 0 24px 0; }
-      .amount-box { background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0; }
-      .amount { color: #FBBF24; font-size: 42px; font-weight: 700; margin: 0; }
-      .amount-label { color: #94a3b8; font-size: 14px; margin-top: 4px; }
-      .message { color: #cbd5e1; font-size: 15px; line-height: 1.7; margin: 20px 0; }
-      .quote { font-style: italic; color: #94a3b8; padding: 16px 20px; background: rgba(255,255,255,0.03); border-left: 3px solid #FBBF24; border-radius: 0 8px 8px 0; margin: 20px 0; }
-      .button { display: inline-block; background: #FBBF24; color: #0a0a0b !important; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; margin-top: 24px; }
-      .button:hover { background: #f59e0b; }
+      @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Bricolage+Grotesque:wght@600;700&display=swap');
+      
+      body { 
+        font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+        background-color: #F7F4ED; 
+        color: #1F1C18; 
+        margin: 0; 
+        padding: 0; 
+        line-height: 1.6; 
+      }
+      .wrapper { 
+        background-color: #F7F4ED; 
+        padding: 40px 20px; 
+      }
+      .container { 
+        max-width: 560px; 
+        margin: 0 auto; 
+      }
+      .header { 
+        text-align: center; 
+        padding: 24px 0 32px 0; 
+      }
+      .logo-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+      .logo-heart {
+        font-size: 24px;
+      }
+      .logo { 
+        color: #1F1C18; 
+        font-family: 'Bricolage Grotesque', Georgia, serif; 
+        font-size: 26px; 
+        font-weight: 700; 
+        letter-spacing: -0.5px; 
+      }
+      .logo-subtitle { 
+        color: #857D71; 
+        font-size: 13px; 
+        margin-top: 6px; 
+      }
+      .card { 
+        background: #FDFCF9; 
+        border: 1px solid #E8E3D9; 
+        border-radius: 16px; 
+        padding: 40px 32px; 
+        margin-bottom: 24px; 
+        box-shadow: 0 4px 24px -4px rgba(31, 28, 24, 0.06);
+      }
+      .emoji-icon {
+        display: block;
+        width: 72px;
+        height: 72px;
+        margin: 0 auto 20px auto;
+        background: #FEF9E7;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 72px;
+        font-size: 32px;
+      }
+      .emoji-icon.success { background: #DCFCE7; }
+      .emoji-icon.error { background: #FEE2E2; }
+      .emoji-icon.info { background: #E0F2FE; }
+      .title { 
+        color: #1F1C18; 
+        font-family: 'Bricolage Grotesque', Georgia, serif; 
+        font-size: 24px; 
+        font-weight: 600; 
+        margin: 0 0 8px 0; 
+        text-align: center; 
+      }
+      .subtitle { 
+        color: #857D71; 
+        font-size: 15px; 
+        text-align: center; 
+        margin: 0 0 28px 0; 
+      }
+      .amount-box { 
+        background: #FEF9E7; 
+        border: 1px solid rgba(249, 194, 60, 0.25); 
+        border-radius: 14px; 
+        padding: 28px 24px; 
+        text-align: center; 
+        margin: 24px 0; 
+      }
+      .amount { 
+        color: #1F1C18; 
+        font-family: 'Bricolage Grotesque', Georgia, serif; 
+        font-size: 44px; 
+        font-weight: 700; 
+        margin: 0; 
+      }
+      .amount-label { 
+        color: #857D71; 
+        font-size: 14px; 
+        margin-top: 6px; 
+      }
+      .message { 
+        color: #4A453D; 
+        font-size: 15px; 
+        line-height: 1.7; 
+        margin: 20px 0; 
+      }
+      .quote { 
+        font-style: italic; 
+        color: #1F1C18; 
+        padding: 18px 22px; 
+        background: #F4F0E8; 
+        border-left: 3px solid #F9C23C; 
+        border-radius: 0 10px 10px 0; 
+        margin: 24px 0; 
+        font-size: 15px;
+      }
+      .button { 
+        display: inline-block; 
+        background: #1F1C18; 
+        color: #FFFFFF !important; 
+        padding: 14px 36px; 
+        border-radius: 10px; 
+        text-decoration: none; 
+        font-weight: 600; 
+        font-size: 15px; 
+        margin-top: 24px; 
+        transition: background 0.2s;
+      }
+      .button:hover { background: #3D3833; }
       .button-container { text-align: center; }
-      .info-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
-      .info-label { color: #64748b; font-size: 14px; }
-      .info-value { color: #ffffff; font-size: 14px; font-weight: 500; }
-      .footer { text-align: center; padding: 32px 20px; color: #64748b; font-size: 12px; }
+      .info-row { 
+        display: flex; 
+        justify-content: space-between; 
+        padding: 14px 0; 
+        border-bottom: 1px solid #E8E3D9; 
+      }
+      .info-label { color: #857D71; font-size: 14px; }
+      .info-value { color: #1F1C18; font-size: 14px; font-weight: 500; }
+      .divider { 
+        height: 1px; 
+        background: #E8E3D9; 
+        margin: 28px 0; 
+      }
+      .status-badge { 
+        display: inline-block; 
+        padding: 6px 14px; 
+        border-radius: 20px; 
+        font-size: 13px; 
+        font-weight: 600; 
+        margin-top: 8px;
+      }
+      .status-pending { background: #FEF3C7; color: #92400E; }
+      .status-processing { background: #DBEAFE; color: #1E40AF; }
+      .status-completed { background: #DCFCE7; color: #166534; }
+      .status-rejected { background: #FEE2E2; color: #991B1B; }
+      .footer { 
+        background: #1A1A2E; 
+        border-radius: 16px; 
+        text-align: center; 
+        padding: 32px 24px; 
+        color: #94A3B8; 
+        font-size: 13px; 
+      }
       .footer-links { margin-bottom: 16px; }
-      .footer-links a { color: #94a3b8; text-decoration: none; margin: 0 12px; }
-      .footer-links a:hover { color: #FBBF24; }
-      .divider { height: 1px; background: rgba(255,255,255,0.1); margin: 24px 0; }
-      .status-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 500; }
-      .status-processing { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-      .status-completed { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
-      .status-rejected { background: rgba(239, 68, 68, 0.2); color: #f87171; }
-      .unsubscribe { color: #475569; font-size: 11px; margin-top: 16px; }
-      .unsubscribe a { color: #64748b; }
+      .footer-links a { 
+        color: #CBD5E1; 
+        text-decoration: none; 
+        margin: 0 14px; 
+        font-weight: 500;
+      }
+      .footer-links a:hover { color: #F9C23C; }
+      .footer p { margin: 8px 0; color: #64748B; }
+      .footer-brand {
+        font-family: 'Bricolage Grotesque', Georgia, serif;
+        font-size: 18px;
+        font-weight: 700;
+        color: #F9C23C;
+        margin-bottom: 16px;
+      }
+      .payment-badges {
+        margin-top: 16px;
+        color: #64748B;
+        font-size: 11px;
+      }
+      .unsubscribe { 
+        color: #475569; 
+        font-size: 11px; 
+        margin-top: 20px; 
+        padding-top: 16px;
+        border-top: 1px solid rgba(255,255,255,0.1);
+      }
+      .unsubscribe a { color: #94A3B8; text-decoration: underline; }
+      .highlight { color: #D97706; font-weight: 600; }
+      .ref-code { 
+        color: #857D71; 
+        font-size: 12px; 
+        font-family: monospace;
+        background: #F4F0E8;
+        padding: 4px 10px;
+        border-radius: 6px;
+        display: inline-block;
+        margin-top: 8px;
+      }
     </style>
   `;
 
   const footerHtml = `
     <div class="footer">
+      <div class="footer-brand">💛 TipKoro</div>
       <div class="footer-links">
         <a href="https://tipkoro.com">Home</a>
         <a href="https://tipkoro.com/explore">Explore</a>
         <a href="https://tipkoro.com/dashboard">Dashboard</a>
       </div>
       <p>© ${new Date().getFullYear()} TipKoro. Support creators you love.</p>
+      <div class="payment-badges">
+        Powered by bKash • Nagad • Rocket
+      </div>
       <p class="unsubscribe">
         You're receiving this because you have an account on TipKoro.<br>
-        <a href="https://tipkoro.com/settings?tab=notifications">Manage notification preferences</a>
+        <a href="https://tipkoro.com/settings">Manage preferences</a>
       </p>
     </div>
   `;
@@ -105,17 +279,20 @@ function getEmailContent(type: string, data: EmailNotificationRequest['data'] = 
             <div class="wrapper">
               <div class="container">
                 <div class="header">
-                  <div class="logo">TipKoro</div>
+                  <div class="logo-row">
+                    <span class="logo-heart">💛</span>
+                    <span class="logo">TipKoro</span>
+                  </div>
                   <div class="logo-subtitle">Creator Support Platform</div>
                 </div>
                 <div class="card">
-                  <span class="emoji">💰</span>
+                  <div class="emoji-icon">💰</div>
                   <h1 class="title">You received a tip!</h1>
                   <p class="subtitle">Someone just showed their appreciation for your work</p>
                   
                   <div class="amount-box">
                     <p class="amount">৳${data.amount}</p>
-                    <p class="amount-label">Received from ${data.supporter_name === 'Anonymous' ? 'an anonymous supporter' : data.supporter_name}</p>
+                    <p class="amount-label">from ${data.supporter_name === 'Anonymous' ? 'an anonymous supporter' : data.supporter_name}</p>
                   </div>
                   
                   ${data.message ? `
@@ -145,17 +322,20 @@ function getEmailContent(type: string, data: EmailNotificationRequest['data'] = 
             <div class="wrapper">
               <div class="container">
                 <div class="header">
-                  <div class="logo">TipKoro</div>
+                  <div class="logo-row">
+                    <span class="logo-heart">💛</span>
+                    <span class="logo">TipKoro</span>
+                  </div>
                   <div class="logo-subtitle">Creator Support Platform</div>
                 </div>
                 <div class="card">
-                  <span class="emoji">❤️</span>
+                  <div class="emoji-icon" style="background: #FEE2E2;">❤️</div>
                   <h1 class="title">Thank you for your support!</h1>
                   <p class="subtitle">Your generosity helps creators keep doing what they love</p>
                   
                   <div class="amount-box">
                     <p class="amount">৳${data.amount}</p>
-                    <p class="amount-label">Sent to ${data.creator_name || 'a creator'}</p>
+                    <p class="amount-label">sent to ${data.creator_name || 'a creator'}</p>
                   </div>
                   
                   ${data.message ? `
@@ -189,27 +369,30 @@ function getEmailContent(type: string, data: EmailNotificationRequest['data'] = 
             <div class="wrapper">
               <div class="container">
                 <div class="header">
-                  <div class="logo">TipKoro</div>
+                  <div class="logo-row">
+                    <span class="logo-heart">💛</span>
+                    <span class="logo">TipKoro</span>
+                  </div>
                   <div class="logo-subtitle">Creator Support Platform</div>
                 </div>
                 <div class="card">
-                  <span class="emoji">📤</span>
+                  <div class="emoji-icon">📤</div>
                   <h1 class="title">Withdrawal Request Submitted</h1>
                   <p class="subtitle">We've received your withdrawal request</p>
                   
                   <div class="amount-box">
                     <p class="amount">৳${data.amount}</p>
-                    <p class="amount-label">Pending Review</p>
+                    <span class="status-badge status-pending">Pending Review</span>
                   </div>
                   
                   <div class="divider"></div>
                   
                   <p class="message">
-                    Your withdrawal request has been submitted and is now under review. We'll process it within <strong>3-5 business days</strong> and notify you once it's completed.
+                    Your withdrawal request has been submitted and is now under review. We'll process it within <span class="highlight">3-5 business days</span> and notify you once it's completed.
                   </p>
                   
-                  <p class="message" style="font-size: 13px; color: #64748b;">
-                    Transaction Reference: ${new Date().toISOString().split('T')[0]}-${Math.random().toString(36).substring(2, 8).toUpperCase()}
+                  <p style="text-align: center;">
+                    <span class="ref-code">Ref: ${new Date().toISOString().split('T')[0]}-${Math.random().toString(36).substring(2, 8).toUpperCase()}</span>
                   </p>
                   
                   <div class="button-container">
@@ -235,11 +418,14 @@ function getEmailContent(type: string, data: EmailNotificationRequest['data'] = 
             <div class="wrapper">
               <div class="container">
                 <div class="header">
-                  <div class="logo">TipKoro</div>
+                  <div class="logo-row">
+                    <span class="logo-heart">💛</span>
+                    <span class="logo">TipKoro</span>
+                  </div>
                   <div class="logo-subtitle">Creator Support Platform</div>
                 </div>
                 <div class="card">
-                  <span class="emoji">⏳</span>
+                  <div class="emoji-icon info">⏳</div>
                   <h1 class="title">Withdrawal Being Processed</h1>
                   <p class="subtitle">Good news! Your withdrawal has been approved</p>
                   
@@ -251,10 +437,10 @@ function getEmailContent(type: string, data: EmailNotificationRequest['data'] = 
                   <div class="divider"></div>
                   
                   <p class="message">
-                    Your withdrawal has been approved and is now being processed. The funds will be sent to your registered payment method within <strong>1-2 business days</strong>.
+                    Your withdrawal has been approved and is now being processed. The funds will be sent to your registered payment method within <span class="highlight">1-2 business days</span>.
                   </p>
                   
-                  <p class="message" style="font-size: 13px; color: #64748b;">
+                  <p class="message" style="font-size: 13px; color: #857D71; text-align: center;">
                     We'll send you another email once the transfer is complete.
                   </p>
                   
@@ -281,11 +467,14 @@ function getEmailContent(type: string, data: EmailNotificationRequest['data'] = 
             <div class="wrapper">
               <div class="container">
                 <div class="header">
-                  <div class="logo">TipKoro</div>
+                  <div class="logo-row">
+                    <span class="logo-heart">💛</span>
+                    <span class="logo">TipKoro</span>
+                  </div>
                   <div class="logo-subtitle">Creator Support Platform</div>
                 </div>
                 <div class="card">
-                  <span class="emoji">🎉</span>
+                  <div class="emoji-icon success">🎉</div>
                   <h1 class="title">Withdrawal Complete!</h1>
                   <p class="subtitle">Your funds have been sent successfully</p>
                   
@@ -297,10 +486,10 @@ function getEmailContent(type: string, data: EmailNotificationRequest['data'] = 
                   <div class="divider"></div>
                   
                   <p class="message">
-                    Great news! Your withdrawal has been completed and the funds have been sent to your registered payment method. Please allow up to 24 hours for the amount to reflect in your account.
+                    Great news! Your withdrawal has been completed and the funds have been sent to your registered payment method. Please allow up to <span class="highlight">24 hours</span> for the amount to reflect in your account.
                   </p>
                   
-                  <p class="message" style="font-size: 13px; color: #64748b;">
+                  <p class="message" style="font-size: 13px; color: #857D71; text-align: center;">
                     If you don't see the funds within 24 hours, please contact our support team.
                   </p>
                   
@@ -327,15 +516,18 @@ function getEmailContent(type: string, data: EmailNotificationRequest['data'] = 
             <div class="wrapper">
               <div class="container">
                 <div class="header">
-                  <div class="logo">TipKoro</div>
+                  <div class="logo-row">
+                    <span class="logo-heart">💛</span>
+                    <span class="logo">TipKoro</span>
+                  </div>
                   <div class="logo-subtitle">Creator Support Platform</div>
                 </div>
                 <div class="card">
-                  <span class="emoji">❌</span>
+                  <div class="emoji-icon error">❌</div>
                   <h1 class="title">Withdrawal Rejected</h1>
                   <p class="subtitle">We couldn't process your withdrawal request</p>
                   
-                  <div class="amount-box">
+                  <div class="amount-box" style="background: #FEF2F2; border-color: rgba(239, 68, 68, 0.2);">
                     <p class="amount">৳${data.amount}</p>
                     <span class="status-badge status-rejected">Rejected</span>
                   </div>
@@ -343,7 +535,7 @@ function getEmailContent(type: string, data: EmailNotificationRequest['data'] = 
                   <div class="divider"></div>
                   
                   ${data.reason ? `
-                    <div class="quote">
+                    <div class="quote" style="background: #FEF2F2; border-left-color: #EF4444;">
                       <strong>Reason:</strong> ${data.reason}
                     </div>
                   ` : ''}
@@ -352,7 +544,7 @@ function getEmailContent(type: string, data: EmailNotificationRequest['data'] = 
                     Unfortunately, your withdrawal request has been rejected. The amount has been returned to your available balance. You can submit a new withdrawal request after addressing the issue above.
                   </p>
                   
-                  <p class="message" style="font-size: 13px; color: #64748b;">
+                  <p class="message" style="font-size: 13px; color: #857D71; text-align: center;">
                     If you believe this is an error or need assistance, please contact our support team.
                   </p>
                   
@@ -379,11 +571,14 @@ function getEmailContent(type: string, data: EmailNotificationRequest['data'] = 
             <div class="wrapper">
               <div class="container">
                 <div class="header">
-                  <div class="logo">TipKoro</div>
+                  <div class="logo-row">
+                    <span class="logo-heart">💛</span>
+                    <span class="logo">TipKoro</span>
+                  </div>
                   <div class="logo-subtitle">Creator Support Platform</div>
                 </div>
                 <div class="card">
-                  <span class="emoji">🔔</span>
+                  <div class="emoji-icon">🔔</div>
                   <h1 class="title">You have a notification</h1>
                   <p class="subtitle">Check your dashboard for more details</p>
                   
