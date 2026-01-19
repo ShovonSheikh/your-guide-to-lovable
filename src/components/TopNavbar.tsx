@@ -6,7 +6,6 @@ import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/clerk-re
 import { HeartIcon } from "./icons/PaymentIcons";
 import { useProfile } from "@/hooks/useProfile";
 import { Menu, X, LayoutGrid, Shield } from "lucide-react";
-import { NotificationBell } from "./NotificationBell";
 
 export function TopNavbar({ className }: { className?: string }) {
   const { isSignedIn, isLoaded } = useUser();
@@ -81,7 +80,6 @@ export function TopNavbar({ className }: { className?: string }) {
                         Dashboard
                       </Button>
                     </Link>
-                    <NotificationBell />
                     <UserButton afterSignOutUrl="/" />
                   </div>
                 ) : (
@@ -159,7 +157,6 @@ export function TopNavbar({ className }: { className?: string }) {
                               Dashboard
                             </Button>
                           </Link>
-                          <NotificationBell />
                         </div>
                         <UserButton afterSignOutUrl="/" />
                       </div>

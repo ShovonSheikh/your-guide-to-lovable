@@ -63,11 +63,21 @@ export default function DonationImage() {
     setIsGenerating(true);
     
     try {
-      const canvas = await html2canvas(previewRef.current, {
+      const element = previewRef.current;
+      const canvas = await html2canvas(element, {
         scale: 2,
         backgroundColor: null,
         useCORS: true,
         logging: false,
+        allowTaint: true,
+        x: 0,
+        y: 0,
+        width: element.offsetWidth,
+        height: element.offsetHeight,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: element.offsetWidth,
+        windowHeight: element.offsetHeight,
       });
       
       const dataUrl = canvas.toDataURL('image/png');
@@ -238,17 +248,17 @@ export default function DonationImage() {
                 />
                 
                 {/* Content */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-                  {/* Heart emoji */}
-                  <span className="text-5xl mb-3">💛</span>
-                  
-                  {/* TipKoro branding */}
-                  <span 
-                    className="text-xl font-bold mb-4"
-                    style={{ color: '#FBBF24' }}
-                  >
-                    TipKoro
-                  </span>
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
+                  {/* TipKoro branding with extra padding */}
+                  <div className="pt-2">
+                    <span className="text-5xl mb-3 block">💛</span>
+                    <span 
+                      className="text-xl font-bold mb-4 block"
+                      style={{ color: '#FBBF24' }}
+                    >
+                      TipKoro
+                    </span>
+                  </div>
                   
                   {/* Status text */}
                   <span className="text-white text-lg mb-2">
