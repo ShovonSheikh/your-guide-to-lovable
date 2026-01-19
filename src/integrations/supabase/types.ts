@@ -934,6 +934,7 @@ export type Database = {
         Returns: undefined
       }
       is_admin: { Args: never; Returns: boolean }
+      is_super_admin: { Args: { clerk_user_id: string }; Returns: boolean }
     }
     Enums: {
       account_type: "supporter" | "creator"
