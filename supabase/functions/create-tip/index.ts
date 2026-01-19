@@ -224,22 +224,9 @@ serve(async (req) => {
       );
     }
 
-    // Update creator's total_received and total_supporters
-    const { error: updateError } = await supabase.rpc('increment_creator_stats', {
-      p_creator_id: creator_id,
-      p_amount: parsedAmount,
-    });
-
-    // If the RPC doesn't exist, update manually
-    if (updateError) {
-      await supabase
-        .from('profiles')
-        .update({
-          total_received: creator.total_received ? creator.total_received + parsedAmount : parsedAmount,
-          total_supporters: (creator.total_supporters || 0) + 1,
-        })
-        .eq('id', creator_id);
-    }
+    // Note: Creator stats (total_received, total_supporters) are updated 
+    // by the database trigger 'update_creator_stats_on_tip' which correctly
+    // handles unique supporter counting based on email
 
     console.log("Tip created successfully:", tip.id);
 

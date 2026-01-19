@@ -9,10 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { User, Link as LinkIcon, Bell, Shield, CreditCard, ArrowLeft, Info, Calendar, CheckCircle, Clock, Mail, MailOpen, BadgeCheck } from "lucide-react";
+import { User, Link as LinkIcon, Shield, CreditCard, ArrowLeft, Info, Calendar, CheckCircle, Clock, BadgeCheck } from "lucide-react";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useNotifications } from "@/hooks/useNotifications";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
@@ -21,7 +20,6 @@ import { VerificationForm } from "@/components/VerificationForm";
 const tabs = [
   { id: 'profile', label: 'Profile', icon: User },
   { id: 'links', label: 'Social Links', icon: LinkIcon },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'verification', label: 'Verification', icon: BadgeCheck, creatorOnly: true },
   { id: 'security', label: 'Security', icon: Shield },
   { id: 'billing', label: 'Billing', icon: CreditCard },
@@ -43,13 +41,6 @@ export default function Settings() {
   const visibleTabs = tabs.filter(tab => 
     !tab.creatorOnly || profile?.account_type === 'creator'
   );
-
-  // Notification settings hook
-  const {
-    settings: notificationSettings,
-    updateSettings,
-    loading: notificationsLoading
-  } = useNotifications();
 
   const [formData, setFormData] = useState({
     first_name: '',
@@ -356,88 +347,6 @@ export default function Settings() {
               </div>
             )}
 
-            {currentTab === 'notifications' && (
-              <div className="tipkoro-card space-y-6">
-                <h2 className="text-xl font-semibold">Notification Preferences</h2>
-                <p className="text-sm text-muted-foreground">
-                  Manage how you receive email notifications from TipKoro.
-                </p>
-
-                {/* Email Notification Status */}
-                <div className="p-4 border rounded-xl bg-secondary/30">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center">
-                      <Mail className="w-5 h-5 text-accent" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Email Notifications</p>
-                      <p className="text-sm text-muted-foreground">
-                        We'll send you email updates based on your preferences below.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Notification Type Toggles */}
-                <div className="space-y-4">
-                  <h3 className="font-medium text-muted-foreground text-sm">Email Types</h3>
-                  <div className="flex items-center justify-between py-3 border-b border-border">
-                    <div className="flex items-center gap-3">
-                      <MailOpen className="w-5 h-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">Tip Notifications</p>
-                        <p className="text-sm text-muted-foreground">
-                          {profile?.account_type === 'creator'
-                            ? 'Get an email when you receive a tip'
-                            : 'Get an email when your tip is received'}
-                        </p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={notificationSettings.tips_enabled}
-                      onCheckedChange={(checked) => updateSettings({ tips_enabled: checked })}
-                      disabled={notificationsLoading}
-                    />
-                  </div>
-
-                  {profile?.account_type === 'creator' && (
-                    <div className="flex items-center justify-between py-3 border-b border-border">
-                      <div className="flex items-center gap-3">
-                        <MailOpen className="w-5 h-5 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">Withdrawal Updates</p>
-                          <p className="text-sm text-muted-foreground">Get an email when your withdrawal is processed</p>
-                        </div>
-                      </div>
-                      <Switch
-                        checked={notificationSettings.withdrawals_enabled}
-                        onCheckedChange={(checked) => updateSettings({ withdrawals_enabled: checked })}
-                        disabled={notificationsLoading}
-                      />
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between py-3">
-                    <div className="flex items-center gap-3">
-                      <MailOpen className="w-5 h-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">Promotions & Updates</p>
-                        <p className="text-sm text-muted-foreground">Receive news about new features and offers</p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={notificationSettings.promotions_enabled}
-                      onCheckedChange={(checked) => updateSettings({ promotions_enabled: checked })}
-                      disabled={notificationsLoading}
-                    />
-                  </div>
-                </div>
-
-                <p className="text-xs text-muted-foreground">
-                  Your notification preferences are saved automatically.
-                </p>
-              </div>
-            )}
 
             {currentTab === 'security' && (
               <div className="tipkoro-card">
