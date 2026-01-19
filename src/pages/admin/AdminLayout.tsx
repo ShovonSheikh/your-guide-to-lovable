@@ -12,7 +12,8 @@ import {
   ChevronLeft,
   Mail,
   ShieldCheck,
-  X
+  Menu,
+  LogOut
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -218,7 +219,7 @@ export default function AdminLayout() {
               className="h-9 w-9"
               onClick={() => setMobileMenuOpen(true)}
             >
-              <LayoutDashboard className="h-5 w-5" />
+              <Menu className="h-5 w-5" />
             </Button>
             <div>
               <span className="font-semibold text-primary text-sm">Admin</span>
@@ -261,8 +262,8 @@ export default function AdminLayout() {
                 setMobileMenuOpen(false);
               }}
             >
-              <ChevronLeft className="h-4 w-4" />
-              <span>Back to App</span>
+              <LogOut className="h-4 w-4" />
+              <span>Exit Admin</span>
             </Button>
           </div>
         </SheetContent>
