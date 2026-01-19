@@ -3,12 +3,14 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { TopNavbar } from "@/components/TopNavbar";
 import { MainFooter } from "@/components/MainFooter";
 import { Button } from "@/components/ui/button";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { AlertTriangle, Home, Mail, RefreshCw } from "lucide-react";
 
 const SUPPORT_EMAIL = "support@tipkoro.com";
 const PLATFORM_FEE = 150;
 
 const CreatorPaymentFailed: React.FC = () => {
+  usePageTitle("Payment Failed");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const reason = searchParams.get("reason");

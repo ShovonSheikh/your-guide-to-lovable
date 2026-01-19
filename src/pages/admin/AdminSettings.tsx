@@ -4,8 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Settings, Bell, DollarSign, Shield } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function AdminSettings() {
+  usePageTitle("Admin - Settings");
+  
   const handleSave = () => {
     toast({
       title: "Settings saved",

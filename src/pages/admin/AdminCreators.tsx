@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { Search, BadgeCheck, ExternalLink } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { format } from "date-fns";
@@ -28,6 +29,7 @@ interface Creator {
 }
 
 export default function AdminCreators() {
+  usePageTitle("Admin - Creators");
   const supabase = useSupabaseWithAuth();
   const [creators, setCreators] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);

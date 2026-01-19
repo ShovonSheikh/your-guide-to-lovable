@@ -2,9 +2,11 @@ import React from "react";
 import { useUser } from "@clerk/clerk-react";
 import { Navigate } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { Onboarding } from "@/components/Onboarding";
 
 export default function CompleteProfile() {
+  usePageTitle("Complete Your Profile");
   const { isSignedIn, isLoaded } = useUser();
   const { profile, loading: profileLoading } = useProfile();
 

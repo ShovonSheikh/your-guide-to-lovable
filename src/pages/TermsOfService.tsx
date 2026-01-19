@@ -1,8 +1,10 @@
 import React from "react";
 import { TopNavbar } from "@/components/TopNavbar";
 import { MainFooter } from "@/components/MainFooter";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function TermsOfService() {
+  usePageTitle("Terms of Service");
   return (
     <div className="min-h-screen bg-background">
       <TopNavbar />

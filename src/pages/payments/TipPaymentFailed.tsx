@@ -3,11 +3,13 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { TopNavbar } from "@/components/TopNavbar";
 import { MainFooter } from "@/components/MainFooter";
 import { Button } from "@/components/ui/button";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { AlertTriangle, Home, Mail, RefreshCw, Heart } from "lucide-react";
 
 const SUPPORT_EMAIL = "support@tipkoro.com";
 
 const TipPaymentFailed: React.FC = () => {
+  usePageTitle("Tip Payment Failed");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const reason = searchParams.get("reason");
