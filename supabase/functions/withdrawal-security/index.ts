@@ -122,9 +122,9 @@ const handler = async (req: Request): Promise<Response> => {
           );
         }
 
-        // Hash the PIN
-        const salt = await bcrypt.genSalt(10);
-        const hashedPin = await bcrypt.hash(pin, salt);
+        // Hash the PIN (use sync version as Workers not available in Deno Deploy)
+        const salt = bcrypt.genSaltSync(10);
+        const hashedPin = bcrypt.hashSync(pin, salt);
 
         // Store the hashed PIN
         const { error: updateError } = await supabase
@@ -164,7 +164,7 @@ const handler = async (req: Request): Promise<Response> => {
           );
         }
 
-        const isValid = await bcrypt.compare(pin, profile.withdrawal_pin_hash);
+        const isValid = bcrypt.compareSync(pin, profile.withdrawal_pin_hash);
 
         if (!isValid) {
           recordFailedAttempt(profile.id);
@@ -221,10 +221,10 @@ const handler = async (req: Request): Promise<Response> => {
           }
         }
 
-        // Generate and hash OTP
+        // Generate and hash OTP (use sync version as Workers not available in Deno Deploy)
         const otpCode = generateOTP();
-        const otpSalt = await bcrypt.genSalt(10);
-        const hashedOtp = await bcrypt.hash(otpCode, otpSalt);
+        const otpSalt = bcrypt.genSaltSync(10);
+        const hashedOtp = bcrypt.hashSync(otpCode, otpSalt);
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
         // Mark all existing OTPs as used
@@ -319,7 +319,7 @@ const handler = async (req: Request): Promise<Response> => {
           );
         }
 
-        const isValid = await bcrypt.compare(otp, otpRecord.otp_hash);
+        const isValid = bcrypt.compareSync(otp, otpRecord.otp_hash);
 
         if (!isValid) {
           // Increment attempts
@@ -372,7 +372,7 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         // Verify current PIN
-        const isCurrentValid = await bcrypt.compare(pin, profile.withdrawal_pin_hash);
+        const isCurrentValid = bcrypt.compareSync(pin, profile.withdrawal_pin_hash);
         if (!isCurrentValid) {
           recordFailedAttempt(profile.id);
           return new Response(
@@ -384,9 +384,9 @@ const handler = async (req: Request): Promise<Response> => {
           );
         }
 
-        // Hash new PIN
-        const salt = await bcrypt.genSalt(10);
-        const hashedNewPin = await bcrypt.hash(new_pin, salt);
+        // Hash new PIN (use sync version as Workers not available in Deno Deploy)
+        const salt = bcrypt.genSaltSync(10);
+        const hashedNewPin = bcrypt.hashSync(new_pin, salt);
 
         // Update PIN
         const { error: updateError } = await supabase
