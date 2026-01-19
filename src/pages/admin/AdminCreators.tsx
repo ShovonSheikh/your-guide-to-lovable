@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
+import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { Search, BadgeCheck, ExternalLink } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { format } from "date-fns";
@@ -28,6 +28,7 @@ interface Creator {
 }
 
 export default function AdminCreators() {
+  const supabase = useSupabaseWithAuth();
   const [creators, setCreators] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -55,34 +56,6 @@ export default function AdminCreators() {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const toggleVerification = async (creatorId: string, currentStatus: boolean | null) => {
-    const newStatus = !currentStatus;
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_verified: newStatus })
-        .eq('id', creatorId);
-
-      if (error) throw error;
-
-      setCreators(creators.map(c => 
-        c.id === creatorId ? { ...c, is_verified: newStatus } : c
-      ));
-
-      toast({
-        title: "Success",
-        description: `Creator ${newStatus ? 'verified' : 'unverified'} successfully`,
-      });
-    } catch (error) {
-      console.error('Error updating verification:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update verification status",
-        variant: "destructive",
-      });
     }
   };
 
@@ -219,24 +192,15 @@ export default function AdminCreators() {
                         {format(new Date(creator.created_at), 'MMM d, yyyy')}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          {creator.username && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => window.open(`/${creator.username}`, '_blank')}
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </Button>
-                          )}
+                        {creator.username && (
                           <Button
-                            size="sm"
-                            variant={creator.is_verified ? 'outline' : 'default'}
-                            onClick={() => toggleVerification(creator.id, creator.is_verified)}
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => window.open(`/${creator.username}`, '_blank')}
                           >
-                            {creator.is_verified ? 'Unverify' : 'Verify'}
+                            <ExternalLink className="h-4 w-4" />
                           </Button>
-                        </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
