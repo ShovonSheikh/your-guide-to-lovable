@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
@@ -20,6 +21,19 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+
+// Helper function to format payout details from JSONB
+const formatPayoutDetails = (details: unknown): string => {
+  if (!details || typeof details !== 'object') return '-';
+  const obj = details as Record<string, string>;
+  // Common fields: number, phone, account_number
+  if (obj.number) return obj.number;
+  if (obj.phone) return obj.phone;
+  if (obj.account_number) return obj.account_number;
+  // Fallback to first value
+  const values = Object.values(obj);
+  return values[0] || '-';
+};
 
 interface Withdrawal {
   id: string;
@@ -282,46 +296,42 @@ export default function AdminWithdrawals() {
                           <TableCell>
                             <Badge variant="secondary">{withdrawal.payout_method}</Badge>
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate">
-                            {typeof withdrawal.payout_details === 'object' 
-                              ? JSON.stringify(withdrawal.payout_details) 
-                              : String(withdrawal.payout_details || '')}
+                          <TableCell className="text-sm font-mono">
+                            {formatPayoutDetails(withdrawal.payout_details)}
                           </TableCell>
                           <TableCell>{getStatusBadge(withdrawal.status)}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {format(new Date(withdrawal.created_at), 'MMM d, yyyy')}
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              {withdrawal.status === 'pending' && (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-green-600 border-green-600 hover:bg-green-50"
-                                    onClick={() => handleAction(withdrawal, 'approve')}
-                                  >
-                                    Approve
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-red-600 border-red-600 hover:bg-red-50"
-                                    onClick={() => handleAction(withdrawal, 'reject')}
-                                  >
-                                    Reject
-                                  </Button>
-                                </>
-                              )}
-                              {withdrawal.status === 'processing' && (
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleAction(withdrawal, 'complete')}
-                                >
-                                  Mark Complete
-                                </Button>
-                              )}
-                            </div>
+                            {withdrawal.status === 'completed' || withdrawal.status === 'rejected' ? (
+                              <span className="text-sm text-muted-foreground">-</span>
+                            ) : (
+                              <Select
+                                value={withdrawal.status}
+                                onValueChange={(value) => {
+                                  if (value === 'processing' && withdrawal.status === 'pending') {
+                                    handleAction(withdrawal, 'approve');
+                                  } else if (value === 'completed' && withdrawal.status === 'processing') {
+                                    handleAction(withdrawal, 'complete');
+                                  } else if (value === 'rejected' && withdrawal.status === 'pending') {
+                                    handleAction(withdrawal, 'reject');
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="w-[130px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pending" disabled={withdrawal.status !== 'pending'}>Pending</SelectItem>
+                                  <SelectItem value="processing" disabled={withdrawal.status === 'processing'}>Processing</SelectItem>
+                                  <SelectItem value="completed" disabled={withdrawal.status !== 'processing'}>Completed</SelectItem>
+                                  {withdrawal.status === 'pending' && (
+                                    <SelectItem value="rejected" className="text-destructive">Rejected</SelectItem>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))
@@ -369,10 +379,8 @@ export default function AdminWithdrawals() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Account</p>
-                  <p className="font-medium">
-                    {typeof selectedWithdrawal.payout_details === 'object' 
-                      ? JSON.stringify(selectedWithdrawal.payout_details) 
-                      : String(selectedWithdrawal.payout_details || '')}
+                  <p className="font-medium font-mono">
+                    {formatPayoutDetails(selectedWithdrawal.payout_details)}
                   </p>
                 </div>
               </div>

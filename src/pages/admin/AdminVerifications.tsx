@@ -57,6 +57,12 @@ export default function AdminVerifications() {
   const [adminNotes, setAdminNotes] = useState('');
   const [processing, setProcessing] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [documentUrls, setDocumentUrls] = useState<{
+    id_front: string | null;
+    id_back: string | null;
+    selfie: string | null;
+  }>({ id_front: null, id_back: null, selfie: null });
+  const [loadingDocs, setLoadingDocs] = useState(false);
 
   useEffect(() => {
     fetchRequests();
@@ -162,9 +168,47 @@ export default function AdminVerifications() {
     }
   };
 
-  const viewRequest = (request: VerificationRequest) => {
+  const viewRequest = async (request: VerificationRequest) => {
     setSelectedRequest(request);
     setViewDialogOpen(true);
+    setLoadingDocs(true);
+    setDocumentUrls({ id_front: null, id_back: null, selfie: null });
+
+    // Generate signed URLs for private bucket
+    const getSignedUrl = async (url: string): Promise<string | null> => {
+      try {
+        // Extract the path from the full URL (e.g., .../verification-documents/username_123_id-front.jpg)
+        const pathMatch = url.match(/verification-documents\/(.+)/);
+        if (!pathMatch) return url;
+
+        const { data, error } = await supabase.storage
+          .from('verification-documents')
+          .createSignedUrl(pathMatch[1], 3600); // 1 hour expiry
+
+        if (error) {
+          console.error('Error generating signed URL:', error);
+          return null;
+        }
+        return data?.signedUrl || null;
+      } catch (err) {
+        console.error('Error in getSignedUrl:', err);
+        return null;
+      }
+    };
+
+    try {
+      const [idFront, idBack, selfie] = await Promise.all([
+        getSignedUrl(request.id_front_url),
+        getSignedUrl(request.id_back_url),
+        getSignedUrl(request.selfie_url),
+      ]);
+
+      setDocumentUrls({ id_front: idFront, id_back: idBack, selfie: selfie });
+    } catch (err) {
+      console.error('Error loading documents:', err);
+    } finally {
+      setLoadingDocs(false);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -303,53 +347,59 @@ export default function AdminVerifications() {
               {selectedRequest?.profile?.first_name} {selectedRequest?.profile?.last_name} (@{selectedRequest?.profile?.username})
             </DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-3 gap-4 mt-4">
-            <div>
-              <p className="text-sm font-medium mb-2">ID Card Front</p>
-              <div 
-                className="aspect-[4/3] bg-muted rounded-lg overflow-hidden cursor-pointer hover:ring-2 ring-primary transition-all"
-                onClick={() => setImagePreview(selectedRequest?.id_front_url || null)}
-              >
-                {selectedRequest?.id_front_url ? (
-                  <img src={selectedRequest.id_front_url} alt="ID Front" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                )}
+          {loadingDocs ? (
+            <div className="flex items-center justify-center py-12">
+              <Spinner className="h-8 w-8" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-4 mt-4">
+              <div>
+                <p className="text-sm font-medium mb-2">ID Card Front</p>
+                <div 
+                  className="aspect-[4/3] bg-muted rounded-lg overflow-hidden cursor-pointer hover:ring-2 ring-primary transition-all"
+                  onClick={() => setImagePreview(documentUrls.id_front)}
+                >
+                  {documentUrls.id_front ? (
+                    <img src={documentUrls.id_front} alt="ID Front" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium mb-2">ID Card Back</p>
+                <div 
+                  className="aspect-[4/3] bg-muted rounded-lg overflow-hidden cursor-pointer hover:ring-2 ring-primary transition-all"
+                  onClick={() => setImagePreview(documentUrls.id_back)}
+                >
+                  {documentUrls.id_back ? (
+                    <img src={documentUrls.id_back} alt="ID Back" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium mb-2">Selfie</p>
+                <div 
+                  className="aspect-[4/3] bg-muted rounded-lg overflow-hidden cursor-pointer hover:ring-2 ring-primary transition-all"
+                  onClick={() => setImagePreview(documentUrls.selfie)}
+                >
+                  {documentUrls.selfie ? (
+                    <img src={documentUrls.selfie} alt="Selfie" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-            <div>
-              <p className="text-sm font-medium mb-2">ID Card Back</p>
-              <div 
-                className="aspect-[4/3] bg-muted rounded-lg overflow-hidden cursor-pointer hover:ring-2 ring-primary transition-all"
-                onClick={() => setImagePreview(selectedRequest?.id_back_url || null)}
-              >
-                {selectedRequest?.id_back_url ? (
-                  <img src={selectedRequest.id_back_url} alt="ID Back" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                )}
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-medium mb-2">Selfie</p>
-              <div 
-                className="aspect-[4/3] bg-muted rounded-lg overflow-hidden cursor-pointer hover:ring-2 ring-primary transition-all"
-                onClick={() => setImagePreview(selectedRequest?.selfie_url || null)}
-              >
-                {selectedRequest?.selfie_url ? (
-                  <img src={selectedRequest.selfie_url} alt="Selfie" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewDialogOpen(false)}>Close</Button>
           </DialogFooter>

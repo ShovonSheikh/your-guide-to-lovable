@@ -119,13 +119,16 @@ export function VerificationForm() {
     setSubmitting(true);
     try {
       const timestamp = Date.now();
-      const basePath = `${profile.id}/${timestamp}`;
+      // Use username as prefix (sanitized), fallback to profile ID
+      const username = profile?.username || profile?.id;
+      const sanitizedUsername = username?.replace(/[^a-zA-Z0-9_-]/g, '_') || 'user';
+      const basePath = `${sanitizedUsername}_${timestamp}`;
 
-      // Upload all files
+      // Upload all files with username prefix
       const [idFrontUrl, idBackUrl, selfieUrl] = await Promise.all([
-        uploadFile(idFrontFile, `${basePath}/id-front.${idFrontFile.name.split('.').pop()}`),
-        uploadFile(idBackFile, `${basePath}/id-back.${idBackFile.name.split('.').pop()}`),
-        uploadFile(selfieFile, `${basePath}/selfie.${selfieFile.name.split('.').pop()}`),
+        uploadFile(idFrontFile, `${basePath}_id-front.${idFrontFile.name.split('.').pop()}`),
+        uploadFile(idBackFile, `${basePath}_id-back.${idBackFile.name.split('.').pop()}`),
+        uploadFile(selfieFile, `${basePath}_selfie.${selfieFile.name.split('.').pop()}`),
       ]);
 
       // Create verification request

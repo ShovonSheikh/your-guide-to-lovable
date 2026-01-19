@@ -514,8 +514,9 @@ export default function Settings() {
                     <div className="pt-4 border-t border-border">
                       <h3 className="font-medium mb-2">How Billing Works</h3>
                       <ul className="space-y-2 text-sm text-muted-foreground">
-                        <li>• The ৳150 platform fee is automatically deducted from your tips each month</li>
-                        <li>• You keep everything else — no hidden fees</li>
+                        <li>• A ৳150/month Creator Account Fee is deducted from your earnings</li>
+                        <li>• No fee on tips — supporters pay zero, you receive 100%</li>
+                        <li>• Withdraw your full available balance anytime (no minimum)</li>
                         <li>• Withdrawals are processed within 3-5 business days</li>
                         <li>• View your earnings and request withdrawals in the Finance section</li>
                       </ul>
