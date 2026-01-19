@@ -9,13 +9,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { User, Link as LinkIcon, Shield, CreditCard, ArrowLeft, Info, Calendar, CheckCircle, Clock, BadgeCheck } from "lucide-react";
+import { User, Link as LinkIcon, Shield, CreditCard, ArrowLeft, Info, Calendar, CheckCircle, Clock, BadgeCheck, Lock, ShieldCheck } from "lucide-react";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { VerificationForm } from "@/components/VerificationForm";
+import { WithdrawalPinSetup } from "@/components/WithdrawalPinSetup";
+import { ChangePinDialog } from "@/components/ChangePinDialog";
 
 const tabs = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -24,6 +26,89 @@ const tabs = [
   { id: 'security', label: 'Security', icon: Shield },
   { id: 'billing', label: 'Billing', icon: CreditCard },
 ];
+
+// Security Tab Component
+function SecurityTab({ profile }: { profile: any }) {
+  const [changePinOpen, setChangePinOpen] = useState(false);
+  const { refetch } = useProfile();
+
+  const isCreator = profile?.account_type === 'creator';
+  const hasPin = profile?.has_withdrawal_pin;
+  const pinSetAt = profile?.withdrawal_pin_set_at;
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="tipkoro-card">
+        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <Shield className="w-5 h-5" />
+          Security Settings
+        </h2>
+        
+        {/* Account Security via Clerk */}
+        <div className="p-4 bg-secondary/50 rounded-xl mb-6">
+          <h3 className="font-medium mb-2">Account Security</h3>
+          <p className="text-sm text-muted-foreground mb-3">
+            Manage your password, two-factor authentication, and connected accounts through Clerk.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Click on your profile picture in the top right corner → "Manage account" to access security settings.
+          </p>
+        </div>
+
+        {/* Withdrawal PIN Section - Only for Creators */}
+        {isCreator && (
+          <div className="border-t border-border pt-6">
+            <h3 className="font-medium mb-4 flex items-center gap-2">
+              <Lock className="w-4 h-4" />
+              Withdrawal PIN
+            </h3>
+            
+            {hasPin ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-4 p-4 bg-success/10 rounded-xl border border-success/20">
+                  <ShieldCheck className="w-8 h-8 text-success" />
+                  <div className="flex-1">
+                    <p className="font-medium text-success">Withdrawal PIN Active</p>
+                    <p className="text-sm text-muted-foreground">
+                      Last updated: {formatDate(pinSetAt)}
+                    </p>
+                  </div>
+                </div>
+                
+                <Button 
+                  variant="outline" 
+                  className="gap-2"
+                  onClick={() => setChangePinOpen(true)}
+                >
+                  <Lock className="w-4 h-4" />
+                  Change PIN
+                </Button>
+                
+                <ChangePinDialog 
+                  open={changePinOpen} 
+                  onOpenChange={setChangePinOpen} 
+                />
+              </div>
+            ) : (
+              <WithdrawalPinSetup onSuccess={refetch} />
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function Settings() {
   usePageTitle("Settings");
@@ -349,10 +434,7 @@ export default function Settings() {
 
 
             {currentTab === 'security' && (
-              <div className="tipkoro-card">
-                <h2 className="text-xl font-semibold mb-4">Security Settings</h2>
-                <p className="text-muted-foreground">Manage your account security through Clerk settings.</p>
-              </div>
+              <SecurityTab profile={profile} />
             )}
 
             {currentTab === 'verification' && profile?.account_type === 'creator' && (

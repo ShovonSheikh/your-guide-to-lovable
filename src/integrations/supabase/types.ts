@@ -509,6 +509,8 @@ export type Database = {
           updated_at: string | null
           user_id: string
           username: string | null
+          withdrawal_pin_hash: string | null
+          withdrawal_pin_set_at: string | null
           youtube: string | null
         }
         Insert: {
@@ -534,6 +536,8 @@ export type Database = {
           updated_at?: string | null
           user_id: string
           username?: string | null
+          withdrawal_pin_hash?: string | null
+          withdrawal_pin_set_at?: string | null
           youtube?: string | null
         }
         Update: {
@@ -559,6 +563,8 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           username?: string | null
+          withdrawal_pin_hash?: string | null
+          withdrawal_pin_set_at?: string | null
           youtube?: string | null
         }
         Relationships: []
@@ -745,6 +751,44 @@ export type Database = {
           },
         ]
       }
+      withdrawal_otps: {
+        Row: {
+          attempts: number | null
+          created_at: string | null
+          expires_at: string
+          id: string
+          otp_hash: string
+          profile_id: string
+          used: boolean | null
+        }
+        Insert: {
+          attempts?: number | null
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          otp_hash: string
+          profile_id: string
+          used?: boolean | null
+        }
+        Update: {
+          attempts?: number | null
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          otp_hash?: string
+          profile_id?: string
+          used?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "withdrawal_otps_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       withdrawal_requests: {
         Row: {
           amount: number
@@ -800,6 +844,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_otps: { Args: never; Returns: undefined }
       get_creator_current_month_stats: {
         Args: { creator_profile_id: string }
         Returns: {

@@ -24,6 +24,9 @@ export interface Profile {
   total_supporters: number;
   created_at: string;
   updated_at: string;
+  // Withdrawal security
+  has_withdrawal_pin: boolean;
+  withdrawal_pin_set_at: string | null;
 }
 
 const MAX_RETRIES = 5;
@@ -35,6 +38,14 @@ export function useProfile() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Transform database row to Profile (adds computed fields)
+  const transformProfile = (row: any): Profile => ({
+    ...row,
+    is_admin: row.is_admin ?? false,
+    has_withdrawal_pin: !!row.withdrawal_pin_hash,
+    withdrawal_pin_set_at: row.withdrawal_pin_set_at || null,
+  });
 
   const createFallbackProfile = useCallback(async (): Promise<Profile | null> => {
     if (!user) return null;
@@ -71,14 +82,14 @@ export function useProfile() {
           .select('*')
           .eq('user_id', user.id)
           .single();
-        return existingProfile as Profile | null;
+        return existingProfile ? transformProfile(existingProfile) : null;
       }
       console.error('Error creating fallback profile:', error);
       return null;
     }
     
     console.log('Fallback profile created:', data);
-    return data as Profile;
+    return transformProfile(data);
   }, [user, supabase]);
 
   const fetchProfile = useCallback(async (retryCount = 0): Promise<void> => {
@@ -96,7 +107,7 @@ export function useProfile() {
       }
 
       if (existingProfile) {
-        setProfile(existingProfile as Profile);
+        setProfile(transformProfile(existingProfile));
         setError(null);
       } else if (retryCount < MAX_RETRIES) {
         // Profile not found - Clerk webhook might not have created it yet
@@ -147,7 +158,7 @@ export function useProfile() {
         .single();
 
       if (error) throw error;
-      setProfile(data as Profile);
+      setProfile(transformProfile(data));
       return { data };
     } catch (err: any) {
       console.error('Error updating profile:', err);
