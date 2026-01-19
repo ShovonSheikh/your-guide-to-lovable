@@ -9,7 +9,7 @@ const corsHeaders = {
 interface EmailNotificationRequest {
   profile_id?: string;
   email?: string; // Direct email for non-registered supporters
-  type: 'tip_received' | 'tip_sent' | 'withdrawal_submitted' | 'withdrawal_processing' | 'withdrawal_completed' | 'withdrawal_rejected' | 'promotion';
+  type: 'tip_received' | 'tip_sent' | 'withdrawal_submitted' | 'withdrawal_processing' | 'withdrawal_completed' | 'withdrawal_rejected' | 'promotion' | 'welcome_creator' | 'weekly_summary';
   data?: {
     amount?: number;
     supporter_name?: string;
@@ -18,6 +18,14 @@ interface EmailNotificationRequest {
     reason?: string;
     tip_id?: string;
     url?: string;
+    // Welcome email data
+    username?: string;
+    // Weekly summary data
+    week_tips_count?: number;
+    week_earnings?: number;
+    new_supporters?: number;
+    previous_week_earnings?: number;
+    top_supporters?: Array<{ name: string; amount: number }>;
   };
 }
 
@@ -33,7 +41,10 @@ function getSenderEmail(type: string): string {
     case 'withdrawal_rejected':
       return 'TipKoro Finance <finance@tipkoro.com>';
     case 'promotion':
+    case 'weekly_summary':
       return 'TipKoro <hello@tipkoro.com>';
+    case 'welcome_creator':
+      return 'TipKoro Team <welcome@tipkoro.com>';
     default:
       return 'TipKoro Support <support@tipkoro.com>';
   }
@@ -560,6 +571,156 @@ function getEmailContent(type: string, data: EmailNotificationRequest['data'] = 
         `
       };
 
+    case 'welcome_creator':
+      return {
+        subject: `🎉 Welcome to TipKoro, ${data.creator_name || 'Creator'}!`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">${baseStyle}</head>
+          <body>
+            <div class="wrapper">
+              <div class="container">
+                <div class="header">
+                  <div class="logo-row">
+                    <span class="logo-heart">💛</span>
+                    <span class="logo">TipKoro</span>
+                  </div>
+                  <div class="logo-subtitle">Creator Support Platform</div>
+                </div>
+                <div class="card">
+                  <div class="emoji-icon success">🎉</div>
+                  <h1 class="title">Welcome to TipKoro!</h1>
+                  <p class="subtitle">Your creator account is now active</p>
+                  
+                  ${data.username ? `
+                    <div class="amount-box" style="background: #DCFCE7; border-color: rgba(22, 163, 74, 0.25);">
+                      <p style="color: #166534; font-size: 14px; margin: 0 0 8px 0;">Your TipKoro Page</p>
+                      <p class="amount" style="font-size: 28px;">tipkoro.com/${data.username}</p>
+                    </div>
+                  ` : ''}
+                  
+                  <div class="divider"></div>
+                  
+                  <p class="message" style="font-size: 16px; text-align: center; font-weight: 500;">
+                    Here's how to get started:
+                  </p>
+                  
+                  <div style="background: #F4F0E8; border-radius: 12px; padding: 20px; margin: 16px 0;">
+                    <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px;">
+                      <span style="background: #F9C23C; color: #1F1C18; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px;">1</span>
+                      <div>
+                        <p style="margin: 0; font-weight: 600; color: #1F1C18;">Complete your profile</p>
+                        <p style="margin: 4px 0 0 0; font-size: 14px; color: #857D71;">Add a bio, profile picture, and social links</p>
+                      </div>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px;">
+                      <span style="background: #F9C23C; color: #1F1C18; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px;">2</span>
+                      <div>
+                        <p style="margin: 0; font-weight: 600; color: #1F1C18;">Share your page</p>
+                        <p style="margin: 4px 0 0 0; font-size: 14px; color: #857D71;">Add your TipKoro link to your social media bios</p>
+                      </div>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; gap: 12px;">
+                      <span style="background: #F9C23C; color: #1F1C18; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px;">3</span>
+                      <div>
+                        <p style="margin: 0; font-weight: 600; color: #1F1C18;">Start receiving tips</p>
+                        <p style="margin: 4px 0 0 0; font-size: 14px; color: #857D71;">Your supporters can now tip you directly!</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="button-container">
+                    <a href="https://tipkoro.com/dashboard" class="button">Go to Dashboard</a>
+                  </div>
+                </div>
+                ${footerHtml}
+              </div>
+            </div>
+          </body>
+          </html>
+        `
+      };
+
+    case 'weekly_summary':
+      const earnings = data.week_earnings || 0;
+      const prevEarnings = data.previous_week_earnings || 0;
+      const changePercent = prevEarnings > 0 ? Math.round(((earnings - prevEarnings) / prevEarnings) * 100) : 0;
+      const changeText = changePercent > 0 ? `+${changePercent}%` : changePercent < 0 ? `${changePercent}%` : 'same';
+      const changeColor = changePercent > 0 ? '#16A34A' : changePercent < 0 ? '#DC2626' : '#857D71';
+      
+      return {
+        subject: `📊 Your Weekly TipKoro Summary${earnings > 0 ? ` - ৳${earnings} earned!` : ''}`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">${baseStyle}</head>
+          <body>
+            <div class="wrapper">
+              <div class="container">
+                <div class="header">
+                  <div class="logo-row">
+                    <span class="logo-heart">💛</span>
+                    <span class="logo">TipKoro</span>
+                  </div>
+                  <div class="logo-subtitle">Creator Support Platform</div>
+                </div>
+                <div class="card">
+                  <div class="emoji-icon">📊</div>
+                  <h1 class="title">Your Weekly Summary</h1>
+                  <p class="subtitle">Here's how you did this week</p>
+                  
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 24px 0;">
+                    <div class="amount-box" style="padding: 20px;">
+                      <p style="color: #857D71; font-size: 13px; margin: 0 0 4px 0;">Earnings</p>
+                      <p class="amount" style="font-size: 32px;">৳${earnings}</p>
+                      ${prevEarnings > 0 ? `<p style="color: ${changeColor}; font-size: 13px; font-weight: 600; margin: 4px 0 0 0;">${changeText} vs last week</p>` : ''}
+                    </div>
+                    <div class="amount-box" style="padding: 20px;">
+                      <p style="color: #857D71; font-size: 13px; margin: 0 0 4px 0;">Tips Received</p>
+                      <p class="amount" style="font-size: 32px;">${data.week_tips_count || 0}</p>
+                    </div>
+                  </div>
+                  
+                  ${(data.new_supporters && data.new_supporters > 0) ? `
+                    <div style="background: #DCFCE7; border-radius: 12px; padding: 16px; text-align: center; margin: 16px 0;">
+                      <span style="font-size: 24px;">🎊</span>
+                      <p style="margin: 8px 0 0 0; color: #166534; font-weight: 600;">${data.new_supporters} new supporter${data.new_supporters > 1 ? 's' : ''} this week!</p>
+                    </div>
+                  ` : ''}
+                  
+                  ${(data.top_supporters && data.top_supporters.length > 0) ? `
+                    <div class="divider"></div>
+                    <h3 style="font-family: 'Bricolage Grotesque', Georgia, serif; color: #1F1C18; font-size: 16px; margin: 0 0 12px 0;">Top Supporters This Week</h3>
+                    <div style="background: #F4F0E8; border-radius: 12px; padding: 16px;">
+                      ${data.top_supporters.map((s, i) => `
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; ${i < data.top_supporters!.length - 1 ? 'border-bottom: 1px solid #E8E3D9;' : ''}">
+                          <span style="color: #1F1C18;">${i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'} ${s.name}</span>
+                          <span style="color: #857D71; font-weight: 600;">৳${s.amount}</span>
+                        </div>
+                      `).join('')}
+                    </div>
+                  ` : ''}
+                  
+                  ${earnings === 0 ? `
+                    <div class="divider"></div>
+                    <p class="message" style="text-align: center;">
+                      No tips this week? Don't worry! Try sharing your TipKoro page on social media to reach more supporters.
+                    </p>
+                  ` : ''}
+                  
+                  <div class="button-container">
+                    <a href="https://tipkoro.com/dashboard" class="button">View Full Dashboard</a>
+                  </div>
+                </div>
+                ${footerHtml}
+              </div>
+            </div>
+          </body>
+          </html>
+        `
+      };
+
     default:
       return {
         subject: '🔔 TipKoro Notification',
@@ -617,7 +778,11 @@ const handler = async (req: Request): Promise<Response> => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { profile_id, email: directEmail, type, data }: EmailNotificationRequest = await req.json();
+    const requestBody = await req.json();
+    const { profile_id, email: directEmail, type, data }: EmailNotificationRequest = requestBody;
+    
+    console.log(`[EMAIL] Received request - type: ${type}, profile_id: ${profile_id}, email: ${directEmail}`);
+    console.log(`[EMAIL] Request data:`, JSON.stringify(data));
 
     if (!type || (!profile_id && !directEmail)) {
       return new Response(

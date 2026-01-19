@@ -137,7 +137,14 @@ export default function Finance() {
   // Creator Account Fee is ৳150/month
   const creatorAccountFee = 150;
   const totalReceived = stats?.totalReceived || profile?.total_received || 0;
-  const availableBalance = Math.max(0, totalReceived - creatorAccountFee);
+  
+  // Calculate pending/processing withdrawals total - prevents multiple withdrawal requests
+  const pendingWithdrawalsTotal = withdrawals
+    .filter(w => w.status === 'pending' || w.status === 'processing')
+    .reduce((sum, w) => sum + w.amount, 0);
+  
+  // Available balance = Total - Fee - Pending Withdrawals
+  const availableBalance = Math.max(0, totalReceived - creatorAccountFee - pendingWithdrawalsTotal);
   const canWithdraw = availableBalance > 0;
 
   const handleWithdraw = async () => {
