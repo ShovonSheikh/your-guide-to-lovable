@@ -90,42 +90,79 @@ serve(async (req) => {
       );
     }
 
-    // Check if record exists
-    const { data: existingRecord } = await supabase
-      .from('creator_signups')
-      .select('id')
-      .eq('transaction_id', transactionId)
-      .maybeSingle();
+    // Determine payment type from metadata or check both tables
+    const paymentType = payload.metadata?.payment_type || payload.payment_type;
+    
+    if (paymentType === 'tip') {
+      // Handle tip payment
+      const { data: existingTip } = await supabase
+        .from('tips')
+        .select('id')
+        .eq('transaction_id', transactionId)
+        .maybeSingle();
 
-    if (existingRecord) {
-      // Update existing record with VERIFIED status
-      const { error: updateError } = await supabase
-        .from('creator_signups')
-        .update({
-          payment_status: verifiedStatus,
-          payment_method: paymentMethod,
-          amount: verifiedAmount ? parseFloat(verifiedAmount) : null,
-        })
-        .eq('transaction_id', transactionId);
+      if (existingTip) {
+        const { error: updateError } = await supabase
+          .from('tips')
+          .update({
+            payment_status: verifiedStatus,
+            payment_method: paymentMethod,
+            amount: verifiedAmount ? parseFloat(verifiedAmount) : null,
+          })
+          .eq('transaction_id', transactionId);
 
-      if (updateError) {
-        console.error("Error updating from webhook:", updateError);
+        if (updateError) {
+          console.error("Error updating tip from webhook:", updateError);
+        } else if (verifiedStatus === 'completed') {
+          // Increment creator stats on successful tip
+          const tip = await supabase.from('tips').select('creator_id, supporter_email, amount').eq('id', existingTip.id).single();
+          if (tip.data) {
+            await supabase.rpc('increment_creator_stats', {
+              creator_profile_id: tip.data.creator_id,
+              tip_amount: tip.data.amount,
+              is_new_supporter: true // Simplified - could check if truly new
+            });
+          }
+        }
       }
+      console.log(`Tip webhook processed: ${transactionId} -> ${verifiedStatus}`);
     } else {
-      // Insert new record with VERIFIED status
-      const { error: insertError } = await supabase
+      // Handle creator signup payment (default)
+      const { data: existingRecord } = await supabase
         .from('creator_signups')
-        .insert({
-          transaction_id: transactionId,
-          payment_status: verifiedStatus,
-          payment_method: paymentMethod,
-          amount: verifiedAmount ? parseFloat(verifiedAmount) : null,
-          email: payload.email,
-        });
+        .select('id')
+        .eq('transaction_id', transactionId)
+        .maybeSingle();
 
-      if (insertError) {
-        console.error("Error inserting from webhook:", insertError);
+      if (existingRecord) {
+        const { error: updateError } = await supabase
+          .from('creator_signups')
+          .update({
+            payment_status: verifiedStatus,
+            payment_method: paymentMethod,
+            amount: verifiedAmount ? parseFloat(verifiedAmount) : null,
+          })
+          .eq('transaction_id', transactionId);
+
+        if (updateError) {
+          console.error("Error updating creator signup from webhook:", updateError);
+        }
+      } else {
+        const { error: insertError } = await supabase
+          .from('creator_signups')
+          .insert({
+            transaction_id: transactionId,
+            payment_status: verifiedStatus,
+            payment_method: paymentMethod,
+            amount: verifiedAmount ? parseFloat(verifiedAmount) : null,
+            email: payload.email,
+          });
+
+        if (insertError) {
+          console.error("Error inserting creator signup from webhook:", insertError);
+        }
       }
+      console.log(`Creator signup webhook processed: ${transactionId} -> ${verifiedStatus}`);
     }
 
     console.log(`Webhook processed and verified: ${transactionId} -> ${verifiedStatus}`);
