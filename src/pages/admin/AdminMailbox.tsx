@@ -95,9 +95,6 @@ export default function AdminMailbox() {
   
   // Reply composer state
   const [showReplySheet, setShowReplySheet] = useState(false);
-  const [replySubject, setReplySubject] = useState("");
-  const [replyBody, setReplyBody] = useState("");
-  const [sending, setSending] = useState(false);
 
   const fetchMailboxes = useCallback(async () => {
     try {
@@ -289,63 +286,7 @@ export default function AdminMailbox() {
 
   const openReplyComposer = () => {
     if (selectedEmail) {
-      setReplySubject(
-        selectedEmail.subject?.startsWith("Re:") 
-          ? selectedEmail.subject 
-          : `Re: ${selectedEmail.subject || "(No Subject)"}`
-      );
-      setReplyBody("");
       setShowReplySheet(true);
-    }
-  };
-
-  const handleSendReply = async () => {
-    if (!replyBody.trim() || !selectedEmail || !selectedMailbox) {
-      toast.error("Please enter a message");
-      return;
-    }
-
-    setSending(true);
-    try {
-      const htmlBody = `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-          <div style="white-space: pre-wrap;">${replyBody.replace(/\n/g, "<br>")}</div>
-          <br><br>
-          <div style="border-left: 2px solid #ccc; padding-left: 12px; margin-top: 20px; color: #666;">
-            <p style="margin: 0 0 8px 0; font-size: 12px;">
-              On ${format(new Date(selectedEmail.received_at), 'PPpp')}, ${selectedEmail.from_name || selectedEmail.from_address} wrote:
-            </p>
-            <div style="font-size: 13px;">
-              ${selectedEmail.html_body || selectedEmail.text_body?.replace(/\n/g, "<br>") || ""}
-            </div>
-          </div>
-        </div>
-      `;
-
-      const response = await supabase.functions.invoke("send-reply-email", {
-        body: {
-          from_address: selectedMailbox.email_address,
-          to_address: selectedEmail.from_address,
-          subject: replySubject,
-          html_body: htmlBody,
-          text_body: `${replyBody}\n\n---\nOn ${format(new Date(selectedEmail.received_at), 'PPpp')}, ${selectedEmail.from_name || selectedEmail.from_address} wrote:\n\n${selectedEmail.text_body || ""}`,
-          in_reply_to: selectedEmail.message_id,
-          original_email_id: selectedEmail.id,
-        },
-      });
-
-      if (response.error) {
-        throw new Error(response.error.message || "Failed to send reply");
-      }
-
-      toast.success("Reply sent successfully!");
-      setShowReplySheet(false);
-      setReplyBody("");
-    } catch (error: any) {
-      console.error("Error sending reply:", error);
-      toast.error(error.message || "Failed to send reply");
-    } finally {
-      setSending(false);
     }
   };
 
@@ -413,8 +354,8 @@ export default function AdminMailbox() {
                 key={email.id}
                 onClick={() => handleSelectEmail(email)}
                 className={cn(
-                  "w-full text-left p-3 hover:bg-secondary/50 transition-colors",
-                  selectedEmail?.id === email.id && "bg-secondary",
+                  "w-full text-left p-3 hover:bg-secondary/50 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/30",
+                  selectedEmail?.id === email.id && "bg-secondary/70",
                   !email.is_read && "bg-primary/5"
                 )}
               >
@@ -591,9 +532,66 @@ export default function AdminMailbox() {
     </Card>
   );
 
-  // Reply Sheet (for both mobile and desktop)
-  const ReplySheet = () => (
-    <Sheet open={showReplySheet} onOpenChange={setShowReplySheet}>
+  // Reply Sheet Component with local state to prevent parent re-renders
+  const ReplySheetContent = () => {
+    const [localSubject, setLocalSubject] = useState(
+      selectedEmail?.subject?.startsWith("Re:") 
+        ? selectedEmail.subject 
+        : `Re: ${selectedEmail?.subject || "(No Subject)"}`
+    );
+    const [localBody, setLocalBody] = useState("");
+    const [localSending, setLocalSending] = useState(false);
+
+    const handleSend = async () => {
+      if (!localBody.trim() || !selectedEmail || !selectedMailbox) {
+        toast.error("Please enter a message");
+        return;
+      }
+
+      setLocalSending(true);
+      try {
+        const htmlBody = `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            <div style="white-space: pre-wrap;">${localBody.replace(/\n/g, "<br>")}</div>
+            <br><br>
+            <div style="border-left: 2px solid #ccc; padding-left: 12px; margin-top: 20px; color: #666;">
+              <p style="margin: 0 0 8px 0; font-size: 12px;">
+                On ${format(new Date(selectedEmail.received_at), 'PPpp')}, ${selectedEmail.from_name || selectedEmail.from_address} wrote:
+              </p>
+              <div style="font-size: 13px;">
+                ${selectedEmail.html_body || selectedEmail.text_body?.replace(/\n/g, "<br>") || ""}
+              </div>
+            </div>
+          </div>
+        `;
+
+        const response = await supabase.functions.invoke("send-reply-email", {
+          body: {
+            from_address: selectedMailbox.email_address,
+            to_address: selectedEmail.from_address,
+            subject: localSubject,
+            html_body: htmlBody,
+            text_body: `${localBody}\n\n---\nOn ${format(new Date(selectedEmail.received_at), 'PPpp')}, ${selectedEmail.from_name || selectedEmail.from_address} wrote:\n\n${selectedEmail.text_body || ""}`,
+            in_reply_to: selectedEmail.message_id,
+            original_email_id: selectedEmail.id,
+          },
+        });
+
+        if (response.error) {
+          throw new Error(response.error.message || "Failed to send reply");
+        }
+
+        toast.success("Reply sent successfully!");
+        setShowReplySheet(false);
+      } catch (error: any) {
+        console.error("Error sending reply:", error);
+        toast.error(error.message || "Failed to send reply");
+      } finally {
+        setLocalSending(false);
+      }
+    };
+
+    return (
       <SheetContent side={isMobile ? "bottom" : "right"} className={cn(
         isMobile ? "h-[85vh] rounded-t-xl" : "w-[450px] sm:w-[540px]"
       )}>
@@ -622,9 +620,10 @@ export default function AdminMailbox() {
             <Label htmlFor="reply-subject">Subject</Label>
             <Input
               id="reply-subject"
-              value={replySubject}
-              onChange={(e) => setReplySubject(e.target.value)}
+              value={localSubject}
+              onChange={(e) => setLocalSubject(e.target.value)}
               placeholder="Subject"
+              className="focus-visible:ring-1 focus-visible:ring-primary/50"
             />
           </div>
           
@@ -633,11 +632,11 @@ export default function AdminMailbox() {
             <Label htmlFor="reply-body">Message</Label>
             <Textarea
               id="reply-body"
-              value={replyBody}
-              onChange={(e) => setReplyBody(e.target.value)}
+              value={localBody}
+              onChange={(e) => setLocalBody(e.target.value)}
               placeholder="Type your reply..."
               rows={isMobile ? 8 : 12}
-              className="resize-none"
+              className="resize-none focus-visible:ring-1 focus-visible:ring-primary/50"
             />
           </div>
           
@@ -652,12 +651,12 @@ export default function AdminMailbox() {
         
         {/* Actions */}
         <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button variant="outline" onClick={() => setShowReplySheet(false)} disabled={sending}>
+          <Button variant="outline" onClick={() => setShowReplySheet(false)} disabled={localSending}>
             <X className="h-4 w-4 mr-2" />
             Cancel
           </Button>
-          <Button onClick={handleSendReply} disabled={sending || !replyBody.trim()}>
-            {sending ? (
+          <Button onClick={handleSend} disabled={localSending || !localBody.trim()}>
+            {localSending ? (
               <>
                 <Spinner className="h-4 w-4 mr-2" />
                 Sending...
@@ -671,8 +670,8 @@ export default function AdminMailbox() {
           </Button>
         </div>
       </SheetContent>
-    </Sheet>
-  );
+    );
+  };
 
   return (
     <div className="h-[calc(100vh-120px)] md:h-[calc(100vh-160px)] flex flex-col">
@@ -730,7 +729,9 @@ export default function AdminMailbox() {
       </div>
 
       {/* Reply Sheet */}
-      <ReplySheet />
+      <Sheet open={showReplySheet} onOpenChange={setShowReplySheet}>
+        {showReplySheet && <ReplySheetContent />}
+      </Sheet>
     </div>
   );
 }
