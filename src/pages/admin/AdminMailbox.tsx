@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -92,9 +92,18 @@ export default function AdminMailbox() {
   const [emailsLoading, setEmailsLoading] = useState(false);
   const [showHtml, setShowHtml] = useState(true);
   const [mobileView, setMobileView] = useState<MobileView>('list');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Ref to avoid stale closure in real-time subscription
+  const selectedMailboxRef = useRef<Mailbox | null>(null);
   
   // Reply composer state
   const [showReplySheet, setShowReplySheet] = useState(false);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    selectedMailboxRef.current = selectedMailbox;
+  }, [selectedMailbox]);
 
   const fetchMailboxes = useCallback(async () => {
     try {
@@ -172,6 +181,29 @@ export default function AdminMailbox() {
     }
   }, [selectedMailbox, fetchEmails]);
 
+  // Unified refresh function
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchMailboxes();
+      if (selectedMailboxRef.current) {
+        await fetchEmails(selectedMailboxRef.current.id);
+      }
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchMailboxes, fetchEmails]);
+
+  // Auto-refresh every 3 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      handleRefresh();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [handleRefresh]);
+
+  // Real-time subscription using ref to avoid stale closure
   useEffect(() => {
     const channel = supabase
       .channel('inbound_emails_changes')
@@ -179,8 +211,9 @@ export default function AdminMailbox() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'inbound_emails' },
         () => {
-          if (selectedMailbox) {
-            fetchEmails(selectedMailbox.id);
+          // Use ref to get current mailbox (avoids stale closure)
+          if (selectedMailboxRef.current) {
+            fetchEmails(selectedMailboxRef.current.id);
           }
           fetchMailboxes();
         }
@@ -190,7 +223,7 @@ export default function AdminMailbox() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedMailbox, fetchEmails, fetchMailboxes, supabase]);
+  }, [fetchEmails, fetchMailboxes, supabase]);
 
   const markAsRead = async (email: Email) => {
     if (email.is_read) return;
@@ -332,8 +365,14 @@ export default function AdminMailbox() {
             </SelectContent>
           </Select>
           
-          <Button variant="ghost" size="icon" onClick={() => fetchMailboxes()} className="flex-shrink-0">
-            <RefreshCw className="h-4 w-4" />
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={handleRefresh} 
+            className="flex-shrink-0"
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
           </Button>
         </div>
       </CardHeader>
