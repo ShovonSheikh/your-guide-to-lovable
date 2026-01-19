@@ -20,7 +20,8 @@ import {
   Wallet,
   Copy,
   Check,
-  ImageIcon
+  ImageIcon,
+  ShieldAlert
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -102,6 +103,29 @@ export default function Dashboard() {
         {/* Creator Dashboard */}
         {isCreator && (
           <>
+            {/* Withdrawal PIN Warning */}
+            {!profile?.has_withdrawal_pin && (
+              <div className="tipkoro-card mb-8 border-2 border-amber-400 bg-amber-50/50">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="p-3 rounded-full bg-amber-100">
+                    <ShieldAlert className="w-6 h-6 text-amber-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-amber-900">Secure Your Withdrawals</h3>
+                    <p className="text-sm text-amber-700">
+                      Set up a 6-digit withdrawal PIN to protect your earnings before requesting withdrawals.
+                    </p>
+                  </div>
+                  <Link to="/settings?tab=security">
+                    <Button variant="outline" className="border-amber-400 text-amber-700 hover:bg-amber-100 gap-2 whitespace-nowrap">
+                      <ShieldAlert className="w-4 h-4" />
+                      Set PIN Now
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            )}
+
             {/* Profile URL Card */}
             {profileUrl && (
               <div className="tipkoro-card mb-8">

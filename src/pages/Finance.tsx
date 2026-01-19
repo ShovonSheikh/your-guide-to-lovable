@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useUser } from "@clerk/clerk-react";
-import { Navigate } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { useCreatorStats } from "@/hooks/useCreatorStats";
 import { useSupabase } from "@/hooks/useSupabase";
@@ -35,9 +35,11 @@ import {
   History,
   CheckCircle,
   XCircle,
-  Loader2
+  Loader2,
+  ShieldAlert
 } from "lucide-react";
 import { format } from "date-fns";
+import { WithdrawalVerificationDialog } from "@/components/WithdrawalVerificationDialog";
 
 interface WithdrawalRequest {
   id: string;
@@ -60,6 +62,7 @@ export default function Finance() {
   const [payoutMethod, setPayoutMethod] = useState('');
   const [payoutDetails, setPayoutDetails] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [verificationDialogOpen, setVerificationDialogOpen] = useState(false);
 
   // Withdrawal history state
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
@@ -147,7 +150,7 @@ export default function Finance() {
   const availableBalance = Math.max(0, totalReceived - creatorAccountFee - pendingWithdrawalsTotal);
   const canWithdraw = availableBalance > 0;
 
-  const handleWithdraw = async () => {
+  const initiateWithdraw = () => {
     if (!withdrawAmount || !payoutMethod || !payoutDetails) {
       toast({
         title: "Missing Information",
@@ -175,6 +178,22 @@ export default function Finance() {
       });
       return;
     }
+
+    // Check if user has withdrawal PIN set
+    if (!profile?.has_withdrawal_pin) {
+      toast({
+        title: "Set Withdrawal PIN First",
+        description: "Please set up a withdrawal PIN in Settings before requesting a withdrawal.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Open verification dialog
+    setVerificationDialogOpen(true);
+  };
+
+  const handleWithdraw = async () => {
 
     setIsSubmitting(true);
 

@@ -9,7 +9,7 @@ const corsHeaders = {
 interface EmailNotificationRequest {
   profile_id?: string;
   email?: string; // Direct email for non-registered supporters
-  type: 'tip_received' | 'tip_sent' | 'withdrawal_submitted' | 'withdrawal_processing' | 'withdrawal_completed' | 'withdrawal_rejected' | 'promotion' | 'welcome_creator' | 'weekly_summary';
+  type: 'tip_received' | 'tip_sent' | 'withdrawal_submitted' | 'withdrawal_processing' | 'withdrawal_completed' | 'withdrawal_rejected' | 'promotion' | 'welcome_creator' | 'weekly_summary' | 'withdrawal_otp';
   data?: {
     amount?: number;
     supporter_name?: string;
@@ -26,6 +26,10 @@ interface EmailNotificationRequest {
     new_supporters?: number;
     previous_week_earnings?: number;
     top_supporters?: Array<{ name: string; amount: number }>;
+    // OTP data
+    otp_code?: string;
+    withdrawal_amount?: number;
+    first_name?: string;
   };
 }
 
