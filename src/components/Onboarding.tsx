@@ -199,6 +199,24 @@ export function Onboarding() {
         variant: "destructive"
       });
     } else {
+      // Send welcome email for creators
+      if (profile?.account_type === 'creator') {
+        try {
+          await supabase.functions.invoke('send-email-notification', {
+            body: {
+              profile_id: profile.id,
+              type: 'welcome_creator',
+              data: {
+                creator_name: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Creator',
+                username: profile.username,
+              },
+            },
+          });
+        } catch (emailError) {
+          console.log('Welcome email failed (non-critical):', emailError);
+        }
+      }
+      
       toast({
         title: "Welcome to TipKoro!",
         description: "Your account is now set up."
