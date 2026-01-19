@@ -6,6 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { 
   Mail, 
   Inbox, 
   MailOpen, 
@@ -15,13 +28,18 @@ import {
   Paperclip,
   Eye,
   EyeOff,
-  Reply
+  Reply,
+  Send,
+  X
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { ReplyComposer } from "@/components/admin/ReplyComposer";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 interface Mailbox {
   id: string;
@@ -59,7 +77,7 @@ interface Email {
   created_at: string;
 }
 
-type MobileView = 'mailboxes' | 'list' | 'email';
+type MobileView = 'list' | 'email';
 
 export default function AdminMailbox() {
   usePageTitle("Admin - Mailbox");
@@ -73,12 +91,16 @@ export default function AdminMailbox() {
   const [loading, setLoading] = useState(true);
   const [emailsLoading, setEmailsLoading] = useState(false);
   const [showHtml, setShowHtml] = useState(true);
-  const [mobileView, setMobileView] = useState<MobileView>('mailboxes');
-  const [showReplyComposer, setShowReplyComposer] = useState(false);
+  const [mobileView, setMobileView] = useState<MobileView>('list');
+  
+  // Reply composer state
+  const [showReplySheet, setShowReplySheet] = useState(false);
+  const [replySubject, setReplySubject] = useState("");
+  const [replyBody, setReplyBody] = useState("");
+  const [sending, setSending] = useState(false);
 
   const fetchMailboxes = useCallback(async () => {
     try {
-      // Fetch mailboxes
       const { data: mailboxData, error: mailboxError } = await supabase
         .from('mailboxes')
         .select('*')
@@ -86,7 +108,6 @@ export default function AdminMailbox() {
 
       if (mailboxError) throw mailboxError;
 
-      // Fetch unread counts for each mailbox
       const mailboxesWithCounts: Mailbox[] = await Promise.all(
         (mailboxData || []).map(async (mb) => {
           const { count } = await supabase
@@ -105,19 +126,15 @@ export default function AdminMailbox() {
 
       setMailboxes(mailboxesWithCounts);
       
-      // Auto-select first mailbox if none selected
       if (!selectedMailbox && mailboxesWithCounts.length > 0) {
         setSelectedMailbox(mailboxesWithCounts[0]);
-        if (isMobile) {
-          setMobileView('list');
-        }
       }
     } catch (error) {
       console.error('Error fetching mailboxes:', error);
     } finally {
       setLoading(false);
     }
-  }, [selectedMailbox, supabase, isMobile]);
+  }, [selectedMailbox, supabase]);
 
   const fetchEmails = useCallback(async (mailboxId: string) => {
     setEmailsLoading(true);
@@ -132,7 +149,6 @@ export default function AdminMailbox() {
 
       if (error) throw error;
       
-      // Cast the data to Email type
       const typedEmails: Email[] = (data || []).map(email => ({
         ...email,
         to_addresses: (email.to_addresses as unknown as EmailAddress[]) || [],
@@ -159,7 +175,6 @@ export default function AdminMailbox() {
     }
   }, [selectedMailbox, fetchEmails]);
 
-  // Set up realtime subscription
   useEffect(() => {
     const channel = supabase
       .channel('inbound_emails_changes')
@@ -167,7 +182,6 @@ export default function AdminMailbox() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'inbound_emails' },
         () => {
-          // Refresh emails when new one arrives
           if (selectedMailbox) {
             fetchEmails(selectedMailbox.id);
           }
@@ -193,7 +207,6 @@ export default function AdminMailbox() {
       prev.map(e => e.id === email.id ? { ...e, is_read: true } : e)
     );
     
-    // Update mailbox unread count
     setMailboxes(prev =>
       prev.map(mb => 
         mb.id === email.mailbox_id 
@@ -254,28 +267,85 @@ export default function AdminMailbox() {
     }
   };
 
-  const handleSelectMailbox = (mailbox: Mailbox) => {
-    setSelectedMailbox(mailbox);
-    if (isMobile) {
-      setMobileView('list');
+  const handleMailboxChange = (mailboxId: string) => {
+    const mailbox = mailboxes.find(m => m.id === mailboxId);
+    if (mailbox) {
+      setSelectedMailbox(mailbox);
     }
   };
 
   const handleSelectEmail = (email: Email) => {
     setSelectedEmail(email);
     markAsRead(email);
-    setShowReplyComposer(false); // Close reply composer when selecting new email
     if (isMobile) {
       setMobileView('email');
     }
   };
 
   const handleMobileBack = () => {
-    if (mobileView === 'email') {
-      setMobileView('list');
-      setSelectedEmail(null);
-    } else if (mobileView === 'list') {
-      setMobileView('mailboxes');
+    setMobileView('list');
+    setSelectedEmail(null);
+  };
+
+  const openReplyComposer = () => {
+    if (selectedEmail) {
+      setReplySubject(
+        selectedEmail.subject?.startsWith("Re:") 
+          ? selectedEmail.subject 
+          : `Re: ${selectedEmail.subject || "(No Subject)"}`
+      );
+      setReplyBody("");
+      setShowReplySheet(true);
+    }
+  };
+
+  const handleSendReply = async () => {
+    if (!replyBody.trim() || !selectedEmail || !selectedMailbox) {
+      toast.error("Please enter a message");
+      return;
+    }
+
+    setSending(true);
+    try {
+      const htmlBody = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+          <div style="white-space: pre-wrap;">${replyBody.replace(/\n/g, "<br>")}</div>
+          <br><br>
+          <div style="border-left: 2px solid #ccc; padding-left: 12px; margin-top: 20px; color: #666;">
+            <p style="margin: 0 0 8px 0; font-size: 12px;">
+              On ${format(new Date(selectedEmail.received_at), 'PPpp')}, ${selectedEmail.from_name || selectedEmail.from_address} wrote:
+            </p>
+            <div style="font-size: 13px;">
+              ${selectedEmail.html_body || selectedEmail.text_body?.replace(/\n/g, "<br>") || ""}
+            </div>
+          </div>
+        </div>
+      `;
+
+      const response = await supabase.functions.invoke("send-reply-email", {
+        body: {
+          from_address: selectedMailbox.email_address,
+          to_address: selectedEmail.from_address,
+          subject: replySubject,
+          html_body: htmlBody,
+          text_body: `${replyBody}\n\n---\nOn ${format(new Date(selectedEmail.received_at), 'PPpp')}, ${selectedEmail.from_name || selectedEmail.from_address} wrote:\n\n${selectedEmail.text_body || ""}`,
+          in_reply_to: selectedEmail.message_id,
+          original_email_id: selectedEmail.id,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Failed to send reply");
+      }
+
+      toast.success("Reply sent successfully!");
+      setShowReplySheet(false);
+      setReplyBody("");
+    } catch (error: any) {
+      console.error("Error sending reply:", error);
+      toast.error(error.message || "Failed to send reply");
+    } finally {
+      setSending(false);
     }
   };
 
@@ -289,90 +359,44 @@ export default function AdminMailbox() {
     );
   }
 
-  // Mobile Header with back navigation
-  const MobileHeader = () => {
-    if (!isMobile) return null;
-    
-    let title = 'Mailbox';
-    if (mobileView === 'list' && selectedMailbox) {
-      title = selectedMailbox.display_name;
-    } else if (mobileView === 'email' && selectedEmail) {
-      title = selectedEmail.subject || '(No Subject)';
-    }
-
-    return (
-      <div className="flex items-center gap-2 mb-4">
-        {mobileView !== 'mailboxes' && (
-          <Button variant="ghost" size="icon" onClick={handleMobileBack}>
-            <ChevronLeft className="h-5 w-5" />
+  // Email List Component
+  const EmailList = () => (
+    <Card className="h-full flex flex-col">
+      <CardHeader className="py-3 px-4 border-b flex-shrink-0">
+        <div className="flex items-center justify-between gap-2">
+          {/* Mailbox Dropdown */}
+          <Select
+            value={selectedMailbox?.id || ""}
+            onValueChange={handleMailboxChange}
+          >
+            <SelectTrigger className="w-full max-w-[200px]">
+              <div className="flex items-center gap-2 truncate">
+                <Inbox className="h-4 w-4 flex-shrink-0" />
+                <SelectValue placeholder="Select mailbox" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              {mailboxes.map((mailbox) => (
+                <SelectItem key={mailbox.id} value={mailbox.id}>
+                  <div className="flex items-center justify-between gap-2 w-full">
+                    <span className="truncate">{mailbox.display_name}</span>
+                    {mailbox.unread_count > 0 && (
+                      <Badge variant="default" className="ml-2 text-xs">
+                        {mailbox.unread_count}
+                      </Badge>
+                    )}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <Button variant="ghost" size="icon" onClick={() => fetchMailboxes()} className="flex-shrink-0">
+            <RefreshCw className="h-4 w-4" />
           </Button>
-        )}
-        <h1 className="text-lg font-semibold truncate flex-1">{title}</h1>
-        <Button variant="outline" size="icon" onClick={() => fetchMailboxes()}>
-          <RefreshCw className="h-4 w-4" />
-        </Button>
-      </div>
-    );
-  };
-
-  // Mailboxes Panel
-  const MailboxesPanel = () => (
-    <Card className={cn(
-      "col-span-12 md:col-span-3",
-      isMobile && mobileView !== 'mailboxes' && "hidden"
-    )}>
-      <CardHeader className="py-3 px-4">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <Inbox className="h-4 w-4" />
-          Mailboxes
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-2">
-        <div className="space-y-1">
-          {mailboxes.map((mailbox) => (
-            <button
-              key={mailbox.id}
-              onClick={() => handleSelectMailbox(mailbox)}
-              className={cn(
-                "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors",
-                selectedMailbox?.id === mailbox.id
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-secondary"
-              )}
-            >
-              <span className="truncate">{mailbox.display_name}</span>
-              {mailbox.unread_count > 0 && (
-                <Badge 
-                  variant={selectedMailbox?.id === mailbox.id ? "secondary" : "default"}
-                  className="ml-2"
-                >
-                  {mailbox.unread_count}
-                </Badge>
-              )}
-            </button>
-          ))}
-          {mailboxes.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No mailboxes configured
-            </p>
-          )}
         </div>
-      </CardContent>
-    </Card>
-  );
-
-  // Email List Panel
-  const EmailListPanel = () => (
-    <Card className={cn(
-      "col-span-12 md:col-span-4",
-      isMobile && mobileView !== 'list' && "hidden"
-    )}>
-      <CardHeader className="py-3 px-4 border-b hidden md:block">
-        <CardTitle className="text-sm font-medium">
-          {selectedMailbox?.display_name || 'Select a mailbox'}
-        </CardTitle>
       </CardHeader>
-      <ScrollArea className={cn("h-[calc(100%-53px)]", isMobile && "h-[calc(100vh-180px)]")}>
+      <ScrollArea className="flex-1">
         {emailsLoading ? (
           <div className="flex items-center justify-center py-8">
             <Spinner className="h-6 w-6" />
@@ -417,7 +441,7 @@ export default function AdminMailbox() {
                       {email.subject || '(No Subject)'}
                     </p>
                     <p className="text-xs text-muted-foreground truncate mt-0.5">
-                      {email.text_body?.substring(0, 80) || 'No preview available'}...
+                      {email.text_body?.substring(0, 60) || 'No preview'}...
                     </p>
                   </div>
                 </div>
@@ -429,25 +453,28 @@ export default function AdminMailbox() {
     </Card>
   );
 
-  // Email Viewer Panel
-  const EmailViewerPanel = () => (
-    <Card className={cn(
-      "col-span-12 md:col-span-5",
-      isMobile && mobileView !== 'email' && "hidden"
-    )}>
+  // Email Viewer Component
+  const EmailViewer = () => (
+    <Card className="h-full flex flex-col">
       {selectedEmail ? (
         <>
-          <CardHeader className="py-3 px-4 border-b hidden md:block">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium truncate">
+          {/* Header */}
+          <CardHeader className="py-3 px-4 border-b flex-shrink-0">
+            <div className="flex items-center justify-between gap-2">
+              {isMobile && (
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleMobileBack}>
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+              )}
+              <CardTitle className="text-sm font-medium truncate flex-1">
                 {selectedEmail.subject || '(No Subject)'}
               </CardTitle>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 flex-shrink-0">
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => setShowReplyComposer(!showReplyComposer)}
+                  onClick={openReplyComposer}
                   title="Reply"
                 >
                   <Reply className="h-4 w-4" />
@@ -478,60 +505,31 @@ export default function AdminMailbox() {
             </div>
           </CardHeader>
           
-          {/* Mobile action bar */}
-          {isMobile && (
-            <div className="flex items-center justify-end gap-1 p-2 border-b">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setShowReplyComposer(!showReplyComposer)}
-              >
-                <Reply className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => toggleRead(selectedEmail)}
-              >
-                {selectedEmail.is_read ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive"
-                onClick={() => deleteEmail(selectedEmail)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-          
-          <div className="p-4 border-b bg-muted/30">
+          {/* Email Meta */}
+          <div className="p-4 border-b bg-muted/30 flex-shrink-0">
             <div className="space-y-1 text-sm">
-              <div className="flex gap-2">
-                <span className="text-muted-foreground w-12">From:</span>
+              <div className="flex gap-2 flex-wrap">
+                <span className="text-muted-foreground w-12 flex-shrink-0">From:</span>
                 <span className="font-medium break-all">
                   {selectedEmail.from_name ? `${selectedEmail.from_name} <${selectedEmail.from_address}>` : selectedEmail.from_address}
                 </span>
               </div>
-              <div className="flex gap-2">
-                <span className="text-muted-foreground w-12">To:</span>
+              <div className="flex gap-2 flex-wrap">
+                <span className="text-muted-foreground w-12 flex-shrink-0">To:</span>
                 <span className="break-all">
                   {selectedEmail.to_addresses.map(a => a.name ? `${a.name} <${a.address}>` : a.address).join(', ')}
                 </span>
               </div>
               {selectedEmail.cc_addresses && selectedEmail.cc_addresses.length > 0 && (
-                <div className="flex gap-2">
-                  <span className="text-muted-foreground w-12">CC:</span>
+                <div className="flex gap-2 flex-wrap">
+                  <span className="text-muted-foreground w-12 flex-shrink-0">CC:</span>
                   <span className="break-all">
                     {selectedEmail.cc_addresses.map(a => a.name ? `${a.name} <${a.address}>` : a.address).join(', ')}
                   </span>
                 </div>
               )}
               <div className="flex gap-2">
-                <span className="text-muted-foreground w-12">Date:</span>
+                <span className="text-muted-foreground w-12 flex-shrink-0">Date:</span>
                 <span>{format(new Date(selectedEmail.received_at), 'PPpp')}</span>
               </div>
             </div>
@@ -546,8 +544,10 @@ export default function AdminMailbox() {
               </div>
             )}
           </div>
-          <div className="p-4">
-            <div className="flex items-center gap-2 mb-3">
+          
+          {/* Email Body */}
+          <div className="p-4 flex-1 flex flex-col min-h-0">
+            <div className="flex items-center gap-2 mb-3 flex-shrink-0">
               <Button
                 variant={showHtml ? "default" : "outline"}
                 size="sm"
@@ -564,7 +564,7 @@ export default function AdminMailbox() {
                 Plain Text
               </Button>
             </div>
-            <ScrollArea className={cn("h-[calc(100vh-480px)]", isMobile && "h-[calc(100vh-400px)]")}>
+            <ScrollArea className="flex-1">
               {showHtml && selectedEmail.html_body ? (
                 <iframe
                   srcDoc={selectedEmail.html_body}
@@ -579,18 +579,6 @@ export default function AdminMailbox() {
               )}
             </ScrollArea>
           </div>
-          
-          {/* Reply Composer */}
-          {showReplyComposer && selectedMailbox && (
-            <ReplyComposer
-              email={selectedEmail}
-              mailboxAddress={selectedMailbox.email_address}
-              onClose={() => setShowReplyComposer(false)}
-              onSent={() => {
-                setShowReplyComposer(false);
-              }}
-            />
-          )}
         </>
       ) : (
         <div className="h-full flex items-center justify-center text-muted-foreground">
@@ -603,11 +591,94 @@ export default function AdminMailbox() {
     </Card>
   );
 
+  // Reply Sheet (for both mobile and desktop)
+  const ReplySheet = () => (
+    <Sheet open={showReplySheet} onOpenChange={setShowReplySheet}>
+      <SheetContent side={isMobile ? "bottom" : "right"} className={cn(
+        isMobile ? "h-[85vh] rounded-t-xl" : "w-[450px] sm:w-[540px]"
+      )}>
+        <SheetHeader className="text-left pb-4 border-b">
+          <SheetTitle className="flex items-center gap-2">
+            <Reply className="h-5 w-5" />
+            Reply to {selectedEmail?.from_name || selectedEmail?.from_address}
+          </SheetTitle>
+        </SheetHeader>
+        
+        <div className="py-4 space-y-4 flex-1 overflow-y-auto">
+          {/* From/To Info */}
+          <div className="grid grid-cols-2 gap-4 text-sm p-3 bg-muted/50 rounded-lg">
+            <div>
+              <Label className="text-muted-foreground text-xs">From</Label>
+              <p className="font-medium truncate">{selectedMailbox?.email_address}</p>
+            </div>
+            <div>
+              <Label className="text-muted-foreground text-xs">To</Label>
+              <p className="font-medium truncate">{selectedEmail?.from_address}</p>
+            </div>
+          </div>
+          
+          {/* Subject */}
+          <div className="space-y-2">
+            <Label htmlFor="reply-subject">Subject</Label>
+            <Input
+              id="reply-subject"
+              value={replySubject}
+              onChange={(e) => setReplySubject(e.target.value)}
+              placeholder="Subject"
+            />
+          </div>
+          
+          {/* Message */}
+          <div className="space-y-2 flex-1">
+            <Label htmlFor="reply-body">Message</Label>
+            <Textarea
+              id="reply-body"
+              value={replyBody}
+              onChange={(e) => setReplyBody(e.target.value)}
+              placeholder="Type your reply..."
+              rows={isMobile ? 8 : 12}
+              className="resize-none"
+            />
+          </div>
+          
+          {/* Original Message Preview */}
+          <div className="border-l-2 border-muted-foreground/30 pl-3 mt-4">
+            <p className="text-xs text-muted-foreground mb-1">Original message:</p>
+            <p className="text-xs text-muted-foreground line-clamp-3">
+              {selectedEmail?.text_body?.substring(0, 200) || "No content"}...
+            </p>
+          </div>
+        </div>
+        
+        {/* Actions */}
+        <div className="flex justify-end gap-2 pt-4 border-t">
+          <Button variant="outline" onClick={() => setShowReplySheet(false)} disabled={sending}>
+            <X className="h-4 w-4 mr-2" />
+            Cancel
+          </Button>
+          <Button onClick={handleSendReply} disabled={sending || !replyBody.trim()}>
+            {sending ? (
+              <>
+                <Spinner className="h-4 w-4 mr-2" />
+                Sending...
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4 mr-2" />
+                Send Reply
+              </>
+            )}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+
   return (
-    <div className="space-y-4">
+    <div className="h-[calc(100vh-120px)] md:h-[calc(100vh-160px)] flex flex-col">
       {/* Desktop Header */}
       {!isMobile && (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4 flex-shrink-0">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Mail className="h-6 w-6" />
@@ -617,24 +688,49 @@ export default function AdminMailbox() {
               {totalUnread > 0 ? `${totalUnread} unread emails` : 'Manage inbound emails'}
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => fetchMailboxes()}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
         </div>
       )}
 
       {/* Mobile Header */}
-      <MobileHeader />
+      {isMobile && mobileView === 'list' && (
+        <div className="flex items-center justify-between mb-4 flex-shrink-0">
+          <h1 className="text-lg font-semibold flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            Mailbox
+            {totalUnread > 0 && (
+              <Badge variant="default">{totalUnread}</Badge>
+            )}
+          </h1>
+        </div>
+      )}
 
+      {/* Content Grid */}
       <div className={cn(
-        "grid grid-cols-12 gap-4",
-        !isMobile && "h-[calc(100vh-200px)]"
+        "flex-1 min-h-0",
+        !isMobile && "grid grid-cols-12 gap-4"
       )}>
-        <MailboxesPanel />
-        <EmailListPanel />
-        <EmailViewerPanel />
+        {/* Desktop: 2-column layout */}
+        {!isMobile && (
+          <>
+            <div className="col-span-5 h-full">
+              <EmailList />
+            </div>
+            <div className="col-span-7 h-full">
+              <EmailViewer />
+            </div>
+          </>
+        )}
+
+        {/* Mobile: View switching */}
+        {isMobile && (
+          <div className="h-full">
+            {mobileView === 'list' ? <EmailList /> : <EmailViewer />}
+          </div>
+        )}
       </div>
+
+      {/* Reply Sheet */}
+      <ReplySheet />
     </div>
   );
 }

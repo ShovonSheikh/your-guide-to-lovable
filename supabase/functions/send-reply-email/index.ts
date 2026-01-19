@@ -35,17 +35,16 @@ const corsHeaders = {
 };
 
 interface ReplyEmailRequest {
-  from_address: string; // The mailbox address to send from
-  to_address: string; // The recipient (original sender)
+  from_address: string;
+  to_address: string;
   subject: string;
   html_body?: string;
   text_body?: string;
-  in_reply_to?: string; // Original message ID for threading
-  original_email_id: string; // ID of the email being replied to
+  in_reply_to?: string;
+  original_email_id: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -59,7 +58,6 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Verify user is admin
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -87,7 +85,6 @@ const handler = async (req: Request): Promise<Response> => {
       original_email_id 
     }: ReplyEmailRequest = await req.json();
 
-    // Validate required fields
     if (!from_address || !to_address || !subject || (!html_body && !text_body)) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
@@ -95,7 +92,6 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Verify the from_address is a valid mailbox
     const { data: mailbox, error: mailboxError } = await supabase
       .from("mailboxes")
       .select("id, display_name")
@@ -109,19 +105,43 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Build email headers for threading
+    // Build proper email threading headers
+    // Get the original email to find its message_id and any existing references
+    const { data: originalEmail } = await supabase
+      .from("inbound_emails")
+      .select("message_id")
+      .eq("id", original_email_id)
+      .single();
+
     const headers: Record<string, string> = {};
+    
     if (in_reply_to) {
       headers["In-Reply-To"] = in_reply_to;
-      headers["References"] = in_reply_to;
+      
+      // Build References header for proper threading
+      // If this is part of a thread, we should include the chain of message_ids
+      // For now, we'll include the original message_id
+      const references: string[] = [];
+      
+      // Add the original message_id to references
+      if (originalEmail?.message_id) {
+        references.push(originalEmail.message_id);
+      }
+      
+      // If in_reply_to is different from original, add it too
+      if (in_reply_to && in_reply_to !== originalEmail?.message_id) {
+        references.push(in_reply_to);
+      }
+      
+      if (references.length > 0) {
+        headers["References"] = references.join(" ");
+      }
     }
 
-    // Format the from address with display name
     const formattedFrom = mailbox.display_name 
       ? `${mailbox.display_name} <${from_address}>`
       : from_address;
 
-    // Send the email via Resend
     const emailResponse = await sendEmailViaResend({
       from: formattedFrom,
       to: [to_address],
@@ -133,7 +153,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Reply email sent successfully:", emailResponse);
 
-    // Log the sent email (optional: you could store sent emails in a separate table)
+    // Log the sent email
     await supabase.from("email_logs").insert({
       email_type: "reply",
       recipient_email: to_address,

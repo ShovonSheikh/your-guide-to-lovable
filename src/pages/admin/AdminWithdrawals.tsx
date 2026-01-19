@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Loader2, Wallet, ChevronRight } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Dialog,
   DialogContent,
@@ -19,18 +19,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
-// Helper function to format payout details from JSONB
 const formatPayoutDetails = (details: unknown): string => {
   if (!details || typeof details !== 'object') return '-';
   const obj = details as Record<string, string>;
-  // Common fields: number, phone, account_number
   if (obj.number) return obj.number;
   if (obj.phone) return obj.phone;
   if (obj.account_number) return obj.account_number;
-  // Fallback to first value
   const values = Object.values(obj);
   return values[0] || '-';
 };
@@ -58,11 +63,12 @@ type WithdrawalStatus = 'pending' | 'processing' | 'completed' | 'rejected';
 export default function AdminWithdrawals() {
   usePageTitle("Admin - Withdrawals");
   const supabase = useSupabaseWithAuth();
+  const isMobile = useIsMobile();
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<WithdrawalStatus | 'all'>('pending');
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<Withdrawal | null>(null);
-  const [actionDialogOpen, setActionDialogOpen] = useState(false);
+  const [actionOpen, setActionOpen] = useState(false);
   const [actionType, setActionType] = useState<'approve' | 'reject' | 'complete' | null>(null);
   const [adminNotes, setAdminNotes] = useState("");
   const [processing, setProcessing] = useState(false);
@@ -104,7 +110,7 @@ export default function AdminWithdrawals() {
     setSelectedWithdrawal(withdrawal);
     setActionType(action);
     setAdminNotes(withdrawal.notes || "");
-    setActionDialogOpen(true);
+    setActionOpen(true);
   };
 
   const processAction = async () => {
@@ -138,7 +144,6 @@ export default function AdminWithdrawals() {
 
       if (error) throw error;
 
-      // When withdrawal is completed, decrement the creator's total_received
       if (newStatus === 'completed') {
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
@@ -146,24 +151,17 @@ export default function AdminWithdrawals() {
           .eq('id', selectedWithdrawal.profile_id)
           .single();
 
-        if (profileError) {
-          console.error('Error fetching profile:', profileError);
-        } else {
-          const currentTotal = profile?.total_received || 0;
+        if (!profileError && profile) {
+          const currentTotal = profile.total_received || 0;
           const newTotal = Math.max(0, currentTotal - selectedWithdrawal.amount);
           
-          const { error: updateError } = await supabase
+          await supabase
             .from('profiles')
             .update({ total_received: newTotal })
             .eq('id', selectedWithdrawal.profile_id);
-
-          if (updateError) {
-            console.error('Error updating total_received:', updateError);
-          }
         }
       }
 
-      // Send email notification to creator
       try {
         const notificationType = newStatus === 'processing' 
           ? 'withdrawal_processing' 
@@ -185,7 +183,6 @@ export default function AdminWithdrawals() {
         console.log('Notification failed (non-critical):', notifError);
       }
 
-      // Update local state
       setWithdrawals(withdrawals.map(w =>
         w.id === selectedWithdrawal.id
           ? { ...w, status: newStatus, notes: adminNotes, processed_at: new Date().toISOString() }
@@ -197,7 +194,7 @@ export default function AdminWithdrawals() {
         description: `Withdrawal ${actionType === 'approve' ? 'approved for processing' : actionType === 'complete' ? 'marked as completed' : 'rejected'}`,
       });
 
-      setActionDialogOpen(false);
+      setActionOpen(false);
       setSelectedWithdrawal(null);
       setActionType(null);
       setAdminNotes("");
@@ -216,15 +213,15 @@ export default function AdminWithdrawals() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Badge variant="outline" className="text-yellow-600 border-yellow-600"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+        return <Badge variant="outline" className="text-yellow-600 border-yellow-600 text-[10px] md:text-xs"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
       case 'processing':
-        return <Badge variant="outline" className="text-blue-600 border-blue-600"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Processing</Badge>;
+        return <Badge variant="outline" className="text-blue-600 border-blue-600 text-[10px] md:text-xs"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Processing</Badge>;
       case 'completed':
-        return <Badge variant="outline" className="text-green-600 border-green-600"><CheckCircle className="h-3 w-3 mr-1" />Completed</Badge>;
+        return <Badge variant="outline" className="text-green-600 border-green-600 text-[10px] md:text-xs"><CheckCircle className="h-3 w-3 mr-1" />Completed</Badge>;
       case 'rejected':
-        return <Badge variant="outline" className="text-red-600 border-red-600"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+        return <Badge variant="outline" className="text-red-600 border-red-600 text-[10px] md:text-xs"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge variant="outline" className="text-[10px] md:text-xs">{status}</Badge>;
     }
   };
 
@@ -235,6 +232,48 @@ export default function AdminWithdrawals() {
   const pendingCount = withdrawals.filter(w => w.status === 'pending').length;
   const processingCount = withdrawals.filter(w => w.status === 'processing').length;
 
+  const ActionDialogContent = () => (
+    <>
+      {selectedWithdrawal && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3 p-3 bg-secondary/50 rounded-lg">
+            <div>
+              <p className="text-xs text-muted-foreground">Creator</p>
+              <p className="font-medium text-sm">
+                {selectedWithdrawal.creator?.first_name} {selectedWithdrawal.creator?.last_name}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Amount</p>
+              <p className="font-medium text-sm">৳{selectedWithdrawal.amount.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Method</p>
+              <p className="font-medium text-sm">{selectedWithdrawal.payout_method}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Account</p>
+              <p className="font-medium font-mono text-sm">
+                {formatPayoutDetails(selectedWithdrawal.payout_details)}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="notes">Admin Notes {actionType === 'reject' && '(Required)'}</Label>
+            <Textarea
+              id="notes"
+              placeholder={actionType === 'reject' ? 'Reason for rejection...' : 'Add notes (optional)...'}
+              value={adminNotes}
+              onChange={(e) => setAdminNotes(e.target.value)}
+              rows={3}
+            />
+          </div>
+        </div>
+      )}
+    </>
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -244,68 +283,140 @@ export default function AdminWithdrawals() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Withdrawals</h1>
-        <p className="text-muted-foreground">Process creator withdrawal requests</p>
+        <h1 className="text-xl md:text-2xl font-bold">Withdrawals</h1>
+        <p className="text-muted-foreground text-sm md:text-base">Process creator withdrawal requests</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-        <TabsList>
-          <TabsTrigger value="pending" className="relative">
-            Pending
-            {pendingCount > 0 && (
-              <span className="ml-2 bg-yellow-500 text-white text-xs rounded-full px-1.5">
-                {pendingCount}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="processing" className="relative">
-            Processing
-            {processingCount > 0 && (
-              <span className="ml-2 bg-blue-500 text-white text-xs rounded-full px-1.5">
-                {processingCount}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
-          <TabsTrigger value="rejected">Rejected</TabsTrigger>
-          <TabsTrigger value="all">All</TabsTrigger>
-        </TabsList>
+        <ScrollArea className="w-full">
+          <TabsList className="inline-flex w-auto min-w-full md:min-w-0">
+            <TabsTrigger value="pending" className="relative text-xs md:text-sm">
+              Pending
+              {pendingCount > 0 && (
+                <span className="ml-1.5 bg-yellow-500 text-white text-[10px] rounded-full px-1.5">
+                  {pendingCount}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="processing" className="relative text-xs md:text-sm">
+              Processing
+              {processingCount > 0 && (
+                <span className="ml-1.5 bg-blue-500 text-white text-[10px] rounded-full px-1.5">
+                  {processingCount}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="text-xs md:text-sm">Completed</TabsTrigger>
+            <TabsTrigger value="rejected" className="text-xs md:text-sm">Rejected</TabsTrigger>
+            <TabsTrigger value="all" className="text-xs md:text-sm">All</TabsTrigger>
+          </TabsList>
+        </ScrollArea>
 
         <TabsContent value={activeTab} className="mt-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Withdrawal Requests</CardTitle>
-              <CardDescription>
+            <CardHeader className="p-4 md:p-6">
+              <CardTitle className="text-base md:text-lg">Withdrawal Requests</CardTitle>
+              <CardDescription className="text-xs md:text-sm">
                 {filteredWithdrawals.length} {activeTab === 'all' ? 'total' : activeTab} requests
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Creator</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Method</TableHead>
-                      <TableHead>Details</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="w-[140px]">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+            <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
+              {/* Mobile: Card Layout */}
+              <div className="md:hidden space-y-3">
+                {filteredWithdrawals.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    <Wallet className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p>No withdrawal requests found</p>
+                  </div>
+                ) : (
+                  filteredWithdrawals.map((withdrawal) => (
+                    <div key={withdrawal.id} className="border rounded-lg p-3 space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-medium text-sm">
+                            {withdrawal.creator?.first_name} {withdrawal.creator?.last_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            @{withdrawal.creator?.username}
+                          </p>
+                        </div>
+                        <p className="font-bold text-sm">৳{withdrawal.amount.toLocaleString()}</p>
+                      </div>
+                      
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-[10px]">{withdrawal.payout_method}</Badge>
+                          <span className="text-xs font-mono text-muted-foreground">
+                            {formatPayoutDetails(withdrawal.payout_details)}
+                          </span>
+                        </div>
+                        {getStatusBadge(withdrawal.status)}
+                      </div>
+                      
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t">
+                        <span className="text-[10px] text-muted-foreground">
+                          {format(new Date(withdrawal.created_at), 'MMM d, yyyy')}
+                        </span>
+                        
+                        {withdrawal.status !== 'completed' && withdrawal.status !== 'rejected' && (
+                          <Select
+                            value={withdrawal.status}
+                            onValueChange={(value) => {
+                              if (value === 'processing' && withdrawal.status === 'pending') {
+                                handleAction(withdrawal, 'approve');
+                              } else if (value === 'completed' && withdrawal.status === 'processing') {
+                                handleAction(withdrawal, 'complete');
+                              } else if (value === 'rejected' && withdrawal.status === 'pending') {
+                                handleAction(withdrawal, 'reject');
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="w-[110px] h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending" disabled={withdrawal.status !== 'pending'}>Pending</SelectItem>
+                              <SelectItem value="processing" disabled={withdrawal.status === 'processing'}>Processing</SelectItem>
+                              <SelectItem value="completed" disabled={withdrawal.status !== 'processing'}>Completed</SelectItem>
+                              {withdrawal.status === 'pending' && (
+                                <SelectItem value="rejected" className="text-destructive">Rejected</SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Desktop: Table Layout */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Creator</th>
+                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Amount</th>
+                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Method</th>
+                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Details</th>
+                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Status</th>
+                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Date</th>
+                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground w-[140px]">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {filteredWithdrawals.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      <tr>
+                        <td colSpan={7} className="text-center text-muted-foreground py-8">
                           No withdrawal requests found
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                      </tr>
                     ) : (
                       filteredWithdrawals.map((withdrawal) => (
-                        <TableRow key={withdrawal.id}>
-                          <TableCell>
+                        <tr key={withdrawal.id} className="border-b last:border-0">
+                          <td className="py-3 px-2">
                             <div>
                               <p className="font-medium">
                                 {withdrawal.creator?.first_name} {withdrawal.creator?.last_name}
@@ -314,21 +425,21 @@ export default function AdminWithdrawals() {
                                 @{withdrawal.creator?.username}
                               </p>
                             </div>
-                          </TableCell>
-                          <TableCell className="font-medium">
+                          </td>
+                          <td className="py-3 px-2 font-medium">
                             ৳{withdrawal.amount.toLocaleString()}
-                          </TableCell>
-                          <TableCell>
+                          </td>
+                          <td className="py-3 px-2">
                             <Badge variant="secondary">{withdrawal.payout_method}</Badge>
-                          </TableCell>
-                          <TableCell className="text-sm font-mono">
+                          </td>
+                          <td className="py-3 px-2 text-sm font-mono">
                             {formatPayoutDetails(withdrawal.payout_details)}
-                          </TableCell>
-                          <TableCell>{getStatusBadge(withdrawal.status)}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
+                          </td>
+                          <td className="py-3 px-2">{getStatusBadge(withdrawal.status)}</td>
+                          <td className="py-3 px-2 text-sm text-muted-foreground">
                             {format(new Date(withdrawal.created_at), 'MMM d, yyyy')}
-                          </TableCell>
-                          <TableCell>
+                          </td>
+                          <td className="py-3 px-2">
                             {withdrawal.status === 'completed' || withdrawal.status === 'rejected' ? (
                               <span className="text-sm text-muted-foreground">-</span>
                             ) : (
@@ -357,89 +468,82 @@ export default function AdminWithdrawals() {
                                 </SelectContent>
                               </Select>
                             )}
-                          </TableCell>
-                        </TableRow>
+                          </td>
+                        </tr>
                       ))
                     )}
-                  </TableBody>
-                </Table>
+                  </tbody>
+                </table>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
-      {/* Action Dialog */}
-      <Dialog open={actionDialogOpen} onOpenChange={setActionDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {actionType === 'approve' && 'Approve Withdrawal'}
-              {actionType === 'complete' && 'Complete Withdrawal'}
-              {actionType === 'reject' && 'Reject Withdrawal'}
-            </DialogTitle>
-            <DialogDescription>
-              {actionType === 'approve' && 'This will mark the withdrawal as processing.'}
-              {actionType === 'complete' && 'Confirm that the payment has been sent.'}
-              {actionType === 'reject' && 'Please provide a reason for rejection.'}
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedWithdrawal && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 p-4 bg-secondary/50 rounded-lg">
-                <div>
-                  <p className="text-sm text-muted-foreground">Creator</p>
-                  <p className="font-medium">
-                    {selectedWithdrawal.creator?.first_name} {selectedWithdrawal.creator?.last_name}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Amount</p>
-                  <p className="font-medium">৳{selectedWithdrawal.amount.toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Method</p>
-                  <p className="font-medium">{selectedWithdrawal.payout_method}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Account</p>
-                  <p className="font-medium font-mono">
-                    {formatPayoutDetails(selectedWithdrawal.payout_details)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">Admin Notes {actionType === 'reject' && '(Required)'}</Label>
-                <Textarea
-                  id="notes"
-                  placeholder={actionType === 'reject' ? 'Reason for rejection...' : 'Add notes (optional)...'}
-                  value={adminNotes}
-                  onChange={(e) => setAdminNotes(e.target.value)}
-                  rows={3}
-                />
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActionDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={processAction}
-              disabled={processing || (actionType === 'reject' && !adminNotes.trim())}
-              variant={actionType === 'reject' ? 'destructive' : 'default'}
-            >
-              {processing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {actionType === 'approve' && 'Approve'}
-              {actionType === 'complete' && 'Mark Complete'}
-              {actionType === 'reject' && 'Reject'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Mobile: Sheet for action */}
+      {isMobile ? (
+        <Sheet open={actionOpen} onOpenChange={setActionOpen}>
+          <SheetContent side="bottom" className="h-auto max-h-[80vh] rounded-t-xl">
+            <SheetHeader className="pb-4">
+              <SheetTitle>
+                {actionType === 'approve' && 'Approve Withdrawal'}
+                {actionType === 'complete' && 'Complete Withdrawal'}
+                {actionType === 'reject' && 'Reject Withdrawal'}
+              </SheetTitle>
+            </SheetHeader>
+            <ActionDialogContent />
+            <SheetFooter className="pt-4 flex-row gap-2">
+              <Button variant="outline" onClick={() => setActionOpen(false)} className="flex-1">
+                Cancel
+              </Button>
+              <Button
+                onClick={processAction}
+                disabled={processing || (actionType === 'reject' && !adminNotes.trim())}
+                variant={actionType === 'reject' ? 'destructive' : 'default'}
+                className="flex-1"
+              >
+                {processing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {actionType === 'approve' && 'Approve'}
+                {actionType === 'complete' && 'Complete'}
+                {actionType === 'reject' && 'Reject'}
+              </Button>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <Dialog open={actionOpen} onOpenChange={setActionOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {actionType === 'approve' && 'Approve Withdrawal'}
+                {actionType === 'complete' && 'Complete Withdrawal'}
+                {actionType === 'reject' && 'Reject Withdrawal'}
+              </DialogTitle>
+              <DialogDescription>
+                {actionType === 'approve' && 'This will mark the withdrawal as processing.'}
+                {actionType === 'complete' && 'Confirm that the payment has been sent.'}
+                {actionType === 'reject' && 'Please provide a reason for rejection.'}
+              </DialogDescription>
+            </DialogHeader>
+            <ActionDialogContent />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setActionOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={processAction}
+                disabled={processing || (actionType === 'reject' && !adminNotes.trim())}
+                variant={actionType === 'reject' ? 'destructive' : 'default'}
+              >
+                {processing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {actionType === 'approve' && 'Approve'}
+                {actionType === 'complete' && 'Mark Complete'}
+                {actionType === 'reject' && 'Reject'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

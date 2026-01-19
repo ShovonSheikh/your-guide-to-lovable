@@ -38,7 +38,6 @@ export default function AdminDashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch profile counts
       const { data: profiles } = await supabase
         .from('profiles')
         .select('account_type');
@@ -47,7 +46,6 @@ export default function AdminDashboard() {
       const totalCreators = profiles?.filter(p => p.account_type === 'creator').length || 0;
       const totalSupporters = profiles?.filter(p => p.account_type === 'supporter').length || 0;
 
-      // Fetch tips data
       const { data: tips } = await supabase
         .from('tips')
         .select('amount, created_at, payment_status')
@@ -56,7 +54,6 @@ export default function AdminDashboard() {
       const totalTips = tips?.length || 0;
       const totalTipsAmount = tips?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
 
-      // This month's tips
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
@@ -65,7 +62,6 @@ export default function AdminDashboard() {
       const thisMonthAmount = tips?.filter(t => new Date(t.created_at) >= startOfMonth)
         .reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
 
-      // Fetch pending withdrawals
       const { data: withdrawals } = await supabase
         .from('withdrawal_requests')
         .select('amount, status')
@@ -86,7 +82,6 @@ export default function AdminDashboard() {
         thisMonthAmount,
       });
 
-      // Fetch recent activity (latest tips and withdrawals)
       const { data: recentTips } = await supabase
         .from('tips')
         .select('id, supporter_name, amount, created_at')
@@ -166,59 +161,59 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Overview of your platform</p>
+        <h1 className="text-xl md:text-2xl font-bold">Dashboard</h1>
+        <p className="text-muted-foreground text-sm md:text-base">Overview of your platform</p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stats Grid - Mobile responsive */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {statCards.map((stat) => (
           <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 md:p-6 md:pb-2">
+              <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">
                 {stat.title}
               </CardTitle>
-              <stat.icon className={`h-5 w-5 ${stat.color}`} />
+              <stat.icon className={`h-4 w-4 md:h-5 md:w-5 ${stat.color}`} />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
+            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+              <div className="text-lg md:text-2xl font-bold">{stat.value}</div>
+              <p className="text-[10px] md:text-xs text-muted-foreground mt-1 line-clamp-1">{stat.description}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Quick Stats - Mobile stack */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Recent Activity */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
+          <CardHeader className="p-4 md:p-6">
+            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+              <Clock className="h-4 w-4 md:h-5 md:w-5" />
               Recent Activity
             </CardTitle>
-            <CardDescription>Latest transactions and events</CardDescription>
+            <CardDescription className="text-xs md:text-sm">Latest transactions and events</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+          <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
+            <div className="space-y-2 md:space-y-3">
               {recentActivity.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No recent activity</p>
               ) : (
                 recentActivity.map((activity) => (
                   <div 
                     key={activity.id} 
-                    className="flex items-center justify-between py-2 border-b border-border last:border-0"
+                    className="flex items-center justify-between py-2 border-b border-border last:border-0 gap-2"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 md:gap-3 min-w-0">
                       {activity.type === 'tip' ? (
-                        <Receipt className="h-4 w-4 text-green-500" />
+                        <Receipt className="h-3 w-3 md:h-4 md:w-4 text-green-500 flex-shrink-0" />
                       ) : (
-                        <Wallet className="h-4 w-4 text-orange-500" />
+                        <Wallet className="h-3 w-3 md:h-4 md:w-4 text-orange-500 flex-shrink-0" />
                       )}
-                      <span className="text-sm">{activity.message}</span>
+                      <span className="text-xs md:text-sm truncate">{activity.message}</span>
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {format(new Date(activity.created_at), 'MMM d, HH:mm')}
+                    <span className="text-[10px] md:text-xs text-muted-foreground flex-shrink-0">
+                      {format(new Date(activity.created_at), 'MMM d')}
                     </span>
                   </div>
                 ))
@@ -229,30 +224,30 @@ export default function AdminDashboard() {
 
         {/* Platform Stats */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BadgeCheck className="h-5 w-5" />
+          <CardHeader className="p-4 md:p-6">
+            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+              <BadgeCheck className="h-4 w-4 md:h-5 md:w-5" />
               Platform Summary
             </CardTitle>
-            <CardDescription>Key platform metrics</CardDescription>
+            <CardDescription className="text-xs md:text-sm">Key platform metrics</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+          <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
+            <div className="space-y-3 md:space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Creator Account Fee</span>
-                <span className="font-medium">৳150/month</span>
+                <span className="text-xs md:text-sm text-muted-foreground">Creator Account Fee</span>
+                <span className="font-medium text-sm md:text-base">৳150/month</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Tip Fee</span>
-                <span className="font-medium text-green-600">0% (Free)</span>
+                <span className="text-xs md:text-sm text-muted-foreground">Tip Fee</span>
+                <span className="font-medium text-green-600 text-sm md:text-base">0% (Free)</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Active Creators</span>
-                <span className="font-medium">{stats?.totalCreators || 0}</span>
+                <span className="text-xs md:text-sm text-muted-foreground">Active Creators</span>
+                <span className="font-medium text-sm md:text-base">{stats?.totalCreators || 0}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Est. Monthly Revenue</span>
-                <span className="font-medium text-green-600">
+                <span className="text-xs md:text-sm text-muted-foreground">Est. Monthly Revenue</span>
+                <span className="font-medium text-green-600 text-sm md:text-base">
                   ৳{((stats?.totalCreators || 0) * 150).toLocaleString()}
                 </span>
               </div>
