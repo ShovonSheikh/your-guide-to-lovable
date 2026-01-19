@@ -267,7 +267,7 @@ export default function AdminWithdrawals() {
                       <TableHead>Details</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead className="w-[140px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -303,7 +303,7 @@ export default function AdminWithdrawals() {
                           <TableCell className="text-sm text-muted-foreground">
                             {format(new Date(withdrawal.created_at), 'MMM d, yyyy')}
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell>
                             {withdrawal.status === 'completed' || withdrawal.status === 'rejected' ? (
                               <span className="text-sm text-muted-foreground">-</span>
                             ) : (

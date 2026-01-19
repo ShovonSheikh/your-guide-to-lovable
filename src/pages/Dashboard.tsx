@@ -187,6 +187,7 @@ export default function Dashboard() {
                 <p className={`text-2xl font-display font-bold ${growthPositive ? 'text-success' : 'text-destructive'}`}>
                   {growthPositive ? '+' : ''}{stats?.growthPercentage || 0}%
                 </p>
+                <p className="text-xs text-muted-foreground mt-1">vs last month</p>
               </div>
             </div>
 

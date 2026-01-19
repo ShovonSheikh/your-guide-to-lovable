@@ -508,7 +508,11 @@ export default function Settings() {
                         </div>
                       </div>
                     ) : (
-                      <p className="text-muted-foreground">No active subscription found.</p>
+                      <div className="p-4 bg-secondary/30 rounded-xl">
+                        <p className="text-sm text-muted-foreground">
+                          Your Creator Account Fee (৳150/month) will be deducted from your first earnings.
+                        </p>
+                      </div>
                     )}
 
                     <div className="pt-4 border-t border-border">

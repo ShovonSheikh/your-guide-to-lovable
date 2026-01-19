@@ -19,7 +19,7 @@ import {
   Youtube, 
   Facebook,
   Link as LinkIcon,
-  CheckCircle
+  BadgeCheck
 } from "lucide-react";
 
 interface CreatorData {
@@ -200,7 +200,7 @@ export default function CreatorProfile() {
                       {creator?.first_name} {creator?.last_name}
                     </h1>
                     {creator?.is_verified && (
-                      <CheckCircle className="w-5 h-5 text-accent" />
+                      <BadgeCheck className="w-6 h-6 text-green-600" />
                     )}
                   </div>
                   <p className="text-muted-foreground">@{creator?.username}</p>
