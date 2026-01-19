@@ -51,9 +51,13 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const event: ResendWebhookEvent = await req.json();
+    const rawPayload = await req.text();
+    console.log("[Inbound Email] Raw payload:", rawPayload);
+    
+    const event: ResendWebhookEvent = JSON.parse(rawPayload);
     
     console.log("[Inbound Email] Received webhook event:", event.type);
+    console.log("[Inbound Email] Email data keys:", Object.keys(event.data || {}));
 
     // Only process email.received events
     if (event.type !== 'email.received') {

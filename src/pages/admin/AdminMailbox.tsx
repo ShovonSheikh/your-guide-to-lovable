@@ -410,15 +410,15 @@ export default function AdminMailbox() {
               <CardTitle className="text-sm font-medium truncate flex-1">
                 {selectedEmail.subject || '(No Subject)'}
               </CardTitle>
-              <div className="flex items-center gap-1 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
+                  variant="default"
+                  size="sm"
                   onClick={openReplyComposer}
-                  title="Reply"
+                  className="gap-2"
                 >
                   <Reply className="h-4 w-4" />
+                  Reply
                 </Button>
                 <Button
                   variant="ghost"
