@@ -30,6 +30,7 @@ import AdminTips from "./pages/admin/AdminTips";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminVerifications from "./pages/admin/AdminVerifications";
 import AdminMailbox from "./pages/admin/AdminMailbox";
+import AdminAdmins from "./pages/admin/AdminAdmins";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +66,7 @@ const App = () => (
             <Route path="tips" element={<AdminTips />} />
             <Route path="mailbox" element={<AdminMailbox />} />
             <Route path="settings" element={<AdminSettings />} />
+            <Route path="admins" element={<AdminAdmins />} />
           </Route>
           <Route path="/:username" element={<CreatorProfile />} />
           <Route path="/components" element={<Components />} />
