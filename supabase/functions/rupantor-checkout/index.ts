@@ -1,6 +1,5 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,9 +15,20 @@ serve(async (req) => {
   }
 
   try {
-    const { fullname, email, amount = 150, successUrl, cancelUrl, reference_id } = await req.json();
+    const { 
+      fullname, 
+      email, 
+      amount = 150, 
+      successUrl, 
+      cancelUrl, 
+      reference_id,
+      payment_type = 'creator_fee', // 'creator_fee' or 'tip'
+      creator_id,
+      supporter_name,
+      message
+    } = await req.json();
 
-    console.log("Creating checkout for:", { fullname, email, amount });
+    console.log("Creating checkout for:", { fullname, email, amount, payment_type });
 
     // Validate required fields
     if (!fullname || !email) {
@@ -26,6 +36,29 @@ serve(async (req) => {
         JSON.stringify({ error: "fullname and email are required" }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Validate amount based on payment type
+    if (payment_type === 'creator_fee') {
+      if (amount !== 150) {
+        return new Response(
+          JSON.stringify({ error: "Creator account fee must be ৳150" }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else if (payment_type === 'tip') {
+      if (!creator_id) {
+        return new Response(
+          JSON.stringify({ error: "creator_id is required for tips" }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (amount < 10 || amount > 100000) {
+        return new Response(
+          JSON.stringify({ error: "Tip amount must be between ৳10 and ৳100,000" }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     const apiKey = Deno.env.get('RUPANTOR_API_KEY');
@@ -43,6 +76,22 @@ serve(async (req) => {
     // Build webhook URL
     const webhookUrl = `${supabaseUrl}/functions/v1/rupantor-webhook`;
 
+    // Build metadata based on payment type
+    const metadata: Record<string, any> = {
+      payment_type,
+      plan: payment_type === 'creator_fee' ? 'month_1' : undefined,
+    };
+
+    if (payment_type === 'creator_fee') {
+      metadata.signup_type = 'creator_promo';
+      metadata.reference_id = reference_id || null;
+    } else if (payment_type === 'tip') {
+      metadata.creator_id = creator_id;
+      metadata.supporter_name = supporter_name || fullname;
+      metadata.supporter_email = email;
+      metadata.message = message || null;
+    }
+
     // Call Rupantor Pay checkout API
     const checkoutResponse = await fetch(`${RUPANTOR_API_URL}/payment/checkout`, {
       method: 'POST',
@@ -58,11 +107,7 @@ serve(async (req) => {
         success_url: successUrl,
         cancel_url: cancelUrl,
         webhook_url: webhookUrl,
-        meta_data: {
-          signup_type: "creator_promo",
-          plan: "month_1",
-          reference_id: reference_id || null,
-        }
+        meta_data: metadata
       }),
     });
 
