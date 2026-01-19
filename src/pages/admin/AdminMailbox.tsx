@@ -142,8 +142,10 @@ export default function AdminMailbox() {
     }
   }, [selectedMailbox, supabase]);
 
-  const fetchEmails = useCallback(async (mailboxId: string) => {
-    setEmailsLoading(true);
+  const fetchEmails = useCallback(async (mailboxId: string, showLoading = true) => {
+    if (showLoading) {
+      setEmailsLoading(true);
+    }
     try {
       const { data, error } = await supabase
         .from('inbound_emails')
@@ -166,7 +168,9 @@ export default function AdminMailbox() {
     } catch (error) {
       console.error('Error fetching emails:', error);
     } finally {
-      setEmailsLoading(false);
+      if (showLoading) {
+        setEmailsLoading(false);
+      }
     }
   }, [supabase]);
 
@@ -181,23 +185,23 @@ export default function AdminMailbox() {
     }
   }, [selectedMailbox, fetchEmails]);
 
-  // Unified refresh function
-  const handleRefresh = useCallback(async () => {
+  // Unified refresh function (silent = no loading state, prevents flickering)
+  const handleRefresh = useCallback(async (silent = false) => {
     setIsRefreshing(true);
     try {
       await fetchMailboxes();
       if (selectedMailboxRef.current) {
-        await fetchEmails(selectedMailboxRef.current.id);
+        await fetchEmails(selectedMailboxRef.current.id, !silent);
       }
     } finally {
       setIsRefreshing(false);
     }
   }, [fetchMailboxes, fetchEmails]);
 
-  // Auto-refresh every 3 seconds
+  // Auto-refresh every 3 seconds (silent to prevent flickering)
   useEffect(() => {
     const interval = setInterval(() => {
-      handleRefresh();
+      handleRefresh(true);
     }, 3000);
 
     return () => clearInterval(interval);
@@ -368,7 +372,7 @@ export default function AdminMailbox() {
           <Button 
             variant="ghost" 
             size="icon" 
-            onClick={handleRefresh} 
+            onClick={() => handleRefresh(false)} 
             className="flex-shrink-0"
             disabled={isRefreshing}
           >
