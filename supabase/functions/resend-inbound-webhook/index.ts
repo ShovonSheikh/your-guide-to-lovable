@@ -80,27 +80,44 @@ const handler = async (req: Request): Promise<Response> => {
     const emailData = event.data;
     
     // Fetch full email content from Resend API (webhooks don't include body)
-    console.log("[Inbound Email] Fetching full email content for:", emailData.email_id);
-    const emailContentResponse = await fetch(
-      `https://api.resend.com/emails/${emailData.email_id}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${resendApiKey}`,
-        },
-      }
-    );
-
+    // Add retry logic with delay as email may not be immediately available
     let htmlBody = emailData.html || null;
     let textBody = emailData.text || null;
+    
+    const fetchEmailContent = async (retries = 3, delayMs = 2000): Promise<void> => {
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        console.log(`[Inbound Email] Fetching email content, attempt ${attempt}/${retries} for:`, emailData.email_id);
+        
+        const emailContentResponse = await fetch(
+          `https://api.resend.com/emails/${emailData.email_id}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${resendApiKey}`,
+            },
+          }
+        );
 
-    if (emailContentResponse.ok) {
-      const fullEmail = await emailContentResponse.json();
-      console.log("[Inbound Email] Full email fetched, has html:", !!fullEmail.html, "has text:", !!fullEmail.text);
-      htmlBody = fullEmail.html || htmlBody;
-      textBody = fullEmail.text || textBody;
-    } else {
-      console.error("[Inbound Email] Failed to fetch email content:", emailContentResponse.status, await emailContentResponse.text());
-    }
+        if (emailContentResponse.ok) {
+          const fullEmail = await emailContentResponse.json();
+          console.log("[Inbound Email] Full email fetched, has html:", !!fullEmail.html, "has text:", !!fullEmail.text);
+          htmlBody = fullEmail.html || htmlBody;
+          textBody = fullEmail.text || textBody;
+          return; // Success, exit retry loop
+        } else {
+          const errorText = await emailContentResponse.text();
+          console.error(`[Inbound Email] Attempt ${attempt} failed:`, emailContentResponse.status, errorText);
+          
+          // If not the last attempt and error is 404 (not found yet), wait and retry
+          if (attempt < retries && emailContentResponse.status === 404) {
+            console.log(`[Inbound Email] Email not ready, waiting ${delayMs}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+          }
+        }
+      }
+      console.warn("[Inbound Email] All retries exhausted, proceeding without email body");
+    };
+
+    await fetchEmailContent();
     
     // Extract sender info
     const { address: fromAddress, name: fromName } = parseEmailAddress(emailData.from);
