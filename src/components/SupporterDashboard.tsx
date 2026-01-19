@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { useSupporterDonations } from '@/hooks/useSupporterDonations';
 import { Avatar } from '@/components/Avatar';
 import { Button } from '@/components/ui/button';
-import { Heart, Users, DollarSign, ExternalLink, TrendingUp, Calendar, Settings, Gift } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Heart, Users, DollarSign, ExternalLink, TrendingUp, Calendar, Settings, Gift, Sparkles } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 
 export function SupporterDashboard() {
@@ -132,6 +133,28 @@ export function SupporterDashboard() {
             </div>
           </Link>
         </div>
+
+        {/* Become a Creator CTA */}
+        <Card className="border-accent/50 bg-gradient-to-br from-accent/5 to-primary/5">
+          <CardContent className="py-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="p-3 rounded-full bg-accent/20">
+                <Sparkles className="h-6 w-6 text-accent" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg">Become a Creator</h3>
+                <p className="text-sm text-muted-foreground">
+                  Start receiving tips from your supporters. Only ৳150/month Creator Account Fee.
+                </p>
+              </div>
+              <Link to="/signup">
+                <Button className="bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover w-full sm:w-auto">
+                  Get Started
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -263,6 +286,28 @@ export function SupporterDashboard() {
           </Link>
         </div>
       </div>
+
+      {/* Become a Creator CTA */}
+      <Card className="border-accent/50 bg-gradient-to-br from-accent/5 to-primary/5">
+        <CardContent className="py-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="p-3 rounded-full bg-accent/20">
+              <Sparkles className="h-6 w-6 text-accent" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-lg">Become a Creator</h3>
+              <p className="text-sm text-muted-foreground">
+                Start receiving tips from your supporters. Only ৳150/month Creator Account Fee.
+              </p>
+            </div>
+            <Link to="/signup">
+              <Button className="bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover w-full sm:w-auto">
+                Get Started
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

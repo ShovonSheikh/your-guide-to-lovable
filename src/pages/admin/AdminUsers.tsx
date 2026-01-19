@@ -4,8 +4,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
-import { Search, UserCheck, UserX, Eye } from "lucide-react";
+import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
+import { Search, Eye } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
@@ -33,6 +33,7 @@ interface User {
 }
 
 export default function AdminUsers() {
+  const supabase = useSupabaseWithAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -61,33 +62,6 @@ export default function AdminUsers() {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const toggleVerification = async (userId: string, currentStatus: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_verified: !currentStatus })
-        .eq('id', userId);
-
-      if (error) throw error;
-
-      setUsers(users.map(u => 
-        u.id === userId ? { ...u, is_verified: !currentStatus } : u
-      ));
-
-      toast({
-        title: "Success",
-        description: `User ${!currentStatus ? 'verified' : 'unverified'} successfully`,
-      });
-    } catch (error) {
-      console.error('Error updating verification:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update verification status",
-        variant: "destructive",
-      });
     }
   };
 
@@ -143,7 +117,7 @@ export default function AdminUsers() {
                   <TableHead>Type</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Joined</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right">Details</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -190,29 +164,16 @@ export default function AdminUsers() {
                         {format(new Date(user.created_at), 'MMM d, yyyy')}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setSelectedUser(user);
-                              setDialogOpen(true);
-                            }}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => toggleVerification(user.id, user.is_verified)}
-                          >
-                            {user.is_verified ? (
-                              <UserX className="h-4 w-4 text-destructive" />
-                            ) : (
-                              <UserCheck className="h-4 w-4 text-green-600" />
-                            )}
-                          </Button>
-                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setDialogOpen(true);
+                          }}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))

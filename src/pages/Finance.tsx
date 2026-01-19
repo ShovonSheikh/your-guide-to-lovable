@@ -4,6 +4,7 @@ import { Navigate } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { useCreatorStats } from "@/hooks/useCreatorStats";
 import { useSupabase } from "@/hooks/useSupabase";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { TopNavbar } from "@/components/TopNavbar";
 import { EarningsChart } from "@/components/EarningsChart";
 import { Button } from "@/components/ui/button";
@@ -52,10 +53,10 @@ export default function Finance() {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Platform fee is ৳150/month
-  const platformFee = 150;
+  // Creator Account Fee is ৳150/month
+  const creatorAccountFee = 150;
   const totalReceived = stats?.totalReceived || profile?.total_received || 0;
-  const availableBalance = Math.max(0, totalReceived - platformFee);
+  const availableBalance = Math.max(0, totalReceived - creatorAccountFee);
   const canWithdraw = availableBalance > 0;
 
   const handleWithdraw = async () => {
@@ -165,7 +166,7 @@ export default function Finance() {
               <span className="text-sm text-muted-foreground">Available</span>
             </div>
             <p className="text-2xl font-display font-bold">৳{availableBalance}</p>
-            <p className="text-xs text-muted-foreground mt-1">After ৳{platformFee} platform fee</p>
+            <p className="text-xs text-muted-foreground mt-1">After ৳{creatorAccountFee} Creator Account Fee</p>
           </div>
           
           <div className="tipkoro-card">
@@ -248,7 +249,7 @@ export default function Finance() {
                 <Wallet className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
                 <p className="text-muted-foreground">No balance available for withdrawal</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  You need to receive at least ৳{platformFee} in tips to cover the platform fee.
+                  You need to receive at least ৳{creatorAccountFee} in tips to cover the Creator Account Fee.
                 </p>
               </div>
             )}
@@ -275,9 +276,9 @@ export default function Finance() {
               <AlertCircle className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold mb-1">Monthly Subscription</h3>
+              <h3 className="font-semibold mb-1">Creator Account Fee</h3>
               <p className="text-sm text-muted-foreground">
-                A ৳{platformFee}/month platform fee is automatically deducted from your earnings. 
+                A ৳{creatorAccountFee}/month Creator Account Fee is automatically deducted from your earnings. 
                 This covers payment processing, hosting, and platform maintenance.
               </p>
             </div>

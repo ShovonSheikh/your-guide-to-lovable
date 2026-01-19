@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
+import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { Search, Receipt } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { format } from "date-fns";
@@ -29,6 +29,7 @@ interface Tip {
 }
 
 export default function AdminTips() {
+  const supabase = useSupabaseWithAuth();
   const [tips, setTips] = useState<Tip[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -89,7 +90,7 @@ export default function AdminTips() {
   });
 
   const totalAmount = tips.filter(t => t.payment_status === 'completed').reduce((sum, t) => sum + t.amount, 0);
-  const platformFee = Math.round(totalAmount * 0.08);
+  const completedTipsCount = tips.filter(t => t.payment_status === 'completed').length;
 
   if (loading) {
     return (
@@ -119,20 +120,20 @@ export default function AdminTips() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Platform Revenue (8%)</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Completed Tips</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">৳{platformFee.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Estimated platform fee collected</p>
+            <div className="text-2xl font-bold text-green-600">{completedTipsCount}</div>
+            <p className="text-xs text-muted-foreground">Successful transactions</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Creator Earnings</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Tip Fee</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">৳{(totalAmount - platformFee).toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Total paid out to creators</p>
+            <div className="text-2xl font-bold text-green-600">0%</div>
+            <p className="text-xs text-muted-foreground">No fee on tips (free)</p>
           </CardContent>
         </Card>
       </div>

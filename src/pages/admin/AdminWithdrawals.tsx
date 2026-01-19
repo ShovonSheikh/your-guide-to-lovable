@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { supabase } from "@/integrations/supabase/client";
+import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { format } from "date-fns";
@@ -41,6 +41,7 @@ interface Withdrawal {
 type WithdrawalStatus = 'pending' | 'processing' | 'completed' | 'rejected';
 
 export default function AdminWithdrawals() {
+  const supabase = useSupabaseWithAuth();
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<WithdrawalStatus | 'all'>('pending');

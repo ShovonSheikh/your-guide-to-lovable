@@ -9,22 +9,26 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { User, Link as LinkIcon, Bell, Shield, CreditCard, ArrowLeft, Info, Calendar, CheckCircle, Clock, Mail, MailOpen } from "lucide-react";
+import { User, Link as LinkIcon, Bell, Shield, CreditCard, ArrowLeft, Info, Calendar, CheckCircle, Clock, Mail, MailOpen, BadgeCheck } from "lucide-react";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNotifications } from "@/hooks/useNotifications";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { VerificationForm } from "@/components/VerificationForm";
 
 const tabs = [
   { id: 'profile', label: 'Profile', icon: User },
   { id: 'links', label: 'Social Links', icon: LinkIcon },
   { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'verification', label: 'Verification', icon: BadgeCheck, creatorOnly: true },
   { id: 'security', label: 'Security', icon: Shield },
   { id: 'billing', label: 'Billing', icon: CreditCard },
 ];
 
 export default function Settings() {
+  usePageTitle("Settings");
   const { isSignedIn, isLoaded } = useUser();
   const { profile, loading, updateProfile } = useProfile();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -34,6 +38,11 @@ export default function Settings() {
   const isMobile = useIsMobile();
   const [subscription, setSubscription] = useState<any>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+
+  // Filter tabs based on account type
+  const visibleTabs = tabs.filter(tab => 
+    !tab.creatorOnly || profile?.account_type === 'creator'
+  );
 
   // Notification settings hook
   const {
@@ -163,7 +172,7 @@ export default function Settings() {
         <div className="flex flex-col md:flex-row gap-8">
           {/* Tabs */}
           <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 md:w-48 flex-shrink-0">
-            {tabs.map((tab) => (
+            {visibleTabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setSearchParams({ tab: tab.id })}
@@ -434,6 +443,16 @@ export default function Settings() {
               <div className="tipkoro-card">
                 <h2 className="text-xl font-semibold mb-4">Security Settings</h2>
                 <p className="text-muted-foreground">Manage your account security through Clerk settings.</p>
+              </div>
+            )}
+
+            {currentTab === 'verification' && profile?.account_type === 'creator' && (
+              <div className="tipkoro-card space-y-6">
+                <h2 className="text-xl font-semibold flex items-center gap-2">
+                  <BadgeCheck className="w-5 h-5" />
+                  Account Verification
+                </h2>
+                <VerificationForm />
               </div>
             )}
 

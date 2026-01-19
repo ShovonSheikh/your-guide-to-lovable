@@ -4,6 +4,7 @@ import { TopNavbar } from "@/components/TopNavbar";
 import { MainFooter } from "@/components/MainFooter";
 import { Avatar } from "@/components/Avatar";
 import { supabase } from "@/integrations/supabase/client";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { Search, Users, Heart } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
@@ -19,6 +20,7 @@ interface Creator {
 }
 
 export default function Explore() {
+  usePageTitle("Explore Creators");
   const [creators, setCreators] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');

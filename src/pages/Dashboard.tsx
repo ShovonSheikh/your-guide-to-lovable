@@ -3,6 +3,7 @@ import { useUser } from "@clerk/clerk-react";
 import { Navigate, Link, useNavigate } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { useCreatorStats } from "@/hooks/useCreatorStats";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { TopNavbar } from "@/components/TopNavbar";
 import { Button } from "@/components/ui/button";
 import { Onboarding } from "@/components/Onboarding";
@@ -24,6 +25,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
+  usePageTitle("Dashboard");
   const { isSignedIn, isLoaded } = useUser();
   const { profile, loading: profileLoading } = useProfile();
   const { stats, recentTips, loading: statsLoading } = useCreatorStats();
