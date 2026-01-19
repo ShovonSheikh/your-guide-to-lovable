@@ -46,12 +46,13 @@ export function useAdminPermissions() {
           .from('admin_roles')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         if (error) {
           console.error('Error fetching admin permissions:', error);
-          setPermissions(defaultPermissions);
-        } else if (data) {
+        }
+
+        if (data) {
           const perms: AdminPermissions = {
             canViewDashboard: data.can_view_dashboard,
             canManageUsers: data.can_manage_users,
@@ -72,6 +73,31 @@ export function useAdminPermissions() {
                           data.can_manage_settings,
           };
           setPermissions(perms);
+        } else {
+          // No admin_roles record found - check if user is admin in profiles (fallback)
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('is_admin')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (profile?.is_admin) {
+            // User is admin but no roles record - grant full access as fallback
+            setPermissions({
+              canViewDashboard: true,
+              canManageUsers: true,
+              canManageCreators: true,
+              canManageVerifications: true,
+              canManageWithdrawals: true,
+              canViewTips: true,
+              canManageMailbox: true,
+              canManageSettings: true,
+              canManageAdmins: true,
+              isSuperAdmin: true,
+            });
+          } else {
+            setPermissions(defaultPermissions);
+          }
         }
       } catch (error) {
         console.error('Error in useAdminPermissions:', error);
