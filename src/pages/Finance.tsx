@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useUser } from "@clerk/clerk-react";
 import { Navigate } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
@@ -9,6 +9,7 @@ import { TopNavbar } from "@/components/TopNavbar";
 import { EarningsChart } from "@/components/EarningsChart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { 
   Select,
   SelectContent,
@@ -16,6 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { 
   DollarSign, 
@@ -24,10 +31,27 @@ import {
   ArrowDownToLine,
   Calendar,
   Clock,
-  AlertCircle
+  AlertCircle,
+  History,
+  CheckCircle,
+  XCircle,
+  Loader2
 } from "lucide-react";
+import { format } from "date-fns";
+
+interface WithdrawalRequest {
+  id: string;
+  amount: number;
+  payout_method: string;
+  payout_details: unknown;
+  status: string;
+  notes: string | null;
+  created_at: string;
+  processed_at: string | null;
+}
 
 export default function Finance() {
+  usePageTitle("Finance");
   const { isSignedIn, isLoaded } = useUser();
   const { profile, loading: profileLoading } = useProfile();
   const { stats, loading: statsLoading } = useCreatorStats();
@@ -36,6 +60,63 @@ export default function Finance() {
   const [payoutMethod, setPayoutMethod] = useState('');
   const [payoutDetails, setPayoutDetails] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Withdrawal history state
+  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
+  const [withdrawalsLoading, setWithdrawalsLoading] = useState(true);
+  const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalRequest | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+
+  // Fetch withdrawal history
+  useEffect(() => {
+    async function fetchWithdrawals() {
+      if (!profile?.id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('withdrawal_requests')
+          .select('*')
+          .eq('profile_id', profile.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setWithdrawals(data || []);
+      } catch (error) {
+        console.error('Error fetching withdrawals:', error);
+      } finally {
+        setWithdrawalsLoading(false);
+      }
+    }
+
+    fetchWithdrawals();
+  }, [profile?.id, supabase]);
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return <Badge variant="outline" className="text-yellow-600 border-yellow-600"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+      case 'processing':
+        return <Badge variant="outline" className="text-blue-600 border-blue-600"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Processing</Badge>;
+      case 'completed':
+        return <Badge variant="outline" className="text-green-600 border-green-600"><CheckCircle className="h-3 w-3 mr-1" />Completed</Badge>;
+      case 'rejected':
+        return <Badge variant="outline" className="text-red-600 border-red-600"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const formatPayoutMethod = (method: string) => {
+    const [provider, type] = method.split('-');
+    const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+    const typeName = type ? ` (${type.charAt(0).toUpperCase() + type.slice(1)})` : '';
+    return `${providerName}${typeName}`;
+  };
+
+  const openDetails = (withdrawal: WithdrawalRequest) => {
+    setSelectedWithdrawal(withdrawal);
+    setDetailsDialogOpen(true);
+  };
 
   if (!isLoaded || profileLoading) {
     return (
@@ -101,6 +182,15 @@ export default function Finance() {
         });
 
       if (error) throw error;
+
+      // Refresh withdrawals list
+      const { data: newWithdrawals } = await supabase
+        .from('withdrawal_requests')
+        .select('*')
+        .eq('profile_id', profile?.id)
+        .order('created_at', { ascending: false });
+      
+      if (newWithdrawals) setWithdrawals(newWithdrawals);
 
       // Send email notification
       try {
@@ -212,16 +302,19 @@ export default function Finance() {
                       <SelectValue placeholder="Select method" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="bkash">bKash</SelectItem>
-                      <SelectItem value="nagad">Nagad</SelectItem>
-                      <SelectItem value="rocket">Rocket</SelectItem>
+                      <SelectItem value="bkash-personal">bKash - Personal</SelectItem>
+                      <SelectItem value="bkash-agent">bKash - Agent</SelectItem>
+                      <SelectItem value="nagad-personal">Nagad - Personal</SelectItem>
+                      <SelectItem value="nagad-agent">Nagad - Agent</SelectItem>
+                      <SelectItem value="rocket-personal">Rocket - Personal</SelectItem>
+                      <SelectItem value="rocket-agent">Rocket - Agent</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
                   <label className="tipkoro-label">
-                    {payoutMethod ? `${payoutMethod.charAt(0).toUpperCase() + payoutMethod.slice(1)} Number` : 'Account Number'}
+                    {payoutMethod ? `${payoutMethod.split('-')[0].charAt(0).toUpperCase() + payoutMethod.split('-')[0].slice(1)} Number` : 'Account Number'}
                   </label>
                   <Input
                     value={payoutDetails}
@@ -269,6 +362,51 @@ export default function Finance() {
           </div>
         </div>
 
+        {/* Withdrawal History */}
+        <div className="tipkoro-card mt-8">
+          <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+            <History className="w-5 h-5" />
+            Withdrawal History
+          </h2>
+          
+          {withdrawalsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : withdrawals.length === 0 ? (
+            <div className="text-center py-8">
+              <History className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
+              <p className="text-muted-foreground">No withdrawal requests yet</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Your withdrawal history will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {withdrawals.map((withdrawal) => (
+                <div 
+                  key={withdrawal.id} 
+                  onClick={() => openDetails(withdrawal)}
+                  className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl cursor-pointer hover:bg-secondary/50 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 rounded-lg bg-accent/20">
+                      <Wallet className="w-4 h-4 text-accent-foreground" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">৳{withdrawal.amount.toLocaleString()}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {formatPayoutMethod(withdrawal.payout_method)} • {format(new Date(withdrawal.created_at), 'MMM d, yyyy')}
+                      </p>
+                    </div>
+                  </div>
+                  {getStatusBadge(withdrawal.status)}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Subscription Info */}
         <div className="tipkoro-card mt-8">
           <div className="flex items-start gap-4">
@@ -285,6 +423,60 @@ export default function Finance() {
           </div>
         </div>
       </main>
+
+      {/* Withdrawal Details Dialog */}
+      <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Withdrawal Details</DialogTitle>
+          </DialogHeader>
+
+          {selectedWithdrawal && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-secondary/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground mb-1">Amount</p>
+                  <p className="font-semibold text-lg">৳{selectedWithdrawal.amount.toLocaleString()}</p>
+                </div>
+                <div className="p-4 bg-secondary/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground mb-1">Status</p>
+                  <div className="mt-1">{getStatusBadge(selectedWithdrawal.status)}</div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-secondary/50 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-1">Payout Method</p>
+                <p className="font-medium">{formatPayoutMethod(selectedWithdrawal.payout_method)}</p>
+              </div>
+
+              <div className="p-4 bg-secondary/50 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-1">Account Number</p>
+                <p className="font-medium font-mono">{(selectedWithdrawal.payout_details as { number?: string })?.number || '-'}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-secondary/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground mb-1">Requested On</p>
+                  <p className="font-medium">{format(new Date(selectedWithdrawal.created_at), 'MMM d, yyyy h:mm a')}</p>
+                </div>
+                {selectedWithdrawal.processed_at && (
+                  <div className="p-4 bg-secondary/50 rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-1">Processed On</p>
+                    <p className="font-medium">{format(new Date(selectedWithdrawal.processed_at), 'MMM d, yyyy h:mm a')}</p>
+                  </div>
+                )}
+              </div>
+
+              {selectedWithdrawal.notes && (
+                <div className="p-4 bg-secondary/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground mb-1">Admin Notes</p>
+                  <p className="text-sm">{selectedWithdrawal.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
