@@ -49,7 +49,16 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    if (!resendApiKey) {
+      console.error("[Inbound Email] RESEND_API_KEY not configured");
+      return new Response(
+        JSON.stringify({ error: "RESEND_API_KEY not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const rawPayload = await req.text();
     console.log("[Inbound Email] Raw payload:", rawPayload);
@@ -69,6 +78,29 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emailData = event.data;
+    
+    // Fetch full email content from Resend API (webhooks don't include body)
+    console.log("[Inbound Email] Fetching full email content for:", emailData.email_id);
+    const emailContentResponse = await fetch(
+      `https://api.resend.com/emails/${emailData.email_id}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${resendApiKey}`,
+        },
+      }
+    );
+
+    let htmlBody = emailData.html || null;
+    let textBody = emailData.text || null;
+
+    if (emailContentResponse.ok) {
+      const fullEmail = await emailContentResponse.json();
+      console.log("[Inbound Email] Full email fetched, has html:", !!fullEmail.html, "has text:", !!fullEmail.text);
+      htmlBody = fullEmail.html || htmlBody;
+      textBody = fullEmail.text || textBody;
+    } else {
+      console.error("[Inbound Email] Failed to fetch email content:", emailContentResponse.status, await emailContentResponse.text());
+    }
     
     // Extract sender info
     const { address: fromAddress, name: fromName } = parseEmailAddress(emailData.from);
@@ -149,8 +181,8 @@ const handler = async (req: Request): Promise<Response> => {
         cc_addresses: ccAddresses,
         bcc_addresses: bccAddresses,
         subject: emailData.subject || '(No Subject)',
-        html_body: emailData.html,
-        text_body: emailData.text,
+        html_body: htmlBody,
+        text_body: textBody,
         attachments: emailData.attachments || null,
         received_at: emailData.created_at,
         is_read: false,
