@@ -1,8 +1,10 @@
 import React from "react";
 import { TopNavbar } from "@/components/TopNavbar";
 import { MainFooter } from "@/components/MainFooter";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function PrivacyPolicy() {
+  usePageTitle("Privacy Policy");
   return (
     <div className="min-h-screen bg-background">
       <TopNavbar />

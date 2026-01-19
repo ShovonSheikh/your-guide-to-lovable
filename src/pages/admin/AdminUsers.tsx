@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { Search, Eye } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { format } from "date-fns";
@@ -33,6 +34,7 @@ interface User {
 }
 
 export default function AdminUsers() {
+  usePageTitle("Admin - Users");
   const supabase = useSupabaseWithAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);

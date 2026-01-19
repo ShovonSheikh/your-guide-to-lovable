@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { useUser } from "@clerk/clerk-react";
 import { useProfile } from "@/hooks/useProfile";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { verifyPayment } from "@/lib/api";
 import { TopNavbar } from "@/components/TopNavbar";
 import { MainFooter } from "@/components/MainFooter";
@@ -13,6 +14,7 @@ import { CheckCircle, Loader2, ArrowRight, XCircle } from "lucide-react";
 const PLATFORM_FEE = 150;
 
 const CreatorPaymentSuccess: React.FC = () => {
+  usePageTitle("Payment Successful");
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, isLoaded: userLoaded } = useUser();

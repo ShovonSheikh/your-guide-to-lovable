@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { Badge } from "@/components/Badge";
 import { Button } from "@/components/ui/button";
 import { IconWithBackground } from "@/components/IconWithBackground";
@@ -26,6 +27,7 @@ import {
 } from "lucide-react";
 
 function Index() {
+  usePageTitle("Support Bangladeshi Creators");
   const location = useLocation();
 
   // Handle hash navigation from other pages

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { useUser } from "@clerk/clerk-react";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { verifyPayment } from "@/lib/api";
 import { TopNavbar } from "@/components/TopNavbar";
 import { MainFooter } from "@/components/MainFooter";
@@ -22,6 +23,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 
 const TipPaymentSuccess: React.FC = () => {
+  usePageTitle("Tip Sent Successfully");
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useUser();

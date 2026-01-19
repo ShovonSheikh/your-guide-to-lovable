@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { Users, Wallet, Receipt, TrendingUp, Clock, BadgeCheck } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { format } from "date-fns";
@@ -25,6 +26,7 @@ interface RecentActivity {
 }
 
 export default function AdminDashboard() {
+  usePageTitle("Admin - Dashboard");
   const supabase = useSupabaseWithAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);

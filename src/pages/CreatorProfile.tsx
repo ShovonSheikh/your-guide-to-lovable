@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Navigate } from "react-router-dom";
 import { useUser } from "@clerk/clerk-react";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { TopNavbar } from "@/components/TopNavbar";
 import { MainFooter } from "@/components/MainFooter";
 import { Avatar } from "@/components/Avatar";
@@ -45,6 +46,9 @@ export default function CreatorProfile() {
   const [creator, setCreator] = useState<CreatorData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  // Dynamic page title based on creator
+  usePageTitle(creator ? `${creator.first_name || creator.username} - Creator` : "Creator Profile");
   
   const [selectedAmount, setSelectedAmount] = useState<number | null>(100);
   const [customAmount, setCustomAmount] = useState('');

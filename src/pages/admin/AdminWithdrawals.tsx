@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { format } from "date-fns";
@@ -41,6 +42,7 @@ interface Withdrawal {
 type WithdrawalStatus = 'pending' | 'processing' | 'completed' | 'rejected';
 
 export default function AdminWithdrawals() {
+  usePageTitle("Admin - Withdrawals");
   const supabase = useSupabaseWithAuth();
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [loading, setLoading] = useState(true);
