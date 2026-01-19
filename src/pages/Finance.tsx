@@ -194,7 +194,7 @@ export default function Finance() {
   };
 
   const handleWithdraw = async () => {
-
+    const amount = parseFloat(withdrawAmount);
     setIsSubmitting(true);
 
     try {
