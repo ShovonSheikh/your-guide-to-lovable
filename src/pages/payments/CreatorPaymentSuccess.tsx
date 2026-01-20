@@ -109,7 +109,7 @@ const CreatorPaymentSuccess: React.FC = () => {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <TopNavbar />
-        <main className="flex-1 flex items-center justify-center p-6">
+        <main className="flex-1 flex items-center justify-center p-6 pt-24">
           <div className="tipkoro-card text-center py-12 max-w-md w-full">
             <Loader2 className="w-12 h-12 mx-auto mb-4 animate-spin text-accent" />
             <h2 className="text-xl font-semibold mb-2">Verifying Payment...</h2>
@@ -125,7 +125,7 @@ const CreatorPaymentSuccess: React.FC = () => {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <TopNavbar />
-        <main className="flex-1 flex items-center justify-center p-6">
+        <main className="flex-1 flex items-center justify-center p-6 pt-24">
           <div className="tipkoro-card text-center py-12 max-w-md w-full">
             <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-6">
               <XCircle className="w-8 h-8 text-destructive" />
@@ -148,7 +148,7 @@ const CreatorPaymentSuccess: React.FC = () => {
     <div className="min-h-screen bg-background flex flex-col">
       <Confetti />
       <TopNavbar />
-      <main className="flex-1 flex items-center justify-center p-6">
+      <main className="flex-1 flex items-center justify-center p-6 pt-24">
         <div className="tipkoro-card text-center py-12 max-w-lg w-full">
           <div className="w-20 h-20 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="w-10 h-10 text-success" />
