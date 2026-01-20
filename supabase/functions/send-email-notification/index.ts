@@ -9,7 +9,7 @@ const corsHeaders = {
 interface EmailNotificationRequest {
   profile_id?: string;
   email?: string; // Direct email for non-registered supporters
-  type: 'tip_received' | 'tip_sent' | 'withdrawal_submitted' | 'withdrawal_processing' | 'withdrawal_completed' | 'withdrawal_rejected' | 'promotion' | 'welcome_creator' | 'weekly_summary' | 'withdrawal_otp';
+  type: 'tip_received' | 'tip_sent' | 'withdrawal_submitted' | 'withdrawal_processing' | 'withdrawal_completed' | 'withdrawal_rejected' | 'promotion' | 'welcome_creator' | 'weekly_summary' | 'withdrawal_otp' | 'verification_approved' | 'verification_rejected';
   data?: {
     amount?: number;
     supporter_name?: string;
@@ -33,6 +33,7 @@ interface EmailNotificationRequest {
   };
 }
 
+
 // Role-based sender emails
 function getSenderEmail(type: string): string {
   switch (type) {
@@ -43,11 +44,14 @@ function getSenderEmail(type: string): string {
     case 'withdrawal_processing':
     case 'withdrawal_completed':
     case 'withdrawal_rejected':
+    case 'withdrawal_otp':
       return 'TipKoro Finance <finance@tipkoro.com>';
     case 'promotion':
     case 'weekly_summary':
       return 'TipKoro <hello@tipkoro.com>';
     case 'welcome_creator':
+    case 'verification_approved':
+    case 'verification_rejected':
       return 'TipKoro Team <welcome@tipkoro.com>';
     default:
       return 'TipKoro Support <support@tipkoro.com>';
@@ -773,6 +777,92 @@ function getEmailContent(type: string, data: EmailNotificationRequest['data'] = 
         `
       };
 
+    case 'verification_approved':
+      return {
+        subject: `✅ Congratulations! Your Account is Verified`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">${baseStyle}</head>
+          <body>
+            <div class="wrapper">
+              <div class="container">
+                <div class="header">
+                  <div class="logo-row">
+                    <span class="logo-heart">💛</span>
+                    <span class="logo">TipKoro</span>
+                  </div>
+                  <div class="logo-subtitle">Creator Support Platform</div>
+                </div>
+                <div class="card">
+                  <div class="emoji-icon success">✅</div>
+                  <h1 class="title">You're Verified!</h1>
+                  <p class="subtitle">Congratulations ${data.creator_name || 'Creator'}, your account has been verified.</p>
+                  
+                  <div style="background: #DCFCE7; border-radius: 16px; padding: 24px; text-align: center; margin: 28px 0;">
+                    <p style="font-size: 18px; font-weight: 600; color: #166534; margin: 0;">Your profile now displays the verified badge ✓</p>
+                  </div>
+                  
+                  <p class="message" style="text-align: center;">
+                    This badge builds trust with your supporters and shows them you're a genuine creator.
+                  </p>
+                  
+                  <div class="button-container">
+                    <a href="https://tipkoro.com/${data.username || 'dashboard'}" class="button">View Your Profile</a>
+                  </div>
+                </div>
+                ${footerHtml}
+              </div>
+            </div>
+          </body>
+          </html>
+        `
+      };
+
+    case 'verification_rejected':
+      return {
+        subject: `❌ Verification Request Declined`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">${baseStyle}</head>
+          <body>
+            <div class="wrapper">
+              <div class="container">
+                <div class="header">
+                  <div class="logo-row">
+                    <span class="logo-heart">💛</span>
+                    <span class="logo">TipKoro</span>
+                  </div>
+                  <div class="logo-subtitle">Creator Support Platform</div>
+                </div>
+                <div class="card">
+                  <div class="emoji-icon error">❌</div>
+                  <h1 class="title">Verification Declined</h1>
+                  <p class="subtitle">Hi ${data.creator_name || 'Creator'}, unfortunately we couldn't verify your account at this time.</p>
+                  
+                  ${data.reason ? `
+                    <div class="quote" style="background: #FEF2F2; border-left-color: #EF4444;">
+                      <strong>Reason:</strong> ${data.reason}
+                    </div>
+                  ` : ''}
+                  
+                  <p class="message" style="text-align: center;">
+                    You can submit a new verification request with updated documents from your settings page.
+                  </p>
+                  
+                  <div class="button-container">
+                    <a href="https://tipkoro.com/settings?tab=verification" class="button">Try Again</a>
+                  </div>
+                </div>
+                ${footerHtml}
+              </div>
+            </div>
+          </body>
+          </html>
+        `
+      };
+
     default:
       return {
         subject: '🔔 TipKoro Notification',
@@ -929,8 +1019,65 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Get email content
-    const { subject, html } = getEmailContent(type, data);
+    // Try to fetch custom template from database
+    let subject: string;
+    let html: string;
+    
+    const { data: customTemplate } = await supabase
+      .from('platform_config')
+      .select('value')
+      .eq('key', `email_template_${type}`)
+      .maybeSingle();
+
+    if (customTemplate?.value && typeof customTemplate.value === 'object') {
+      const template = customTemplate.value as { subject?: string; html?: string };
+      if (template.subject && template.html) {
+        // Use custom template with variable replacement
+        subject = template.subject;
+        html = template.html;
+        
+        // Replace all {{variable}} placeholders with actual data
+        const replacements: Record<string, string> = {
+          amount: String(data?.amount || ''),
+          supporter_name: data?.supporter_name || '',
+          creator_name: data?.creator_name || '',
+          message: data?.message || '',
+          reason: data?.reason || '',
+          username: data?.username || '',
+          first_name: data?.first_name || '',
+          week_tips_count: String(data?.week_tips_count || ''),
+          week_earnings: String(data?.week_earnings || ''),
+          new_supporters: String(data?.new_supporters || ''),
+          previous_week_earnings: String(data?.previous_week_earnings || ''),
+          otp_code: data?.otp_code || '',
+          withdrawal_amount: String(data?.withdrawal_amount || ''),
+        };
+        
+        for (const [key, value] of Object.entries(replacements)) {
+          const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+          subject = subject.replace(regex, value);
+          html = html.replace(regex, value);
+        }
+        
+        // Handle simple {{#if var}}...{{/if}} blocks
+        const ifRegex = /\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g;
+        html = html.replace(ifRegex, (_, varName, content) => {
+          return replacements[varName] ? content : '';
+        });
+        
+        console.log(`[EMAIL] Using custom template for ${type}`);
+      } else {
+        // Fall back to default template
+        const defaultContent = getEmailContent(type, data);
+        subject = defaultContent.subject;
+        html = defaultContent.html;
+      }
+    } else {
+      // Fall back to default template
+      const defaultContent = getEmailContent(type, data);
+      subject = defaultContent.subject;
+      html = defaultContent.html;
+    }
 
     // Send email via Resend REST API
     const emailResponse = await fetch('https://api.resend.com/emails', {

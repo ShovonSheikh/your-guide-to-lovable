@@ -1,11 +1,14 @@
 import React, { forwardRef } from 'react';
 import './TipKoroCard.css';
+import { BadgeCheck } from 'lucide-react';
 
 interface TipKoroCardProps {
     creatorName: string;
     tipAmount: string;
     userMessage: string;
     timestamp: string;
+    trxId?: string;
+    verified?: boolean;
 }
 
 const TipKoroCard = forwardRef<HTMLDivElement, TipKoroCardProps>(({
@@ -13,6 +16,8 @@ const TipKoroCard = forwardRef<HTMLDivElement, TipKoroCardProps>(({
     tipAmount,
     userMessage,
     timestamp,
+    trxId,
+    verified = false,
 }, ref) => {
     return (
         <div ref={ref} className="tipkoro-card-wrapper">
@@ -67,7 +72,14 @@ const TipKoroCard = forwardRef<HTMLDivElement, TipKoroCardProps>(({
                 {/* Main card */}
                 <div className="tipkoro-share-card">
                     <h1 className="tipkoro-title">
-                        You just supported<br />{creatorName}!
+                        You just supported<br />
+                        <span className="tipkoro-creator-name">
+                            {creatorName}
+                            {verified && (
+                                <BadgeCheck className="tipkoro-verified-badge" />
+                            )}
+                        </span>
+                        !
                     </h1>
 
                     <div className="tipkoro-amount">
@@ -83,6 +95,9 @@ const TipKoroCard = forwardRef<HTMLDivElement, TipKoroCardProps>(({
 
                     <div className="tipkoro-date-container">
                         <span className="tipkoro-date">{timestamp}</span>
+                        {trxId && (
+                            <span className="tipkoro-trx-id">ID: {trxId}</span>
+                        )}
                     </div>
                 </div>
             </div>

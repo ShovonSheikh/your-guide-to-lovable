@@ -34,6 +34,8 @@ const TipPaymentSuccess: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [tipData, setTipData] = useState<any>(null);
   const [creatorName, setCreatorName] = useState<string>("");
+  const [creatorVerified, setCreatorVerified] = useState<boolean>(false);
+  const [transactionIdForCard, setTransactionIdForCard] = useState<string>("");
   const [showImageCreator, setShowImageCreator] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -103,10 +105,10 @@ const TipPaymentSuccess: React.FC = () => {
         return;
       }
 
-      // Fetch creator name
+      // Fetch creator name and verification status
       const { data: creator } = await supabase
         .from("profiles")
-        .select("first_name, last_name, username")
+        .select("first_name, last_name, username, is_verified")
         .eq("id", tipInfo.creator_id)
         .single();
 
@@ -116,7 +118,13 @@ const TipPaymentSuccess: React.FC = () => {
             ? `${creator.first_name} ${creator.last_name || ""}`.trim()
             : `@${creator.username}`
         );
+        setCreatorVerified(creator.is_verified || false);
       }
+
+      // Generate transaction ID for the card
+      const shortId = transactionId.slice(0, 8).toUpperCase();
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      setTransactionIdForCard(`TIP-${dateStr}-${shortId}`);
 
       // Clear stored tip data
       localStorage.removeItem("tipkoro_tip_data");
@@ -294,6 +302,8 @@ const TipPaymentSuccess: React.FC = () => {
                 tipAmount={String(tipData?.amount || paymentAmount || "0")}
                 userMessage={tipData?.message || ""}
                 timestamp={formatTimestamp()}
+                trxId={transactionIdForCard}
+                verified={creatorVerified}
               />
             </div>
 

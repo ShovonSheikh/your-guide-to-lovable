@@ -14,6 +14,8 @@ interface ShareImageParams {
   username?: string;
   isCreator: boolean;
   timestamp?: string;
+  trxId?: string;
+  verified?: boolean;
 }
 
 // Escape HTML entities
@@ -28,7 +30,7 @@ function escapeHtml(str: string): string {
 
 // Generate SVG for the share image
 function generateSVG(params: ShareImageParams): string {
-  const { amount, creatorName, message, timestamp, isCreator } = params;
+  const { amount, creatorName, message, timestamp, isCreator, trxId, verified } = params;
   
   const statusText = isCreator ? 'You received a tip!' : `You just supported`;
   const displayMessage = message ? escapeHtml(message) : 'Thanks for being awesome!';
@@ -41,6 +43,20 @@ function generateSVG(params: ShareImageParams): string {
     minute: '2-digit',
     hour12: true,
   });
+
+  // Verified badge SVG (checkmark in circle)
+  const verifiedBadge = verified ? `
+    <g transform="translate(${300 + (safeCreatorName.length * 7)}, ${isCreator ? 195 : 220})">
+      <circle cx="0" cy="0" r="12" fill="#22c55e"/>
+      <path d="M-5 0 L-2 3 L5 -4" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  ` : '';
+
+  // Transaction ID display
+  const trxIdDisplay = trxId ? `
+    <rect x="${300 - (trxId.length * 4)}" y="${isCreator ? '465' : '485'}" width="${trxId.length * 8 + 20}" height="24" rx="12" fill="#f0ebe0"/>
+    <text x="300" y="${isCreator ? '482' : '502'}" text-anchor="middle" font-family="monospace" font-size="11" fill="#8a7a6a">ID: ${escapeHtml(trxId)}</text>
+  ` : '';
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="600" height="600" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
@@ -107,6 +123,9 @@ function generateSVG(params: ShareImageParams): string {
   <text x="300" y="235" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="600" fill="#2d1810">${safeCreatorName}!</text>
   `}
   
+  <!-- Verified badge -->
+  ${verifiedBadge}
+  
   <!-- Amount -->
   <text x="300" y="${isCreator ? '300' : '320'}" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="64" font-weight="600" fill="#d4a24a">৳${amount || '0'}</text>
   
@@ -115,6 +134,9 @@ function generateSVG(params: ShareImageParams): string {
   
   <!-- Timestamp -->
   <text x="300" y="${isCreator ? '430' : '450'}" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="500" fill="#5a4a3a">${escapeHtml(displayTimestamp)}</text>
+  
+  <!-- Transaction ID -->
+  ${trxIdDisplay}
   
   <!-- Footer branding -->
   <text x="300" y="575" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="13" fill="#8a7a6a">Support creators with TipKoro</text>

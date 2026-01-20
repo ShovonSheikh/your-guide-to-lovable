@@ -407,3 +407,28 @@
   font-weight: 500;
   color: #5a4a3a;
 }
+
+/* Creator name with verified badge */
+.tipkoro-creator-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tipkoro-verified-badge {
+  width: 28px;
+  height: 28px;
+  color: #22c55e;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Transaction ID */
+.tipkoro-trx-id {
+  font-size: 12px;
+  font-weight: 500;
+  color: #8a7a6a;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 4px 10px;
+  border-radius: 20px;
+}
