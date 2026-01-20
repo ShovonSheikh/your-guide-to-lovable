@@ -20,11 +20,13 @@ const DYNAMIC_VARIABLES = [
   { name: 'timestamp', description: 'Formatted date and time', example: 'Jan 20, 2026, 3:45 PM' },
   { name: 'supporterName', description: 'Name of the person sending the tip', example: 'Jane Smith' },
   { name: 'currency', description: 'Currency symbol', example: '৳' },
+  { name: 'trxId', description: 'Unique transaction ID', example: 'TIP-2026012034AB' },
+  { name: 'verified', description: 'Whether the creator is verified (true/false)', example: 'true' },
 ];
 
 // Default template code
 const DEFAULT_TEMPLATE = `// TipKoro Share Image Template
-// Available variables: {{creatorName}}, {{tipAmount}}, {{userMessage}}, {{timestamp}}, {{supporterName}}, {{currency}}
+// Available variables: {{creatorName}}, {{tipAmount}}, {{userMessage}}, {{timestamp}}, {{supporterName}}, {{currency}}, {{trxId}}, {{verified}}
 
 <div className="tipkoro-card-wrapper">
   {/* Decorative confetti background */}

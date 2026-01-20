@@ -32,6 +32,9 @@ import AdminVerifications from "./pages/admin/AdminVerifications";
 import AdminMailbox from "./pages/admin/AdminMailbox";
 import AdminAdmins from "./pages/admin/AdminAdmins";
 import AdminShareImage from "./pages/admin/AdminShareImage";
+import AdminEmailTemplates from "./pages/admin/AdminEmailTemplates";
+import AdminTipDetail from "./pages/admin/AdminTipDetail";
+import AdminWithdrawalDetail from "./pages/admin/AdminWithdrawalDetail";
 
 const queryClient = new QueryClient();
 
@@ -64,9 +67,12 @@ const App = () => (
             <Route path="creators" element={<AdminCreators />} />
             <Route path="verifications" element={<AdminVerifications />} />
             <Route path="withdrawals" element={<AdminWithdrawals />} />
+            <Route path="withdrawals/:withdrawalId" element={<AdminWithdrawalDetail />} />
             <Route path="tips" element={<AdminTips />} />
+            <Route path="tips/:tipId" element={<AdminTipDetail />} />
             <Route path="mailbox" element={<AdminMailbox />} />
             <Route path="share-image" element={<AdminShareImage />} />
+            <Route path="email-templates" element={<AdminEmailTemplates />} />
             <Route path="settings" element={<AdminSettings />} />
             <Route path="admins" element={<AdminAdmins />} />
           </Route>

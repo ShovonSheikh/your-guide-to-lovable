@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { CheckCircle, XCircle, Clock, Loader2, Wallet, ChevronRight } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Loader2, Wallet, Eye } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
@@ -62,6 +63,7 @@ type WithdrawalStatus = 'pending' | 'processing' | 'completed' | 'rejected';
 
 export default function AdminWithdrawals() {
   usePageTitle("Admin - Withdrawals");
+  const navigate = useNavigate();
   const supabase = useSupabaseWithAuth();
   const isMobile = useIsMobile();
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
@@ -332,7 +334,11 @@ export default function AdminWithdrawals() {
                   </div>
                 ) : (
                   filteredWithdrawals.map((withdrawal) => (
-                    <div key={withdrawal.id} className="border rounded-lg p-3 space-y-3">
+                    <div 
+                      key={withdrawal.id} 
+                      className="border rounded-lg p-3 space-y-3 cursor-pointer hover:bg-muted/50"
+                      onClick={() => navigate(`/admin/withdrawals/${withdrawal.id}`)}
+                    >
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="font-medium text-sm">
@@ -360,32 +366,48 @@ export default function AdminWithdrawals() {
                           {format(new Date(withdrawal.created_at), 'MMM d, yyyy')}
                         </span>
                         
-                        {withdrawal.status !== 'completed' && withdrawal.status !== 'rejected' && (
-                          <Select
-                            value={withdrawal.status}
-                            onValueChange={(value) => {
-                              if (value === 'processing' && withdrawal.status === 'pending') {
-                                handleAction(withdrawal, 'approve');
-                              } else if (value === 'completed' && withdrawal.status === 'processing') {
-                                handleAction(withdrawal, 'complete');
-                              } else if (value === 'rejected' && withdrawal.status === 'pending') {
-                                handleAction(withdrawal, 'reject');
-                              }
+                        <div className="flex items-center gap-2">
+                          {withdrawal.status !== 'completed' && withdrawal.status !== 'rejected' && (
+                            <Select
+                              value={withdrawal.status}
+                              onValueChange={(value) => {
+                                if (value === 'processing' && withdrawal.status === 'pending') {
+                                  handleAction(withdrawal, 'approve');
+                                } else if (value === 'completed' && withdrawal.status === 'processing') {
+                                  handleAction(withdrawal, 'complete');
+                                } else if (value === 'rejected' && withdrawal.status === 'pending') {
+                                  handleAction(withdrawal, 'reject');
+                                }
+                              }}
+                            >
+                              <SelectTrigger 
+                                className="w-[110px] h-8 text-xs"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="pending" disabled={withdrawal.status !== 'pending'}>Pending</SelectItem>
+                                <SelectItem value="processing" disabled={withdrawal.status === 'processing'}>Processing</SelectItem>
+                                <SelectItem value="completed" disabled={withdrawal.status !== 'processing'}>Completed</SelectItem>
+                                {withdrawal.status === 'pending' && (
+                                  <SelectItem value="rejected" className="text-destructive">Rejected</SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
+                          )}
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/admin/withdrawals/${withdrawal.id}`);
                             }}
                           >
-                            <SelectTrigger className="w-[110px] h-8 text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pending" disabled={withdrawal.status !== 'pending'}>Pending</SelectItem>
-                              <SelectItem value="processing" disabled={withdrawal.status === 'processing'}>Processing</SelectItem>
-                              <SelectItem value="completed" disabled={withdrawal.status !== 'processing'}>Completed</SelectItem>
-                              {withdrawal.status === 'pending' && (
-                                <SelectItem value="rejected" className="text-destructive">Rejected</SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
-                        )}
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))
@@ -415,7 +437,11 @@ export default function AdminWithdrawals() {
                       </tr>
                     ) : (
                       filteredWithdrawals.map((withdrawal) => (
-                        <tr key={withdrawal.id} className="border-b last:border-0">
+                        <tr 
+                          key={withdrawal.id} 
+                          className="border-b last:border-0 cursor-pointer hover:bg-muted/50"
+                          onClick={() => navigate(`/admin/withdrawals/${withdrawal.id}`)}
+                        >
                           <td className="py-3 px-2">
                             <div>
                               <p className="font-medium">
@@ -440,34 +466,50 @@ export default function AdminWithdrawals() {
                             {format(new Date(withdrawal.created_at), 'MMM d, yyyy')}
                           </td>
                           <td className="py-3 px-2">
-                            {withdrawal.status === 'completed' || withdrawal.status === 'rejected' ? (
-                              <span className="text-sm text-muted-foreground">-</span>
-                            ) : (
-                              <Select
-                                value={withdrawal.status}
-                                onValueChange={(value) => {
-                                  if (value === 'processing' && withdrawal.status === 'pending') {
-                                    handleAction(withdrawal, 'approve');
-                                  } else if (value === 'completed' && withdrawal.status === 'processing') {
-                                    handleAction(withdrawal, 'complete');
-                                  } else if (value === 'rejected' && withdrawal.status === 'pending') {
-                                    handleAction(withdrawal, 'reject');
-                                  }
+                            <div className="flex items-center gap-2">
+                              {withdrawal.status === 'completed' || withdrawal.status === 'rejected' ? (
+                                <span className="text-sm text-muted-foreground">-</span>
+                              ) : (
+                                <Select
+                                  value={withdrawal.status}
+                                  onValueChange={(value) => {
+                                    if (value === 'processing' && withdrawal.status === 'pending') {
+                                      handleAction(withdrawal, 'approve');
+                                    } else if (value === 'completed' && withdrawal.status === 'processing') {
+                                      handleAction(withdrawal, 'complete');
+                                    } else if (value === 'rejected' && withdrawal.status === 'pending') {
+                                      handleAction(withdrawal, 'reject');
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger 
+                                    className="w-[130px]"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="pending" disabled={withdrawal.status !== 'pending'}>Pending</SelectItem>
+                                    <SelectItem value="processing" disabled={withdrawal.status === 'processing'}>Processing</SelectItem>
+                                    <SelectItem value="completed" disabled={withdrawal.status !== 'processing'}>Completed</SelectItem>
+                                    {withdrawal.status === 'pending' && (
+                                      <SelectItem value="rejected" className="text-destructive">Rejected</SelectItem>
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/admin/withdrawals/${withdrawal.id}`);
                                 }}
                               >
-                                <SelectTrigger className="w-[130px]">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="pending" disabled={withdrawal.status !== 'pending'}>Pending</SelectItem>
-                                  <SelectItem value="processing" disabled={withdrawal.status === 'processing'}>Processing</SelectItem>
-                                  <SelectItem value="completed" disabled={withdrawal.status !== 'processing'}>Completed</SelectItem>
-                                  {withdrawal.status === 'pending' && (
-                                    <SelectItem value="rejected" className="text-destructive">Rejected</SelectItem>
-                                  )}
-                                </SelectContent>
-                              </Select>
-                            )}
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       ))
