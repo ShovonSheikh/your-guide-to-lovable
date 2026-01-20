@@ -9,7 +9,7 @@ import { MainFooter } from "@/components/MainFooter";
 import { Button } from "@/components/ui/button";
 import { Confetti } from "@/components/Confetti";
 import TipKoroCard from "@/components/TipKoroCard";
-import html2canvas from "html2canvas";
+import { toPng } from "html-to-image";
 import {
   Heart,
   Loader2,
@@ -139,14 +139,13 @@ const TipPaymentSuccess: React.FC = () => {
 
     setIsGenerating(true);
     try {
-      const canvas = await html2canvas(cardRef.current, {
+      const dataUrl = await toPng(cardRef.current, {
+        quality: 1,
+        pixelRatio: 2,
         backgroundColor: '#f5e6d3',
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
+        cacheBust: true,
+        skipAutoScale: true,
       });
-      const dataUrl = canvas.toDataURL('image/png');
       setGeneratedImage(dataUrl);
     } catch (err) {
       console.error("Image generation error:", err);
