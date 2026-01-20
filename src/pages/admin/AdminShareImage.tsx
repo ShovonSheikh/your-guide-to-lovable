@@ -1,71 +1,458 @@
-import { useState, useRef, useEffect } from 'react';
-import { useShareImageConfig, defaultShareImageConfig, ShareImageConfig } from '@/hooks/useShareImageConfig';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import Editor from '@monaco-editor/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/hooks/use-toast';
-import { Palette, Type, Layout, RotateCcw, Save, Eye } from 'lucide-react';
-import TipKoroCard from '@/components/TipKoroCard';
+import { Code, Eye, RotateCcw, Save, Play, Variable, Copy } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { useSupabaseWithAuth } from '@/hooks/useSupabaseWithAuth';
+
+// Available dynamic variables
+const DYNAMIC_VARIABLES = [
+  { name: 'creatorName', description: 'Name of the creator receiving the tip', example: 'John Doe' },
+  { name: 'tipAmount', description: 'Amount of the tip in currency', example: '500' },
+  { name: 'userMessage', description: 'Message from the supporter', example: 'Thanks for the amazing content!' },
+  { name: 'timestamp', description: 'Formatted date and time', example: 'Jan 20, 2026, 3:45 PM' },
+  { name: 'supporterName', description: 'Name of the person sending the tip', example: 'Jane Smith' },
+  { name: 'currency', description: 'Currency symbol', example: '৳' },
+];
+
+// Default template code
+const DEFAULT_TEMPLATE = `// TipKoro Share Image Template
+// Available variables: {{creatorName}}, {{tipAmount}}, {{userMessage}}, {{timestamp}}, {{supporterName}}, {{currency}}
+
+<div className="tipkoro-card-wrapper">
+  {/* Decorative confetti background */}
+  <div className="tipkoro-confetti">
+    {/* Curved pieces */}
+    <div className="tipkoro-confetti-piece tipkoro-curve tipkoro-piece1"></div>
+    <div className="tipkoro-confetti-piece tipkoro-curve tipkoro-piece2"></div>
+    <div className="tipkoro-confetti-piece tipkoro-curve tipkoro-piece3"></div>
+    <div className="tipkoro-confetti-piece tipkoro-curve tipkoro-piece4"></div>
+    <div className="tipkoro-confetti-piece tipkoro-curve tipkoro-piece5"></div>
+    <div className="tipkoro-confetti-piece tipkoro-curve tipkoro-piece6"></div>
+    <div className="tipkoro-confetti-piece tipkoro-curve tipkoro-piece7"></div>
+    <div className="tipkoro-confetti-piece tipkoro-curve tipkoro-piece8"></div>
+    <div className="tipkoro-confetti-piece tipkoro-curve tipkoro-piece9"></div>
+    <div className="tipkoro-confetti-piece tipkoro-curve tipkoro-piece10"></div>
+    <div className="tipkoro-confetti-piece tipkoro-curve tipkoro-piece11"></div>
+    <div className="tipkoro-confetti-piece tipkoro-curve tipkoro-piece12"></div>
+    <div className="tipkoro-confetti-piece tipkoro-curve tipkoro-piece13"></div>
+    <div className="tipkoro-confetti-piece tipkoro-curve tipkoro-piece14"></div>
+    <div className="tipkoro-confetti-piece tipkoro-curve tipkoro-piece15"></div>
+
+    {/* Dots */}
+    <div className="tipkoro-confetti-piece tipkoro-dot tipkoro-dot1"></div>
+    <div className="tipkoro-confetti-piece tipkoro-dot tipkoro-dot2"></div>
+    <div className="tipkoro-confetti-piece tipkoro-dot tipkoro-dot3"></div>
+
+    {/* Stars */}
+    <div className="tipkoro-star tipkoro-star1"></div>
+    <div className="tipkoro-star tipkoro-star2"></div>
+    <div className="tipkoro-star tipkoro-star3"></div>
+    <div className="tipkoro-star tipkoro-star4"></div>
+    <div className="tipkoro-star tipkoro-star5"></div>
+    <div className="tipkoro-star tipkoro-star6"></div>
+
+    {/* Sparkles */}
+    <div className="tipkoro-sparkle tipkoro-sparkle1"></div>
+    <div className="tipkoro-sparkle tipkoro-sparkle2"></div>
+    <div className="tipkoro-sparkle tipkoro-sparkle3"></div>
+  </div>
+
+  <div className="tipkoro-card-container">
+    {/* Logo circle with image */}
+    <div className="tipkoro-logo-circle">
+      <img
+        src="https://i.ibb.co.com/hF035hX2/2026-01-16-21-27-58-your-guide-to-lovable-Antigravity-tip-share-image-guide-txt-removebg-preview.png"
+        alt="TipKoro Logo"
+        className="tipkoro-logo-img"
+      />
+    </div>
+
+    {/* Main card */}
+    <div className="tipkoro-share-card">
+      <h1 className="tipkoro-title">
+        You just supported<br />{{creatorName}}!
+      </h1>
+
+      <div className="tipkoro-amount">
+        <span className="tipkoro-currency">{{currency}}</span>
+        <span>{{tipAmount}}</span>
+      </div>
+
+      <div className="tipkoro-message-container">
+        <div className="tipkoro-message-text">
+          Message: {{userMessage}}
+        </div>
+      </div>
+
+      <div className="tipkoro-date-container">
+        <span className="tipkoro-date">{{timestamp}}</span>
+      </div>
+    </div>
+  </div>
+</div>`;
+
+// Default CSS template
+const DEFAULT_CSS = `/* TipKoro Share Image Styles */
+/* You can modify colors, sizes, and positions here */
+
+.tipkoro-card-wrapper {
+  font-family: 'Fredoka', sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #f5e6d3 0%, #e8d4b8 100%);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  width: 600px;
+  height: 600px;
+}
+
+.tipkoro-confetti {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  inset: 0;
+}
+
+.tipkoro-confetti-piece {
+  position: absolute;
+  border-radius: 50%;
+}
+
+/* Stars */
+.tipkoro-star {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 14px solid #d4af37;
+  transform: rotate(35deg);
+}
+
+/* Curved confetti pieces */
+.tipkoro-curve {
+  width: 30px;
+  height: 12px;
+  border-radius: 50px;
+}
+
+/* Confetti positions */
+.tipkoro-piece1 { top: 5%; left: 10%; background: #f4c790; transform: rotate(-25deg); }
+.tipkoro-piece2 { top: 3%; left: 17%; background: #b8d4c8; transform: rotate(30deg); }
+.tipkoro-piece3 { top: 7%; left: 25%; background: #f4d0a0; transform: rotate(-15deg); }
+.tipkoro-piece4 { top: 2%; left: 45%; background: #e8d4b8; width: 10px; height: 10px; }
+.tipkoro-piece5 { top: 6%; right: 38%; background: #f4c790; transform: rotate(20deg); }
+.tipkoro-piece6 { top: 3%; right: 25%; background: #e8d4b8; width: 8px; height: 8px; }
+.tipkoro-piece7 { top: 5%; right: 15%; background: #b8d4c8; transform: rotate(-30deg); }
+.tipkoro-piece8 { top: 8%; right: 5%; background: #f4d0a0; transform: rotate(25deg); }
+.tipkoro-piece9 { top: 3%; right: 3%; background: #e8d4b8; width: 9px; height: 9px; }
+.tipkoro-piece10 { top: 25%; left: 3%; background: #b8d4c8; transform: rotate(20deg); }
+.tipkoro-piece11 { bottom: 30%; left: 5%; background: #f4c790; transform: rotate(-35deg); }
+.tipkoro-piece12 { bottom: 20%; left: 12%; background: #b8d4c8; transform: rotate(15deg); }
+.tipkoro-piece13 { bottom: 15%; right: 8%; background: #f4d0a0; transform: rotate(-20deg); }
+.tipkoro-piece14 { bottom: 25%; right: 15%; background: #b8d4c8; transform: rotate(30deg); }
+.tipkoro-piece15 { top: 35%; right: 2%; background: #e8d4b8; width: 12px; height: 12px; }
+
+/* Dots */
+.tipkoro-dot { width: 8px; height: 8px; border-radius: 50%; }
+.tipkoro-dot1 { top: 20%; left: 3%; background: #f4c790; }
+.tipkoro-dot2 { top: 35%; right: 2%; background: #b8d4c8; }
+.tipkoro-dot3 { bottom: 40%; left: 15%; background: #d4af37; }
+
+/* Star positions */
+.tipkoro-star1 { top: 8%; left: 32%; transform: scale(0.7) rotate(35deg); }
+.tipkoro-star2 { top: 4%; right: 45%; transform: scale(0.5) rotate(35deg); }
+.tipkoro-star3 { top: 12%; right: 10%; transform: scale(0.8) rotate(35deg); }
+.tipkoro-star4 { bottom: 18%; left: 8%; transform: scale(0.9) rotate(35deg); }
+.tipkoro-star5 { bottom: 12%; right: 5%; transform: scale(0.8) rotate(35deg); }
+.tipkoro-star6 { top: 20%; left: 5%; transform: scale(0.6) rotate(35deg); }
+
+/* Sparkles */
+.tipkoro-sparkle {
+  position: absolute;
+  width: 3px;
+  height: 20px;
+  background: #d4af37;
+}
+.tipkoro-sparkle:after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 3px;
+  background: #d4af37;
+  top: 8px;
+  left: -8px;
+}
+.tipkoro-sparkle1 { top: 12%; left: 30%; transform: scale(0.5); }
+.tipkoro-sparkle2 { top: 10%; right: 35%; transform: scale(0.4); }
+.tipkoro-sparkle3 { bottom: 30%; left: 25%; transform: scale(0.6); }
+
+/* Card container */
+.tipkoro-card-container {
+  position: relative;
+  z-index: 1;
+}
+
+/* Logo circle */
+.tipkoro-logo-circle {
+  position: absolute;
+  top: -35px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70px;
+  height: 70px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  z-index: 2;
+  overflow: hidden;
+}
+
+.tipkoro-logo-img {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+}
+
+/* Main card */
+.tipkoro-share-card {
+  background: white;
+  background-image: url('https://i.ibb.co.com/QjxJWNtb/image.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: 30px;
+  padding: 60px 50px 40px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.tipkoro-share-card:after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 200px;
+  background: linear-gradient(to top, rgba(245, 230, 211, 0.6) 0%, rgba(245, 230, 211, 0) 100%);
+  pointer-events: none;
+}
+
+/* Title */
+.tipkoro-title {
+  font-size: 36px;
+  font-weight: 600;
+  color: #2d1810;
+  margin-bottom: 15px;
+  line-height: 1.2;
+  position: relative;
+  z-index: 1;
+}
+
+/* Amount */
+.tipkoro-amount {
+  font-size: 64px;
+  font-weight: 600;
+  color: #d4a24a;
+  margin: 15px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  position: relative;
+  z-index: 1;
+}
+
+.tipkoro-currency {
+  font-size: 52px;
+}
+
+/* Message */
+.tipkoro-message-container {
+  margin: 20px 0;
+  position: relative;
+  z-index: 1;
+}
+
+.tipkoro-message-text {
+  font-size: 22px;
+  font-weight: 400;
+  color: #2d1810;
+}
+
+/* Date */
+.tipkoro-date-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 25px;
+  position: relative;
+  z-index: 1;
+}
+
+.tipkoro-date {
+  font-size: 18px;
+  font-weight: 500;
+  color: #5a4a3a;
+}`;
+
+// Sample preview values
+const SAMPLE_VALUES = {
+  creatorName: 'Sample Creator',
+  tipAmount: '500',
+  userMessage: 'Thank you for the amazing content!',
+  timestamp: new Date().toLocaleString('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }),
+  supporterName: 'Happy Supporter',
+  currency: '৳',
+};
 
 export default function AdminShareImage() {
-  const { config, loading, saving, updateConfig, resetConfig } = useShareImageConfig();
-  const [localConfig, setLocalConfig] = useState<ShareImageConfig>(config);
+  const supabase = useSupabaseWithAuth();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [jsxCode, setJsxCode] = useState(DEFAULT_TEMPLATE);
+  const [cssCode, setCssCode] = useState(DEFAULT_CSS);
+  const [previewValues, setPreviewValues] = useState(SAMPLE_VALUES);
   const [hasChanges, setHasChanges] = useState(false);
-  const cardRef = useRef<HTMLDivElement>(null);
+  const [savedJsx, setSavedJsx] = useState(DEFAULT_TEMPLATE);
+  const [savedCss, setSavedCss] = useState(DEFAULT_CSS);
+  const [activeTab, setActiveTab] = useState<'jsx' | 'css'>('jsx');
+  const previewRef = useRef<HTMLDivElement>(null);
 
-  // Sync local config when config loads
+  // Fetch saved template from database
   useEffect(() => {
-    if (!loading) {
-      setLocalConfig(config);
-    }
-  }, [config, loading]);
+    const fetchTemplate = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('platform_config')
+          .select('value')
+          .eq('key', 'share_image_template')
+          .maybeSingle();
+
+        if (error) throw error;
+        
+        if (data?.value) {
+          const template = data.value as { jsx?: string; css?: string };
+          if (template.jsx) {
+            setJsxCode(template.jsx);
+            setSavedJsx(template.jsx);
+          }
+          if (template.css) {
+            setCssCode(template.css);
+            setSavedCss(template.css);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching template:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTemplate();
+  }, [supabase]);
 
   // Track changes
   useEffect(() => {
-    const changed = JSON.stringify(localConfig) !== JSON.stringify(config);
-    setHasChanges(changed);
-  }, [localConfig, config]);
+    const jsxChanged = jsxCode !== savedJsx;
+    const cssChanged = cssCode !== savedCss;
+    setHasChanges(jsxChanged || cssChanged);
+  }, [jsxCode, cssCode, savedJsx, savedCss]);
 
-  const handleChange = <K extends keyof ShareImageConfig>(key: K, value: ShareImageConfig[K]) => {
-    setLocalConfig(prev => ({ ...prev, [key]: value }));
-  };
+  // Replace variables in template for preview
+  const renderedHtml = useMemo(() => {
+    let html = jsxCode;
+    
+    // Remove comment lines for rendering
+    html = html.replace(/\/\/.*$/gm, '');
+    
+    // Replace {{variable}} with actual values
+    Object.entries(previewValues).forEach(([key, value]) => {
+      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+      html = html.replace(regex, value);
+    });
+    
+    // Convert JSX className to class for HTML
+    html = html.replace(/className=/g, 'class=');
+    
+    // Remove JSX comments
+    html = html.replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+    
+    return html;
+  }, [jsxCode, previewValues]);
 
   const handleSave = async () => {
-    const success = await updateConfig(localConfig);
-    if (success) {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('platform_config')
+        .upsert({
+          key: 'share_image_template',
+          value: { jsx: jsxCode, css: cssCode },
+          description: 'Share image JSX and CSS template',
+        }, { onConflict: 'key' });
+
+      if (error) throw error;
+
+      setSavedJsx(jsxCode);
+      setSavedCss(cssCode);
       toast({
-        title: 'Settings Saved',
-        description: 'Share image configuration has been updated.',
+        title: 'Template Saved',
+        description: 'Share image template has been updated.',
       });
-    } else {
+    } catch (error) {
+      console.error('Error saving template:', error);
       toast({
         title: 'Error',
-        description: 'Failed to save settings. Please try again.',
+        description: 'Failed to save template. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleReset = async () => {
-    const success = await resetConfig();
-    if (success) {
-      setLocalConfig(defaultShareImageConfig);
-      toast({
-        title: 'Settings Reset',
-        description: 'Share image configuration has been reset to defaults.',
-      });
-    } else {
-      toast({
-        title: 'Error',
-        description: 'Failed to reset settings. Please try again.',
-        variant: 'destructive',
-      });
-    }
+  const handleReset = () => {
+    setJsxCode(DEFAULT_TEMPLATE);
+    setCssCode(DEFAULT_CSS);
+    toast({
+      title: 'Template Reset',
+      description: 'Template has been reset to default.',
+    });
+  };
+
+  const insertVariable = (variableName: string) => {
+    const variable = `{{${variableName}}}`;
+    navigator.clipboard.writeText(variable);
+    toast({
+      title: 'Variable Copied',
+      description: `${variable} copied to clipboard. Paste it in the editor.`,
+    });
   };
 
   if (loading) {
@@ -76,258 +463,121 @@ export default function AdminShareImage() {
     );
   }
 
-  // Generate preview styles based on config
-  const previewStyles = {
-    '--preview-bg': localConfig.backgroundColor,
-    '--preview-card-bg': localConfig.cardBackgroundColor,
-    '--preview-accent': localConfig.accentColor,
-    '--preview-text': localConfig.textColor,
-    '--preview-secondary': localConfig.secondaryTextColor,
-  } as React.CSSProperties;
-
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold font-display">Share Image Settings</h1>
+          <h1 className="text-2xl font-bold font-display">Share Image Editor</h1>
           <p className="text-muted-foreground">
-            Customize the donation share image appearance
+            Edit the JSX template and CSS styles for donation share images
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleReset}
-            disabled={saving}
-          >
+          <Button variant="outline" onClick={handleReset} disabled={saving}>
             <RotateCcw className="w-4 h-4 mr-2" />
-            Reset to Default
+            Reset
           </Button>
-          <Button
-            onClick={handleSave}
-            disabled={saving || !hasChanges}
-          >
-            {saving ? (
-              <Spinner className="w-4 h-4 mr-2" />
-            ) : (
-              <Save className="w-4 h-4 mr-2" />
-            )}
+          <Button onClick={handleSave} disabled={saving || !hasChanges}>
+            {saving ? <Spinner className="w-4 h-4 mr-2" /> : <Save className="w-4 h-4 mr-2" />}
             Save Changes
           </Button>
         </div>
       </div>
 
+      {/* Variable Reference */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Variable className="w-5 h-5 text-muted-foreground" />
+            <CardTitle className="text-base">Dynamic Variables</CardTitle>
+          </div>
+          <CardDescription>Click a variable to copy it to clipboard</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {DYNAMIC_VARIABLES.map((variable) => (
+              <Badge
+                key={variable.name}
+                variant="secondary"
+                className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors px-3 py-1.5"
+                onClick={() => insertVariable(variable.name)}
+                title={`${variable.description}\nExample: ${variable.example}`}
+              >
+                <Copy className="w-3 h-3 mr-1.5" />
+                {`{{${variable.name}}}`}
+              </Badge>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Settings Panel */}
+        {/* Code Editor Panel */}
         <div className="space-y-4">
-          <Tabs defaultValue="colors" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="colors" className="gap-2">
-                <Palette className="w-4 h-4" />
-                Colors
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'jsx' | 'css')}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="jsx" className="gap-2">
+                <Code className="w-4 h-4" />
+                JSX Template
               </TabsTrigger>
-              <TabsTrigger value="typography" className="gap-2">
-                <Type className="w-4 h-4" />
-                Typography
-              </TabsTrigger>
-              <TabsTrigger value="layout" className="gap-2">
-                <Layout className="w-4 h-4" />
-                Layout
+              <TabsTrigger value="css" className="gap-2">
+                <Code className="w-4 h-4" />
+                CSS Styles
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="colors" className="space-y-4 mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Color Settings</CardTitle>
-                  <CardDescription>
-                    Customize the colors of the share image
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="backgroundColor">Background Gradient</Label>
-                      <Input
-                        id="backgroundColor"
-                        value={localConfig.backgroundColor}
-                        onChange={(e) => handleChange('backgroundColor', e.target.value)}
-                        placeholder="linear-gradient(135deg, #f5e6d3 0%, #e8d4b8 100%)"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Use CSS gradient syntax or solid color
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="cardBackgroundColor">Card Background</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          type="color"
-                          value={localConfig.cardBackgroundColor}
-                          onChange={(e) => handleChange('cardBackgroundColor', e.target.value)}
-                          className="w-12 h-10 p-1 cursor-pointer"
-                        />
-                        <Input
-                          id="cardBackgroundColor"
-                          value={localConfig.cardBackgroundColor}
-                          onChange={(e) => handleChange('cardBackgroundColor', e.target.value)}
-                          className="flex-1"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="accentColor">Accent Color (Amount)</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          type="color"
-                          value={localConfig.accentColor}
-                          onChange={(e) => handleChange('accentColor', e.target.value)}
-                          className="w-12 h-10 p-1 cursor-pointer"
-                        />
-                        <Input
-                          id="accentColor"
-                          value={localConfig.accentColor}
-                          onChange={(e) => handleChange('accentColor', e.target.value)}
-                          className="flex-1"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="textColor">Primary Text Color</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          type="color"
-                          value={localConfig.textColor}
-                          onChange={(e) => handleChange('textColor', e.target.value)}
-                          className="w-12 h-10 p-1 cursor-pointer"
-                        />
-                        <Input
-                          id="textColor"
-                          value={localConfig.textColor}
-                          onChange={(e) => handleChange('textColor', e.target.value)}
-                          className="flex-1"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="secondaryTextColor">Secondary Text Color</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          type="color"
-                          value={localConfig.secondaryTextColor}
-                          onChange={(e) => handleChange('secondaryTextColor', e.target.value)}
-                          className="w-12 h-10 p-1 cursor-pointer"
-                        />
-                        <Input
-                          id="secondaryTextColor"
-                          value={localConfig.secondaryTextColor}
-                          onChange={(e) => handleChange('secondaryTextColor', e.target.value)}
-                          className="flex-1"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
+            <TabsContent value="jsx" className="mt-4">
+              <Card className="overflow-hidden">
+                <div className="border-b bg-muted/50 px-4 py-2 flex items-center justify-between">
+                  <span className="text-sm font-medium">TipKoroCard.jsx</span>
+                  <Badge variant="outline" className="text-xs">React JSX</Badge>
+                </div>
+                <div className="h-[500px]">
+                  <Editor
+                    height="100%"
+                    language="javascript"
+                    theme="vs-dark"
+                    value={jsxCode}
+                    onChange={(value) => setJsxCode(value || '')}
+                    options={{
+                      minimap: { enabled: false },
+                      fontSize: 13,
+                      wordWrap: 'on',
+                      lineNumbers: 'on',
+                      scrollBeyondLastLine: false,
+                      automaticLayout: true,
+                      tabSize: 2,
+                    }}
+                  />
+                </div>
               </Card>
             </TabsContent>
 
-            <TabsContent value="typography" className="space-y-4 mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Typography Settings</CardTitle>
-                  <CardDescription>
-                    Choose fonts and text styling
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="font">Font Family</Label>
-                    <Select
-                      value={localConfig.font}
-                      onValueChange={(value) => handleChange('font', value as ShareImageConfig['font'])}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select font" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Fredoka">Fredoka (Default)</SelectItem>
-                        <SelectItem value="DM Sans">DM Sans</SelectItem>
-                        <SelectItem value="Inter">Inter</SelectItem>
-                        <SelectItem value="Poppins">Poppins</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="brandingText">Footer Branding Text</Label>
-                    <Input
-                      id="brandingText"
-                      value={localConfig.brandingText}
-                      onChange={(e) => handleChange('brandingText', e.target.value)}
-                      placeholder="Support creators with TipKoro"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="layout" className="space-y-4 mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Layout Settings</CardTitle>
-                  <CardDescription>
-                    Configure card style and decorations
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="cardStyle">Card Style</Label>
-                    <Select
-                      value={localConfig.cardStyle}
-                      onValueChange={(value) => handleChange('cardStyle', value as ShareImageConfig['cardStyle'])}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select style" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="celebration">Celebration (Default)</SelectItem>
-                        <SelectItem value="minimal">Minimal</SelectItem>
-                        <SelectItem value="dark">Dark Mode</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="showConfetti">Show Confetti</Label>
-                      <p className="text-xs text-muted-foreground">
-                        Display decorative confetti elements
-                      </p>
-                    </div>
-                    <Switch
-                      id="showConfetti"
-                      checked={localConfig.showConfetti}
-                      onCheckedChange={(checked) => handleChange('showConfetti', checked)}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="logoUrl">Logo URL</Label>
-                    <Input
-                      id="logoUrl"
-                      value={localConfig.logoUrl || ''}
-                      onChange={(e) => handleChange('logoUrl', e.target.value || null)}
-                      placeholder="https://example.com/logo.png"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      URL of the logo displayed on the card
-                    </p>
-                  </div>
-                </CardContent>
+            <TabsContent value="css" className="mt-4">
+              <Card className="overflow-hidden">
+                <div className="border-b bg-muted/50 px-4 py-2 flex items-center justify-between">
+                  <span className="text-sm font-medium">TipKoroCard.css</span>
+                  <Badge variant="outline" className="text-xs">CSS</Badge>
+                </div>
+                <div className="h-[500px]">
+                  <Editor
+                    height="100%"
+                    language="css"
+                    theme="vs-dark"
+                    value={cssCode}
+                    onChange={(value) => setCssCode(value || '')}
+                    options={{
+                      minimap: { enabled: false },
+                      fontSize: 13,
+                      wordWrap: 'on',
+                      lineNumbers: 'on',
+                      scrollBeyondLastLine: false,
+                      automaticLayout: true,
+                      tabSize: 2,
+                    }}
+                  />
+                </div>
               </Card>
             </TabsContent>
           </Tabs>
@@ -342,34 +592,63 @@ export default function AdminShareImage() {
                 <CardTitle className="text-lg">Live Preview</CardTitle>
               </div>
               <CardDescription>
-                This is how the donation share image will look
+                Preview updates automatically as you edit
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {/* Inject CSS and render HTML */}
+              <style>{cssCode}</style>
               <div 
-                className="flex justify-center overflow-hidden rounded-xl border border-border"
-                style={previewStyles}
+                className="flex justify-center overflow-hidden rounded-xl border border-border bg-muted/30"
               >
-                <div className="transform scale-[0.6] origin-center">
-                  <TipKoroCard
-                    ref={cardRef}
-                    creatorName="Sample Creator"
-                    tipAmount="500"
-                    userMessage="Thank you for the amazing content!"
-                    timestamp={new Date().toLocaleString('en-US', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      hour12: true,
-                    })}
+                <div className="transform scale-[0.55] origin-center">
+                  <div 
+                    ref={previewRef}
+                    dangerouslySetInnerHTML={{ __html: renderedHtml }}
                   />
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground text-center mt-4">
-                Note: Some styling changes require regenerating the edge function for server-side rendering
-              </p>
+            </CardContent>
+          </Card>
+
+          {/* Test Values */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Play className="w-5 h-5 text-muted-foreground" />
+                <CardTitle className="text-base">Test Values</CardTitle>
+              </div>
+              <CardDescription>Modify preview values to test different scenarios</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Creator Name</Label>
+                    <Input
+                      value={previewValues.creatorName}
+                      onChange={(e) => setPreviewValues(prev => ({ ...prev, creatorName: e.target.value }))}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Tip Amount</Label>
+                    <Input
+                      value={previewValues.tipAmount}
+                      onChange={(e) => setPreviewValues(prev => ({ ...prev, tipAmount: e.target.value }))}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Message</Label>
+                  <Input
+                    value={previewValues.userMessage}
+                    onChange={(e) => setPreviewValues(prev => ({ ...prev, userMessage: e.target.value }))}
+                    className="h-8 text-sm"
+                  />
+                </div>
+              </div>
             </CardContent>
           </Card>
 
