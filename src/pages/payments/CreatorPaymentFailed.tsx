@@ -18,7 +18,7 @@ const CreatorPaymentFailed: React.FC = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <TopNavbar />
-      <main className="flex-1 flex items-center justify-center p-6">
+      <main className="flex-1 flex items-center justify-center p-6 pt-24">
         <div className="tipkoro-card text-center py-12 max-w-lg w-full">
           <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-6">
             <AlertTriangle className="w-8 h-8 text-destructive" />
