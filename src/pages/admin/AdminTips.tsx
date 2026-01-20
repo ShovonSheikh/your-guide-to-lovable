@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { Search, Receipt } from "lucide-react";
+import { Search, Receipt, Eye } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 
 interface Tip {
   id: string;
@@ -31,6 +33,7 @@ interface Tip {
 
 export default function AdminTips() {
   usePageTitle("Admin - Tips");
+  const navigate = useNavigate();
   const supabase = useSupabaseWithAuth();
   const [tips, setTips] = useState<Tip[]>([]);
   const [loading, setLoading] = useState(true);
@@ -173,18 +176,23 @@ export default function AdminTips() {
                   <TableHead>Status</TableHead>
                   <TableHead>Message</TableHead>
                   <TableHead>Date</TableHead>
+                  <TableHead className="w-[60px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredTips.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                       No tips found
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredTips.map((tip) => (
-                    <TableRow key={tip.id}>
+                    <TableRow 
+                      key={tip.id} 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => navigate(`/admin/tips/${tip.id}`)}
+                    >
                       <TableCell>
                         <div>
                           <p className="font-medium">
@@ -219,6 +227,19 @@ export default function AdminTips() {
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {format(new Date(tip.created_at), 'MMM d, yyyy HH:mm')}
+                      </TableCell>
+                      <TableCell>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/admin/tips/${tip.id}`);
+                          }}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))

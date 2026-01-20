@@ -41,6 +41,7 @@ const allNavItems = [
   { id: "tips", label: "Tips", icon: Receipt, path: "/admin/tips" },
   { id: "mailbox", label: "Mailbox", icon: Mail, path: "/admin/mailbox" },
   { id: "share-image", label: "Share Image", icon: ImageIcon, path: "/admin/share-image" },
+  { id: "email-templates", label: "Email Templates", icon: Mail, path: "/admin/email-templates" },
   { id: "settings", label: "Settings", icon: Settings, path: "/admin/settings" },
   { id: "admins", label: "Admins", icon: Crown, path: "/admin/admins" },
 ];
