@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.send-reply-email]
 verify_jwt = false
+
+[functions.generate-share-image]
+verify_jwt = false

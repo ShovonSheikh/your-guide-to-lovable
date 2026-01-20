@@ -15,7 +15,8 @@ import {
   ShieldCheck,
   Menu,
   LogOut,
-  Crown
+  Crown,
+  ImageIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ const allNavItems = [
   { id: "withdrawals", label: "Withdrawals", icon: Wallet, path: "/admin/withdrawals" },
   { id: "tips", label: "Tips", icon: Receipt, path: "/admin/tips" },
   { id: "mailbox", label: "Mailbox", icon: Mail, path: "/admin/mailbox" },
+  { id: "share-image", label: "Share Image", icon: ImageIcon, path: "/admin/share-image" },
   { id: "settings", label: "Settings", icon: Settings, path: "/admin/settings" },
   { id: "admins", label: "Admins", icon: Crown, path: "/admin/admins" },
 ];
