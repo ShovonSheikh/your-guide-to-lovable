@@ -26,6 +26,8 @@ const EMAIL_TYPES = [
   { id: 'welcome_creator', label: 'Welcome Creator', description: 'Welcome email for new creators' },
   { id: 'weekly_summary', label: 'Weekly Summary', description: 'Weekly earnings summary for creators' },
   { id: 'withdrawal_otp', label: 'Withdrawal OTP', description: 'OTP code for withdrawal verification' },
+  { id: 'verification_approved', label: 'Verification Approved', description: 'Sent when creator verification is approved' },
+  { id: 'verification_rejected', label: 'Verification Rejected', description: 'Sent when creator verification is rejected' },
 ];
 
 // Available dynamic variables per email type
@@ -67,6 +69,14 @@ const DYNAMIC_VARIABLES: Record<string, Array<{ name: string; description: strin
     { name: 'otp_code', description: 'OTP verification code', example: '123456' },
     { name: 'withdrawal_amount', description: 'Withdrawal amount', example: '1000' },
     { name: 'first_name', description: 'Creator first name', example: 'John' },
+  ],
+  verification_approved: [
+    { name: 'creator_name', description: 'Creator name', example: 'John Doe' },
+    { name: 'username', description: 'Creator username', example: 'johndoe' },
+  ],
+  verification_rejected: [
+    { name: 'creator_name', description: 'Creator name', example: 'John Doe' },
+    { name: 'reason', description: 'Rejection reason', example: 'Documents are unclear or incomplete' },
   ],
 };
 
@@ -234,6 +244,55 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
         <p style="font-size: 48px; font-weight: 700; color: #F9C23C; letter-spacing: 8px; margin: 0;">{{otp_code}}</p>
       </div>
       <p style="color: #7A7469; text-align: center; font-size: 14px;">This code expires in 10 minutes. Do not share it with anyone.</p>
+    </div>
+  </div>
+</div>`,
+  },
+  verification_approved: {
+    subject: '✅ Congratulations! Your Account is Verified',
+    html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+  <div style="max-width: 560px; margin: 0 auto;">
+    <div style="text-align: center; padding: 24px 0;">
+      <span style="font-size: 28px; font-weight: 700; color: #1F1C18;">💛 TipKoro</span>
+    </div>
+    <div style="background: #FEFDFB; border: 1px solid #E5E0D5; border-radius: 20px; padding: 44px 36px;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <span style="font-size: 48px;">✅</span>
+      </div>
+      <h1 style="font-size: 26px; font-weight: 700; text-align: center; margin: 0 0 10px;">You're Verified!</h1>
+      <p style="color: #7A7469; text-align: center; margin: 0 0 28px;">Congratulations {{creator_name}}, your account has been verified.</p>
+      <div style="background: #DCFCE7; border-radius: 16px; padding: 24px; text-align: center; margin: 28px 0;">
+        <p style="font-size: 18px; font-weight: 600; color: #166534; margin: 0;">Your profile now displays the verified badge</p>
+      </div>
+      <p style="color: #4A453D; text-align: center;">This badge builds trust with your supporters and shows them you're a genuine creator.</p>
+      <div style="text-align: center; margin-top: 28px;">
+        <a href="https://tipkoro.com/{{username}}" style="display: inline-block; background: #1F1C18; color: #fff; padding: 16px 40px; border-radius: 12px; text-decoration: none; font-weight: 600;">View Your Profile</a>
+      </div>
+    </div>
+  </div>
+</div>`,
+  },
+  verification_rejected: {
+    subject: '❌ Verification Request Declined',
+    html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+  <div style="max-width: 560px; margin: 0 auto;">
+    <div style="text-align: center; padding: 24px 0;">
+      <span style="font-size: 28px; font-weight: 700; color: #1F1C18;">💛 TipKoro</span>
+    </div>
+    <div style="background: #FEFDFB; border: 1px solid #E5E0D5; border-radius: 20px; padding: 44px 36px;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <span style="font-size: 48px;">❌</span>
+      </div>
+      <h1 style="font-size: 26px; font-weight: 700; text-align: center; margin: 0 0 10px;">Verification Declined</h1>
+      <p style="color: #7A7469; text-align: center; margin: 0 0 28px;">Hi {{creator_name}}, unfortunately we couldn't verify your account at this time.</p>
+      <div style="background: #FEE2E2; border-radius: 16px; padding: 24px; margin: 28px 0;">
+        <p style="font-size: 14px; font-weight: 600; color: #991B1B; margin: 0 0 8px;">Reason:</p>
+        <p style="font-size: 16px; color: #991B1B; margin: 0;">{{reason}}</p>
+      </div>
+      <p style="color: #4A453D; text-align: center;">You can submit a new verification request with updated documents from your settings page.</p>
+      <div style="text-align: center; margin-top: 28px;">
+        <a href="https://tipkoro.com/settings?tab=verification" style="display: inline-block; background: #1F1C18; color: #fff; padding: 16px 40px; border-radius: 12px; text-decoration: none; font-weight: 600;">Try Again</a>
+      </div>
     </div>
   </div>
 </div>`,

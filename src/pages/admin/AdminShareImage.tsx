@@ -332,6 +332,8 @@ const SAMPLE_VALUES = {
   }),
   supporterName: 'Happy Supporter',
   currency: '৳',
+  trxId: 'TIP-2026012034AB',
+  verified: 'true',
 };
 
 export default function AdminShareImage() {
@@ -692,6 +694,26 @@ export default function AdminShareImage() {
                     onChange={(e) => setPreviewValues(prev => ({ ...prev, userMessage: e.target.value }))}
                     className="h-8 text-sm"
                   />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Transaction ID</Label>
+                    <Input
+                      value={previewValues.trxId}
+                      onChange={(e) => setPreviewValues(prev => ({ ...prev, trxId: e.target.value }))}
+                      className="h-8 text-sm"
+                      placeholder="TIP-2026012034AB"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Creator Verified</Label>
+                    <Input
+                      value={previewValues.verified}
+                      onChange={(e) => setPreviewValues(prev => ({ ...prev, verified: e.target.value }))}
+                      className="h-8 text-sm"
+                      placeholder="true or false"
+                    />
+                  </div>
                 </div>
               </div>
             </CardContent>
