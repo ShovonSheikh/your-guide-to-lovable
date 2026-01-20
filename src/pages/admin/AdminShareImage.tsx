@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/hooks/use-toast';
-import { Code, Eye, RotateCcw, Save, Play, Variable, Copy } from 'lucide-react';
+import { Code, Eye, RotateCcw, Save, Play, Variable, Copy, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Slider } from '@/components/ui/slider';
 import { useSupabaseWithAuth } from '@/hooks/useSupabaseWithAuth';
 
 // Available dynamic variables
@@ -342,7 +343,9 @@ export default function AdminShareImage() {
   const [savedJsx, setSavedJsx] = useState(DEFAULT_TEMPLATE);
   const [savedCss, setSavedCss] = useState(DEFAULT_CSS);
   const [activeTab, setActiveTab] = useState<'jsx' | 'css'>('jsx');
+  const [zoomLevel, setZoomLevel] = useState(0.8);
   const previewRef = useRef<HTMLDivElement>(null);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
 
   // Fetch saved template from database
   useEffect(() => {
@@ -533,7 +536,7 @@ export default function AdminShareImage() {
                   <span className="text-sm font-medium">TipKoroCard.jsx</span>
                   <Badge variant="outline" className="text-xs">React JSX</Badge>
                 </div>
-                <div className="h-[500px]">
+                <div className="h-[600px]">
                   <Editor
                     height="100%"
                     language="javascript"
@@ -560,7 +563,7 @@ export default function AdminShareImage() {
                   <span className="text-sm font-medium">TipKoroCard.css</span>
                   <Badge variant="outline" className="text-xs">CSS</Badge>
                 </div>
-                <div className="h-[500px]">
+                <div className="h-[600px]">
                   <Editor
                     height="100%"
                     language="css"
@@ -595,13 +598,53 @@ export default function AdminShareImage() {
                 Preview updates automatically as you edit
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {/* Zoom Controls */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <ZoomOut className="w-4 h-4 text-muted-foreground" />
+                  <Slider
+                    value={[zoomLevel * 100]}
+                    onValueChange={(value) => setZoomLevel(value[0] / 100)}
+                    min={30}
+                    max={100}
+                    step={5}
+                    className="w-32"
+                  />
+                  <ZoomIn className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground w-10">{Math.round(zoomLevel * 100)}%</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoomLevel(0.5)}>50%</Button>
+                  <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoomLevel(0.75)}>75%</Button>
+                  <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoomLevel(1)}>100%</Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-7 px-2 text-xs"
+                    onClick={() => {
+                      // Fit to container (600px card into ~480px container)
+                      const containerWidth = previewContainerRef.current?.clientWidth || 480;
+                      const fitScale = Math.min((containerWidth - 32) / 600, 1);
+                      setZoomLevel(fitScale);
+                    }}
+                  >
+                    <Maximize2 className="w-3 h-3 mr-1" />
+                    Fit
+                  </Button>
+                </div>
+              </div>
+
               {/* Inject CSS and render HTML */}
               <style>{cssCode}</style>
               <div 
-                className="flex justify-center overflow-hidden rounded-xl border border-border bg-muted/30"
+                ref={previewContainerRef}
+                className="flex justify-center overflow-auto rounded-xl border border-border bg-muted/30 max-h-[500px]"
               >
-                <div className="transform scale-[0.55] origin-center">
+                <div 
+                  className="transform origin-top p-4"
+                  style={{ transform: `scale(${zoomLevel})` }}
+                >
                   <div 
                     ref={previewRef}
                     dangerouslySetInnerHTML={{ __html: renderedHtml }}
