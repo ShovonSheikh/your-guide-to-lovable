@@ -336,33 +336,6 @@ function Index() {
           </div>
         </div>
 
-        {/* SEO Content Block - Visible to crawlers, styled as footer content */}
-        <div className="w-full bg-secondary/30 px-6 py-12 border-t border-border">
-          <div className="max-w-[1280px] mx-auto">
-            <h2 className="text-2xl font-display font-bold text-foreground mb-4">About TipKoro - The Ko-fi Alternative for Bangladesh</h2>
-            <div className="text-sm text-muted-foreground space-y-3 max-w-[800px]">
-              <p>
-                <strong>TipKoro</strong> is Bangladesh's first and leading creator tipping platform. It serves as the perfect
-                <strong>Ko-fi alternative for Bangladesh</strong> and <strong>Buy Me a Coffee alternative for Bangladeshi creators</strong>.
-              </p>
-              <p>
-                Unlike international platforms that don't support Bangladeshi payment methods, TipKoro integrates with
-                <strong>bKash</strong>, <strong>Nagad</strong>, and <strong>Rocket</strong> — the most popular mobile financial services in Bangladesh.
-              </p>
-              <p>
-                Whether you're a YouTuber, streamer, artist, developer, or any Bangladeshi content creator, TipKoro makes it easy to
-                receive tips and donations from your supporters. With a simple flat fee of <strong>৳150 per month</strong> and
-                <strong>zero transaction fees</strong>, creators keep more of what they earn.
-              </p>
-              <p className="text-xs text-muted-foreground/70">
-                Keywords: TipKoro, Ko-fi Bangladesh, Buy Me a Coffee Bangladesh, bKash tips, Nagad donation, Rocket payment,
-                support Bangladeshi creators, tip YouTubers Bangladesh, donate to streamers Bangladesh, Bangladeshi content creators,
-                creator monetization Bangladesh, Patreon alternative Bangladesh.
-              </p>
-            </div>
-          </div>
-        </div>
-
         <MainFooter />
       </div>
     </>

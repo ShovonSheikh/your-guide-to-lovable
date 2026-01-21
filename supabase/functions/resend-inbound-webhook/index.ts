@@ -62,9 +62,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     const rawPayload = await req.text();
     console.log("[Inbound Email] Raw payload:", rawPayload);
-    
+
     const event: ResendWebhookEvent = JSON.parse(rawPayload);
-    
+
     console.log("[Inbound Email] Received webhook event:", event.type);
     console.log("[Inbound Email] Email data keys:", Object.keys(event.data || {}));
 
@@ -78,18 +78,18 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emailData = event.data;
-    
+
     // Fetch full email content from Resend API (webhooks don't include body)
     // Add retry logic with delay as email may not be immediately available
     let htmlBody = emailData.html || null;
     let textBody = emailData.text || null;
-    
+
     const fetchEmailContent = async (retries = 3, delayMs = 2000): Promise<void> => {
       for (let attempt = 1; attempt <= retries; attempt++) {
         console.log(`[Inbound Email] Fetching email content, attempt ${attempt}/${retries} for:`, emailData.email_id);
-        
+
         const emailContentResponse = await fetch(
-          `https://api.resend.com/emails/${emailData.email_id}`,
+          `https://api.resend.com/emails/receiving/${emailData.email_id}`,
           {
             headers: {
               'Authorization': `Bearer ${resendApiKey}`,
@@ -106,7 +106,7 @@ const handler = async (req: Request): Promise<Response> => {
         } else {
           const errorText = await emailContentResponse.text();
           console.error(`[Inbound Email] Attempt ${attempt} failed:`, emailContentResponse.status, errorText);
-          
+
           // If not the last attempt and error is 404 (not found yet), wait and retry
           if (attempt < retries && emailContentResponse.status === 404) {
             console.log(`[Inbound Email] Email not ready, waiting ${delayMs}ms before retry...`);
@@ -118,10 +118,10 @@ const handler = async (req: Request): Promise<Response> => {
     };
 
     await fetchEmailContent();
-    
+
     // Extract sender info
     const { address: fromAddress, name: fromName } = parseEmailAddress(emailData.from);
-    
+
     console.log("[Inbound Email] Processing email from:", fromAddress, "to:", emailData.to);
 
     // Find the receiving mailbox (first recipient that matches our domain)
@@ -215,7 +215,7 @@ const handler = async (req: Request): Promise<Response> => {
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
+
       console.error("[Inbound Email] Failed to insert email:", insertError);
       return new Response(
         JSON.stringify({ error: "Failed to save email" }),

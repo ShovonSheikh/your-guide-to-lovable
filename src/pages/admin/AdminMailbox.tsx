@@ -1,11 +1,11 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -18,11 +18,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { 
-  Mail, 
-  Inbox, 
-  MailOpen, 
-  Trash2, 
+import {
+  Mail,
+  Inbox,
+  MailOpen,
+  Trash2,
   RefreshCw,
   ChevronLeft,
   Paperclip,
@@ -83,7 +83,7 @@ export default function AdminMailbox() {
   usePageTitle("Admin - Mailbox");
   const supabase = useSupabaseWithAuth();
   const isMobile = useIsMobile();
-  
+
   const [mailboxes, setMailboxes] = useState<Mailbox[]>([]);
   const [emails, setEmails] = useState<Email[]>([]);
   const [selectedMailbox, setSelectedMailbox] = useState<Mailbox | null>(null);
@@ -93,10 +93,10 @@ export default function AdminMailbox() {
   const [showHtml, setShowHtml] = useState(true);
   const [mobileView, setMobileView] = useState<MobileView>('list');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
+
   // Ref to avoid stale closure in real-time subscription
   const selectedMailboxRef = useRef<Mailbox | null>(null);
-  
+
   // Reply composer state
   const [showReplySheet, setShowReplySheet] = useState(false);
 
@@ -131,7 +131,7 @@ export default function AdminMailbox() {
       );
 
       setMailboxes(mailboxesWithCounts);
-      
+
       if (!selectedMailbox && mailboxesWithCounts.length > 0) {
         setSelectedMailbox(mailboxesWithCounts[0]);
       }
@@ -156,14 +156,14 @@ export default function AdminMailbox() {
         .limit(50);
 
       if (error) throw error;
-      
+
       const typedEmails: Email[] = (data || []).map(email => ({
         ...email,
         to_addresses: (email.to_addresses as unknown as EmailAddress[]) || [],
         cc_addresses: email.cc_addresses ? (email.cc_addresses as unknown as EmailAddress[]) : null,
         attachments: email.attachments ? (email.attachments as unknown as EmailAttachment[]) : null
       }));
-      
+
       setEmails(typedEmails);
     } catch (error) {
       console.error('Error fetching emails:', error);
@@ -240,13 +240,13 @@ export default function AdminMailbox() {
       .update({ is_read: true })
       .eq('id', email.id);
 
-    setEmails(prev => 
+    setEmails(prev =>
       prev.map(e => e.id === email.id ? { ...e, is_read: true } : e)
     );
-    
+
     setMailboxes(prev =>
-      prev.map(mb => 
-        mb.id === email.mailbox_id 
+      prev.map(mb =>
+        mb.id === email.mailbox_id
           ? { ...mb, unread_count: Math.max(0, mb.unread_count - 1) }
           : mb
       )
@@ -255,23 +255,23 @@ export default function AdminMailbox() {
 
   const toggleRead = async (email: Email) => {
     const newReadState = !email.is_read;
-    
+
     await supabase
       .from('inbound_emails')
       .update({ is_read: newReadState })
       .eq('id', email.id);
 
-    setEmails(prev => 
+    setEmails(prev =>
       prev.map(e => e.id === email.id ? { ...e, is_read: newReadState } : e)
     );
-    
+
     if (selectedEmail?.id === email.id) {
       setSelectedEmail({ ...email, is_read: newReadState });
     }
 
     setMailboxes(prev =>
-      prev.map(mb => 
-        mb.id === email.mailbox_id 
+      prev.map(mb =>
+        mb.id === email.mailbox_id
           ? { ...mb, unread_count: newReadState ? mb.unread_count - 1 : mb.unread_count + 1 }
           : mb
       )
@@ -285,7 +285,7 @@ export default function AdminMailbox() {
       .eq('id', email.id);
 
     setEmails(prev => prev.filter(e => e.id !== email.id));
-    
+
     if (selectedEmail?.id === email.id) {
       setSelectedEmail(null);
       if (isMobile) {
@@ -295,8 +295,8 @@ export default function AdminMailbox() {
 
     if (!email.is_read) {
       setMailboxes(prev =>
-        prev.map(mb => 
-          mb.id === email.mailbox_id 
+        prev.map(mb =>
+          mb.id === email.mailbox_id
             ? { ...mb, unread_count: Math.max(0, mb.unread_count - 1) }
             : mb
         )
@@ -371,11 +371,11 @@ export default function AdminMailbox() {
               ))}
             </SelectContent>
           </Select>
-          
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => handleRefresh(false)} 
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleRefresh(false)}
             className="flex-shrink-0"
             disabled={isRefreshing}
           >
@@ -491,7 +491,7 @@ export default function AdminMailbox() {
               </div>
             </div>
           </CardHeader>
-          
+
           {/* Email Meta */}
           <div className="p-4 border-b bg-muted/30 flex-shrink-0">
             <div className="space-y-1 text-sm">
@@ -531,9 +531,9 @@ export default function AdminMailbox() {
               </div>
             )}
           </div>
-          
+
           {/* Email Body */}
-          <div className="p-4 flex-1 flex flex-col min-h-0">
+          <div className="p-4 flex-1 flex flex-col min-h-0 overflow-hidden">
             <div className="flex items-center gap-2 mb-3 flex-shrink-0">
               <Button
                 variant={showHtml ? "default" : "outline"}
@@ -551,20 +551,21 @@ export default function AdminMailbox() {
                 Plain Text
               </Button>
             </div>
-            <ScrollArea className="flex-1">
+            <div className="flex-1 min-h-0 overflow-auto">
               {showHtml && selectedEmail.html_body ? (
                 <iframe
                   srcDoc={selectedEmail.html_body}
-                  className="w-full h-full min-h-[300px] border rounded bg-white"
+                  className="w-full h-full border rounded bg-white"
+                  style={{ minHeight: '400px' }}
                   sandbox="allow-same-origin"
                   title="Email content"
                 />
               ) : (
-                <pre className="whitespace-pre-wrap text-sm font-mono bg-muted/30 p-4 rounded">
+                <pre className="whitespace-pre-wrap text-sm font-mono bg-muted/30 p-4 rounded h-full overflow-auto">
                   {selectedEmail.text_body || 'No text content available'}
                 </pre>
               )}
-            </ScrollArea>
+            </div>
           </div>
         </>
       ) : (
@@ -581,8 +582,8 @@ export default function AdminMailbox() {
   // Reply Sheet Component with local state to prevent parent re-renders
   const ReplySheetContent = () => {
     const [localSubject, setLocalSubject] = useState(
-      selectedEmail?.subject?.startsWith("Re:") 
-        ? selectedEmail.subject 
+      selectedEmail?.subject?.startsWith("Re:")
+        ? selectedEmail.subject
         : `Re: ${selectedEmail?.subject || "(No Subject)"}`
     );
     const [localBody, setLocalBody] = useState("");
@@ -647,7 +648,7 @@ export default function AdminMailbox() {
             Reply to {selectedEmail?.from_name || selectedEmail?.from_address}
           </SheetTitle>
         </SheetHeader>
-        
+
         <div className="py-4 space-y-4 flex-1 overflow-y-auto">
           {/* From/To Info */}
           <div className="grid grid-cols-2 gap-4 text-sm p-3 bg-muted/50 rounded-lg">
@@ -660,7 +661,7 @@ export default function AdminMailbox() {
               <p className="font-medium truncate">{selectedEmail?.from_address}</p>
             </div>
           </div>
-          
+
           {/* Subject */}
           <div className="space-y-2">
             <Label htmlFor="reply-subject">Subject</Label>
@@ -672,7 +673,7 @@ export default function AdminMailbox() {
               className="focus-visible:ring-1 focus-visible:ring-primary/50"
             />
           </div>
-          
+
           {/* Message */}
           <div className="space-y-2 flex-1">
             <Label htmlFor="reply-body">Message</Label>
@@ -685,7 +686,7 @@ export default function AdminMailbox() {
               className="resize-none focus-visible:ring-1 focus-visible:ring-primary/50"
             />
           </div>
-          
+
           {/* Original Message Preview */}
           <div className="border-l-2 border-muted-foreground/30 pl-3 mt-4">
             <p className="text-xs text-muted-foreground mb-1">Original message:</p>
@@ -694,7 +695,7 @@ export default function AdminMailbox() {
             </p>
           </div>
         </div>
-        
+
         {/* Actions */}
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => setShowReplySheet(false)} disabled={localSending}>

@@ -3,11 +3,11 @@ import { useNavigate, Outlet, useLocation } from "react-router-dom";
 import { useUser } from "@clerk/clerk-react";
 import { useProfile } from "@/hooks/useProfile";
 import { useAdminPermissions, permissionMap } from "@/hooks/useAdminPermissions";
-import { 
-  LayoutDashboard, 
-  Users, 
-  Wallet, 
-  Receipt, 
+import {
+  LayoutDashboard,
+  Users,
+  Wallet,
+  Receipt,
   BadgeCheck,
   Settings,
   ChevronLeft,
@@ -82,7 +82,7 @@ export default function AdminLayout() {
         .eq('is_deleted', false);
       setUnreadEmails(emailCount || 0);
     };
-    
+
     if (profile?.is_admin) {
       fetchCounts();
     }
@@ -112,20 +112,20 @@ export default function AdminLayout() {
   }
 
   const getCurrentPageTitle = () => {
-    const item = navItems.find(item => 
-      location.pathname === item.path || 
+    const item = navItems.find(item =>
+      location.pathname === item.path ||
       (item.path !== "/admin" && location.pathname.startsWith(item.path))
     );
     return item?.label || "Admin";
   };
 
   const NavItem = ({ item, onClick }: { item: typeof navItems[0]; onClick?: () => void }) => {
-    const isActive = location.pathname === item.path || 
+    const isActive = location.pathname === item.path ||
       (item.path !== "/admin" && location.pathname.startsWith(item.path));
-    
-    const badgeCount = item.id === 'verifications' ? pendingVerifications : 
-                       item.id === 'mailbox' ? unreadEmails : 0;
-    
+
+    const badgeCount = item.id === 'verifications' ? pendingVerifications :
+      item.id === 'mailbox' ? unreadEmails : 0;
+
     return (
       <button
         onClick={() => {
@@ -134,16 +134,16 @@ export default function AdminLayout() {
         }}
         className={cn(
           "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-          isActive 
-            ? "bg-primary text-primary-foreground" 
+          isActive
+            ? "bg-primary text-primary-foreground"
             : "text-muted-foreground hover:bg-secondary hover:text-foreground"
         )}
       >
         <item.icon className="h-5 w-5 shrink-0" />
         <span className="flex-1 text-left">{item.label}</span>
         {badgeCount > 0 && (
-          <Badge 
-            variant={isActive ? "secondary" : "default"} 
+          <Badge
+            variant={isActive ? "secondary" : "default"}
             className="ml-auto"
           >
             {badgeCount}
@@ -156,9 +156,9 @@ export default function AdminLayout() {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Desktop Sidebar */}
-      <aside 
+      <aside
         className={cn(
-          "hidden md:flex flex-col border-r border-border bg-card transition-all duration-300",
+          "hidden md:flex flex-col border-r border-border bg-card transition-all duration-300 sticky top-0 h-screen",
           sidebarOpen ? "w-64" : "w-16"
         )}
       >
@@ -166,8 +166,8 @@ export default function AdminLayout() {
           {sidebarOpen && (
             <span className="font-bold text-lg text-primary">Admin Panel</span>
           )}
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
           >
@@ -177,20 +177,20 @@ export default function AdminLayout() {
 
         <nav className="flex-1 p-2 space-y-1">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.path || 
+            const isActive = location.pathname === item.path ||
               (item.path !== "/admin" && location.pathname.startsWith(item.path));
-            
-            const badgeCount = item.id === 'verifications' ? pendingVerifications : 
-                               item.id === 'mailbox' ? unreadEmails : 0;
-            
+
+            const badgeCount = item.id === 'verifications' ? pendingVerifications :
+              item.id === 'mailbox' ? unreadEmails : 0;
+
             return (
               <button
                 key={item.id}
                 onClick={() => navigate(item.path)}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                  isActive 
-                    ? "bg-primary text-primary-foreground" 
+                  isActive
+                    ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
               >
@@ -199,8 +199,8 @@ export default function AdminLayout() {
                   <span className="flex-1 text-left">{item.label}</span>
                 )}
                 {sidebarOpen && badgeCount > 0 && (
-                  <Badge 
-                    variant={isActive ? "secondary" : "default"} 
+                  <Badge
+                    variant={isActive ? "secondary" : "default"}
                     className="ml-auto"
                   >
                     {badgeCount}
@@ -212,8 +212,8 @@ export default function AdminLayout() {
         </nav>
 
         <div className="p-4 border-t border-border">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="w-full justify-start gap-2"
             onClick={() => navigate("/dashboard")}
           >
@@ -227,8 +227,8 @@ export default function AdminLayout() {
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
         <div className="flex items-center justify-between p-3">
           <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="icon"
               className="h-9 w-9"
               onClick={() => setMobileMenuOpen(true)}
@@ -251,16 +251,16 @@ export default function AdminLayout() {
           </SheetHeader>
           <nav className="p-3 space-y-1">
             {navItems.map((item) => (
-              <NavItem 
-                key={item.id} 
-                item={item} 
-                onClick={() => setMobileMenuOpen(false)} 
+              <NavItem
+                key={item.id}
+                item={item}
+                onClick={() => setMobileMenuOpen(false)}
               />
             ))}
           </nav>
           <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-background">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="w-full justify-start gap-2"
               onClick={() => {
                 navigate("/dashboard");

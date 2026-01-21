@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { Users, Wallet, Receipt, TrendingUp, Clock, BadgeCheck } from "lucide-react";
+import { Users, Wallet, Receipt, TrendingUp, Clock, BadgeCheck, Mail } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { format } from "date-fns";
 
@@ -16,6 +16,7 @@ interface DashboardStats {
   pendingWithdrawalsAmount: number;
   thisMonthTips: number;
   thisMonthAmount: number;
+  unreadEmails: number;
 }
 
 interface RecentActivity {
@@ -57,7 +58,7 @@ export default function AdminDashboard() {
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
-      
+
       const thisMonthTips = tips?.filter(t => new Date(t.created_at) >= startOfMonth).length || 0;
       const thisMonthAmount = tips?.filter(t => new Date(t.created_at) >= startOfMonth)
         .reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
@@ -70,6 +71,13 @@ export default function AdminDashboard() {
       const pendingWithdrawals = withdrawals?.length || 0;
       const pendingWithdrawalsAmount = withdrawals?.reduce((sum, w) => sum + (w.amount || 0), 0) || 0;
 
+      // Fetch unread emails count
+      const { count: unreadEmails } = await supabase
+        .from('inbound_emails')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_read', false)
+        .eq('is_deleted', false);
+
       setStats({
         totalUsers,
         totalCreators,
@@ -80,6 +88,7 @@ export default function AdminDashboard() {
         pendingWithdrawalsAmount,
         thisMonthTips,
         thisMonthAmount,
+        unreadEmails: unreadEmails || 0,
       });
 
       const { data: recentTips } = await supabase
@@ -109,7 +118,7 @@ export default function AdminDashboard() {
           created_at: w.created_at,
         })) || []),
       ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-       .slice(0, 10);
+        .slice(0, 10);
 
       setRecentActivity(activity);
     } catch (error) {
@@ -128,33 +137,40 @@ export default function AdminDashboard() {
   }
 
   const statCards = [
-    { 
-      title: "Total Users", 
-      value: stats?.totalUsers || 0, 
-      icon: Users, 
+    {
+      title: "Total Users",
+      value: stats?.totalUsers || 0,
+      icon: Users,
       description: `${stats?.totalCreators} creators, ${stats?.totalSupporters} supporters`,
       color: "text-blue-500"
     },
-    { 
-      title: "Total Tips", 
-      value: `৳${(stats?.totalTipsAmount || 0).toLocaleString()}`, 
-      icon: Receipt, 
+    {
+      title: "Total Tips",
+      value: `৳${(stats?.totalTipsAmount || 0).toLocaleString()}`,
+      icon: Receipt,
       description: `${stats?.totalTips} transactions`,
       color: "text-green-500"
     },
-    { 
-      title: "This Month", 
-      value: `৳${(stats?.thisMonthAmount || 0).toLocaleString()}`, 
-      icon: TrendingUp, 
+    {
+      title: "This Month",
+      value: `৳${(stats?.thisMonthAmount || 0).toLocaleString()}`,
+      icon: TrendingUp,
       description: `${stats?.thisMonthTips} tips this month`,
       color: "text-purple-500"
     },
-    { 
-      title: "Pending Withdrawals", 
-      value: stats?.pendingWithdrawals || 0, 
-      icon: Wallet, 
+    {
+      title: "Pending Withdrawals",
+      value: stats?.pendingWithdrawals || 0,
+      icon: Wallet,
       description: `৳${(stats?.pendingWithdrawalsAmount || 0).toLocaleString()} total`,
       color: "text-orange-500"
+    },
+    {
+      title: "Unread Emails",
+      value: stats?.unreadEmails || 0,
+      icon: Mail,
+      description: "Inbox messages",
+      color: "text-pink-500"
     },
   ];
 
@@ -200,8 +216,8 @@ export default function AdminDashboard() {
                 <p className="text-sm text-muted-foreground">No recent activity</p>
               ) : (
                 recentActivity.map((activity) => (
-                  <div 
-                    key={activity.id} 
+                  <div
+                    key={activity.id}
                     className="flex items-center justify-between py-2 border-b border-border last:border-0 gap-2"
                   >
                     <div className="flex items-center gap-2 md:gap-3 min-w-0">

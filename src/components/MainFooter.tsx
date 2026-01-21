@@ -39,19 +39,19 @@ export function MainFooter() {
               </a>
             </div>
           </div>
-          
+
           {/* Product */}
           <div className="flex flex-col gap-4">
             <span className="font-bold text-background font-display">Product</span>
             <div className="flex flex-col gap-2">
-              <button 
-                onClick={() => scrollToSection("how")} 
+              <button
+                onClick={() => scrollToSection("how")}
                 className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors text-left"
               >
                 How it Works
               </button>
-              <button 
-                onClick={() => scrollToSection("pricing")} 
+              <button
+                onClick={() => scrollToSection("pricing")}
                 className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors text-left"
               >
                 Pricing
@@ -59,34 +59,34 @@ export function MainFooter() {
               <Link to="/explore" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
                 Explore Creators
               </Link>
-              <button 
-                onClick={() => scrollToSection("creators")} 
+              <button
+                onClick={() => scrollToSection("creators")}
                 className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors text-left"
               >
                 For Creators
               </button>
             </div>
           </div>
-          
+
           {/* Company */}
           <div className="flex flex-col gap-4">
             <span className="font-bold text-background font-display">Company</span>
             <div className="flex flex-col gap-2">
-              <a href="#" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
+              <Link to="/about" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
                 About
-              </a>
+              </Link>
               <a href="#" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
                 Blog
               </a>
               <a href="#" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
                 Careers
               </a>
-              <a href="#" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
+              <Link to="/contact" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
                 Contact
-              </a>
+              </Link>
             </div>
           </div>
-          
+
           {/* Resources */}
           <div className="flex flex-col gap-4">
             <span className="font-bold text-background font-display">Resources</span>
@@ -100,12 +100,12 @@ export function MainFooter() {
               <a href="#" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
                 Community
               </a>
-              <a href="#" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
+              <Link to="https://status.tipkoro.com" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
                 Status
-              </a>
+              </Link>
             </div>
           </div>
-          
+
           {/* Legal */}
           <div className="flex flex-col gap-4">
             <span className="font-bold text-background font-display">Legal</span>
@@ -116,16 +116,16 @@ export function MainFooter() {
               <Link to="/privacy-policy" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
                 Privacy Policy
               </Link>
-              <a href="#" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
+              <Link to="/cookie-policy" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
                 Cookie Policy
-              </a>
+              </Link>
               <a href="#" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
                 Licenses
               </a>
             </div>
           </div>
         </div>
-        
+
         {/* Payment Methods & Copyright */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-8 border-t border-background/10">
           <div className="flex items-center gap-4">

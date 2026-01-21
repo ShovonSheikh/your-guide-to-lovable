@@ -14,6 +14,10 @@ import Finance from "./pages/Finance";
 import CreatorProfile from "./pages/CreatorProfile";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
+import Status from "./pages/Status";
+import CookiePolicy from "./pages/CookiePolicy";
 import CompleteProfile from "./pages/CompleteProfile";
 import DonationImage from "./pages/DonationImage";
 // Payment pages - separate flows for creator fee and tips
@@ -62,6 +66,10 @@ const App = () => (
             <Route path="/donation-image" element={<DonationImage />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/terms-of-service" element={<TermsOfService />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/status" element={<Status />} />
+            <Route path="/cookie-policy" element={<CookiePolicy />} />
             {/* Admin routes */}
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
