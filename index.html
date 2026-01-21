@@ -50,6 +50,23 @@
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
 
+    <!-- Structured Data: WebSite -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "TipKoro",
+      "alternateName": ["Tip Koro", "TipKoro Bangladesh"],
+      "url": "https://tipkoro.com",
+      "description": "Bangladesh's leading creator tipping platform offering bKash, Nagad, and Rocket payments.",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://tipkoro.com/explore?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+    
     <!-- Structured Data: WebApplication -->
     <script type="application/ld+json">
     {
@@ -57,14 +74,25 @@
       "@type": "WebApplication",
       "name": "TipKoro",
       "url": "https://tipkoro.com",
-      "description": "TipKoro is Bangladesh's Ko-fi alternative. Send tips to your favorite Bangladeshi creators via bKash, Nagad, Rocket.",
+      "description": "The ultimate Ko-fi and Buy Me a Coffee alternative for Bangladesh. TipKoro allows creators to receive tips via bKash, Nagad, and Rocket with zero transaction fees.",
       "applicationCategory": "FinanceApplication",
       "operatingSystem": "Web",
       "offers": {
         "@type": "Offer",
-        "price": "0",
+        "price": "150",
         "priceCurrency": "BDT",
-        "description": "Free for supporters. Creators pay 150 BDT/month flat fee with zero transaction fees."
+        "priceSpecification": {
+            "@type": "UnitPriceSpecification",
+            "price": "150",
+            "priceCurrency": "BDT",
+            "unitText": "MONTH",
+            "referenceQuantity": {
+                "@type": "QuantitativeValue",
+                "value": "1",
+                "unitCode": "MON"
+            }
+        },
+        "description": "Flat fee of 150 BDT/month for creators. Free for supporters."
       },
       "featureList": [
         "Accept tips via bKash",
@@ -73,7 +101,8 @@
         "Custom creator pages",
         "Fast withdrawals (3-5 business days)",
         "Zero transaction fees",
-        "Analytics dashboard"
+        "Analytics dashboard",
+        "Verified creator badges"
       ],
       "creator": {
         "@type": "Organization",
@@ -82,13 +111,13 @@
       },
       "audience": {
         "@type": "Audience",
-        "audienceType": "Bangladeshi Creators and Supporters"
+        "audienceType": "Bangladeshi Creators, YouTubers, Streamers, and their Supporters"
       },
       "areaServed": {
         "@type": "Country",
         "name": "Bangladesh"
       },
-      "paymentAccepted": ["bKash", "Nagad", "Rocket", "Credit Card", "Cryptocurrency"]
+      "paymentAccepted": ["bKash", "Nagad", "Rocket", "Credit Card", "Mobile Banking"]
     }
     </script>
 
@@ -98,24 +127,33 @@
       "@context": "https://schema.org",
       "@type": "Organization",
       "name": "TipKoro",
+      "alternateName": "TipKoro Bangladesh",
       "url": "https://tipkoro.com",
       "logo": "https://tipkoro.com/og-image.png",
-      "description": "Bangladesh's leading creator tipping platform. Support your favorite Bangladeshi creators with tips via bKash, Nagad, and Rocket.",
+      "description": "Bangladesh's leading creator tipping platform for bKash, Nagad, and Rocket payments.",
       "foundingLocation": {
         "@type": "Place",
         "address": {
           "@type": "PostalAddress",
-          "addressCountry": "BD"
+          "addressCountry": "BD",
+          "addressRegion": "Dhaka"
         }
       },
-      "areaServed": "Bangladesh",
+      "areaServed": {
+        "@type": "Country",
+        "name": "Bangladesh"
+      },
       "sameAs": [
-        "https://twitter.com/TipKoro"
+        "https://twitter.com/TipKoro",
+        "https://www.facebook.com/TipKoro",
+        "https://www.instagram.com/tipkoro",
+        "https://www.linkedin.com/company/tipkoro"
       ],
       "contactPoint": {
         "@type": "ContactPoint",
         "contactType": "customer support",
-        "email": "support@tipkoro.com"
+        "email": "support@tipkoro.com",
+        "availableLanguage": ["English", "Bengali"]
       }
     }
     </script>
@@ -139,7 +177,7 @@
           "name": "Is there a Ko-fi or Buy Me a Coffee alternative for Bangladesh?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes! TipKoro is Bangladesh's Ko-fi alternative. It's specifically designed for Bangladeshi creators and supports local payment methods like bKash, Nagad, and Rocket that international platforms don't support."
+            "text": "Yes! TipKoro is Bangladesh's dedicated Ko-fi and Buy Me a Coffee alternative. It solves the payment barrier by supporting local methods like bKash, Nagad, and Rocket that international platforms don't accept."
           }
         },
         {
@@ -147,7 +185,7 @@
           "name": "How much does TipKoro cost for creators?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "TipKoro charges a flat fee of 150 BDT per month for creators, with zero transaction fees. This means you keep 100% of your tips minus the monthly fee. It's free for supporters."
+            "text": "TipKoro charges a simple flat fee of 150 BDT per month for creators. There are zero transaction fees (0%), so creators keep 100% of their tips. It is always free for supporters."
           }
         },
         {
@@ -155,7 +193,7 @@
           "name": "What payment methods does TipKoro accept?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "TipKoro accepts bKash, Nagad, Rocket, and other popular Bangladeshi payment methods. This makes it easy for supporters in Bangladesh to tip their favorite creators."
+            "text": "TipKoro integrates with major Bangladeshi payment gateways including bKash, Nagad, and Rocket. This allows seamless tipping from anyone in Bangladesh."
           }
         },
         {
@@ -163,7 +201,7 @@
           "name": "How do I receive tips as a Bangladeshi creator?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Sign up on TipKoro, create your creator page, and share your unique link (tipkoro.com/yourusername) with your audience. When fans send tips, you can withdraw to your bKash, Nagad, or Rocket account within 3-5 business days."
+            "text": "Simply sign up on TipKoro, customize your creator page, and share your unique link (e.g., tipkoro.com/yourusername). When fans send tips, you can request a withdrawal to your mobile banking account."
           }
         }
       ]
