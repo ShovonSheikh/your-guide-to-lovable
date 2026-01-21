@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
 import Home from "./pages/Home";
 import Explore from "./pages/Explore";
 import Components from "./pages/Components";
@@ -39,51 +40,53 @@ import AdminWithdrawalDetail from "./pages/admin/AdminWithdrawalDetail";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/explore" element={<Explore />} />
-          {/* Creator fee payment routes */}
-          <Route path="/payments/creator/success" element={<CreatorPaymentSuccess />} />
-          <Route path="/payments/creator/failed" element={<CreatorPaymentFailed />} />
-          {/* Tips payment routes */}
-          <Route path="/payments/tips/success" element={<TipPaymentSuccess />} />
-          <Route path="/payments/tips/failed" element={<TipPaymentFailed />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/finance" element={<Finance />} />
-          <Route path="/complete-profile" element={<CompleteProfile />} />
-          <Route path="/donation-image" element={<DonationImage />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route path="/terms-of-service" element={<TermsOfService />} />
-          {/* Admin routes */}
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminDashboard />} />
-            <Route path="users" element={<AdminUsers />} />
-            <Route path="creators" element={<AdminCreators />} />
-            <Route path="verifications" element={<AdminVerifications />} />
-            <Route path="withdrawals" element={<AdminWithdrawals />} />
-            <Route path="withdrawals/:withdrawalId" element={<AdminWithdrawalDetail />} />
-            <Route path="tips" element={<AdminTips />} />
-            <Route path="tips/:tipId" element={<AdminTipDetail />} />
-            <Route path="mailbox" element={<AdminMailbox />} />
-            <Route path="share-image" element={<AdminShareImage />} />
-            <Route path="email-templates" element={<AdminEmailTemplates />} />
-            <Route path="settings" element={<AdminSettings />} />
-            <Route path="admins" element={<AdminAdmins />} />
-          </Route>
-          <Route path="/:username" element={<CreatorProfile />} />
-          <Route path="/components" element={<Components />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <HelmetProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/explore" element={<Explore />} />
+            {/* Creator fee payment routes */}
+            <Route path="/payments/creator/success" element={<CreatorPaymentSuccess />} />
+            <Route path="/payments/creator/failed" element={<CreatorPaymentFailed />} />
+            {/* Tips payment routes */}
+            <Route path="/payments/tips/success" element={<TipPaymentSuccess />} />
+            <Route path="/payments/tips/failed" element={<TipPaymentFailed />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/finance" element={<Finance />} />
+            <Route path="/complete-profile" element={<CompleteProfile />} />
+            <Route path="/donation-image" element={<DonationImage />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/terms-of-service" element={<TermsOfService />} />
+            {/* Admin routes */}
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="creators" element={<AdminCreators />} />
+              <Route path="verifications" element={<AdminVerifications />} />
+              <Route path="withdrawals" element={<AdminWithdrawals />} />
+              <Route path="withdrawals/:withdrawalId" element={<AdminWithdrawalDetail />} />
+              <Route path="tips" element={<AdminTips />} />
+              <Route path="tips/:tipId" element={<AdminTipDetail />} />
+              <Route path="mailbox" element={<AdminMailbox />} />
+              <Route path="share-image" element={<AdminShareImage />} />
+              <Route path="email-templates" element={<AdminEmailTemplates />} />
+              <Route path="settings" element={<AdminSettings />} />
+              <Route path="admins" element={<AdminAdmins />} />
+            </Route>
+            <Route path="/:username" element={<CreatorProfile />} />
+            <Route path="/components" element={<Components />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </HelmetProvider>
 );
 
 export default App;

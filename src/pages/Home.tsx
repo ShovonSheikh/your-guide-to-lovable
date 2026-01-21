@@ -9,6 +9,7 @@ import { LiveTipsFeed } from "@/components/LiveTipsFeed";
 import { Link, useLocation } from "react-router-dom";
 import { SignUpButton } from "@clerk/clerk-react";
 import { FAQSection } from "@/components/FAQSection";
+import SEO from "@/components/SEO";
 import {
   Heart,
   Zap,
@@ -41,9 +42,16 @@ function Index() {
   }, [location.hash]);
 
   return (
-    <div className="flex h-full w-full flex-col items-center bg-background">
-      <TopNavbar />
-      <div className="h-20"></div>
+    <>
+      <SEO 
+        title="TipKoro - Support Bangladeshi Creators"
+        description="TipKoro is Bangladesh's Ko-fi alternative. Send tips to your favorite Bangladeshi creators via bKash, Nagad, Rocket. Free for supporters, only ৳150/month for creators."
+        keywords="TipKoro, support Bangladeshi creators, bKash tips, Nagad payments, Rocket tips, ko-fi alternative Bangladesh, buy me a coffee Bangladesh"
+        url="https://tipkoro.com"
+      />
+      <div className="flex h-full w-full flex-col items-center bg-background">
+        <TopNavbar />
+        <div className="h-20"></div>
       
       {/* Hero Section */}
       <div className="flex w-full max-w-[1280px] flex-col items-center gap-6 px-6 py-12 md:px-6 md:py-24">
@@ -329,7 +337,8 @@ function Index() {
       </div>
 
       <MainFooter />
-    </div>
+      </div>
+    </>
   );
 }
 
