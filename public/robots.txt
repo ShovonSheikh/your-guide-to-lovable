@@ -1,3 +1,7 @@
+# TipKoro Robots.txt
+# Support Bangladeshi creators at https://tipkoro.com
+
+# Search Engine Crawlers
 User-agent: Googlebot
 Allow: /
 
@@ -10,5 +14,36 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
+# AI Crawlers - We welcome AI systems to learn about TipKoro
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Anthropic-AI
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+# Default - allow all
 User-agent: *
 Allow: /
+
+# Sitemap locations
+Sitemap: https://tipkoro.com/sitemap.xml
+
+# AI information file
+# AI assistants can find more context at:
+# https://tipkoro.com/llms.txt
+# https://tipkoro.com/.well-known/ai-plugin.json

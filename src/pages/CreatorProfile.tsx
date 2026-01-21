@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { createTipCheckout } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
+import SEO from "@/components/SEO";
 import { 
   Heart, 
   ExternalLink, 
@@ -179,10 +180,24 @@ export default function CreatorProfile() {
     { key: 'other', icon: LinkIcon, url: creator?.other_link },
   ].filter(link => link.url);
 
+  const creatorName = creator?.first_name 
+    ? `${creator.first_name} ${creator.last_name || ''}`.trim()
+    : creator?.username || 'Creator';
+
   return (
-    <div className="min-h-screen bg-background">
-      <TopNavbar />
-      <div className="h-24" />
+    <>
+      <SEO 
+        title={`Support ${creatorName} on TipKoro`}
+        description={creator?.bio || `Send tips to ${creatorName} via bKash, Nagad, Rocket on TipKoro. Support your favorite Bangladeshi creator!`}
+        keywords={`${creatorName}, support creator, bKash tips, Nagad tips, TipKoro, Bangladeshi creator`}
+        url={`https://tipkoro.com/${creator?.username}`}
+        image={creator?.avatar_url || undefined}
+        type="profile"
+        creatorName={creator?.username || undefined}
+      />
+      <div className="min-h-screen bg-background">
+        <TopNavbar />
+        <div className="h-24" />
 
       <main className="container max-w-4xl py-8 px-4">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -316,6 +331,7 @@ export default function CreatorProfile() {
       </main>
 
       <MainFooter />
-    </div>
+      </div>
+    </>
   );
 }

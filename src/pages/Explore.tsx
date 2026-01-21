@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Search, Users, Heart } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import SEO from "@/components/SEO";
 
 interface Creator {
   id: string;
@@ -59,9 +60,16 @@ export default function Explore() {
   });
 
   return (
-    <div className="min-h-screen bg-background">
-      <TopNavbar />
-      <div className="h-24" />
+    <>
+      <SEO 
+        title="Explore Bangladeshi Creators"
+        description="Discover talented Bangladeshi creators on TipKoro. Support YouTubers, streamers, artists, writers, and more with tips via bKash, Nagad, Rocket."
+        keywords="Bangladeshi creators, support creators Bangladesh, bKash tips, Nagad tips, YouTubers Bangladesh, streamers Bangladesh"
+        url="https://tipkoro.com/explore"
+      />
+      <div className="min-h-screen bg-background">
+        <TopNavbar />
+        <div className="h-24" />
 
       <main className="container max-w-6xl py-8 px-4">
         {/* Header */}
@@ -132,7 +140,8 @@ export default function Explore() {
         )}
       </main>
 
-      <MainFooter />
-    </div>
+        <MainFooter />
+      </div>
+    </>
   );
 }
