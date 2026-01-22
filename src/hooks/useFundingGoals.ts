@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { toast } from "@/hooks/use-toast";
 
 export interface FundingGoal {
@@ -34,6 +35,7 @@ export interface UpdateFundingGoalInput {
 }
 
 export function useFundingGoals(profileId: string | null | undefined) {
+  const supabaseAuth = useSupabaseWithAuth();
   const [goals, setGoals] = useState<FundingGoal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +70,7 @@ export function useFundingGoals(profileId: string | null | undefined) {
   }, [fetchGoals]);
 
   const createGoal = async (input: CreateFundingGoalInput): Promise<FundingGoal | null> => {
-    const { data, error: createError } = await supabase
+    const { data, error: createError } = await supabaseAuth
       .from("funding_goals")
       .insert({
         profile_id: input.profile_id,
@@ -96,7 +98,7 @@ export function useFundingGoals(profileId: string | null | undefined) {
   };
 
   const updateGoal = async (id: string, input: UpdateFundingGoalInput): Promise<boolean> => {
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAuth
       .from("funding_goals")
       .update(input)
       .eq("id", id);
@@ -117,7 +119,7 @@ export function useFundingGoals(profileId: string | null | undefined) {
   };
 
   const deleteGoal = async (id: string): Promise<boolean> => {
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await supabaseAuth
       .from("funding_goals")
       .delete()
       .eq("id", id);
