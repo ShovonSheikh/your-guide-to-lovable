@@ -170,25 +170,30 @@ serve(async (req) => {
       );
     }
 
-    // Check if username is already taken
-    const { data: usernameCheck } = await supabase
-      .from('creator_signups')
-      .select('id')
-      .eq('username', username)
-      .neq('transaction_id', transaction_id)
+    // Fetch promo configuration from platform_config
+    const { data: promoEnabledConfig } = await supabase
+      .from('platform_config')
+      .select('value')
+      .eq('key', 'promo_enabled')
+      .maybeSingle();
+    
+    const { data: promoDurationConfig } = await supabase
+      .from('platform_config')
+      .select('value')
+      .eq('key', 'promo_duration_months')
       .maybeSingle();
 
-    if (usernameCheck) {
-      return new Response(
-        JSON.stringify({ error: "Username already taken" }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const promoEnabled = (promoEnabledConfig?.value as { enabled?: boolean })?.enabled ?? false;
+    const promoDurationMonths = (promoDurationConfig?.value as { months?: number })?.months ?? 0;
 
-    // Calculate promo dates: signup_date + 3 months
+    // Calculate promo dates based on config
     const signupDate = new Date();
     const activeUntil = new Date(signupDate);
-    activeUntil.setMonth(activeUntil.getMonth() + 3);
+    
+    if (promoEnabled && promoDurationMonths > 0) {
+      activeUntil.setMonth(activeUntil.getMonth() + promoDurationMonths);
+    }
+    
     const billingStart = new Date(activeUntil);
 
     // Update the record with profile data

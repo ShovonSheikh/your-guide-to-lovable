@@ -1,37 +1,31 @@
-import React, { useState } from "react";
+import React from "react";
 import { useUser } from "@clerk/clerk-react";
-import { Navigate, Link, useNavigate } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { useCreatorStats } from "@/hooks/useCreatorStats";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { TopNavbar } from "@/components/TopNavbar";
 import { Button } from "@/components/ui/button";
-import { Onboarding } from "@/components/Onboarding";
 import { RecentTipsList } from "@/components/RecentTipsList";
 import { SupporterDashboard } from "@/components/SupporterDashboard";
+import { DashboardQuickActions } from "@/components/DashboardQuickActions";
+import { SetupChecklist } from "@/components/SetupChecklist";
 import { 
   Heart, 
   DollarSign, 
   Users, 
   TrendingUp, 
   TrendingDown,
-  ExternalLink,
   Settings,
   Wallet,
-  Copy,
-  Check,
-  ImageIcon,
   ShieldAlert
 } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
   usePageTitle("Dashboard");
   const { isSignedIn, isLoaded } = useUser();
   const { profile, loading: profileLoading } = useProfile();
   const { stats, recentTips, loading: statsLoading } = useCreatorStats();
-  const [copied, setCopied] = useState(false);
-  const navigate = useNavigate();
 
   if (!isLoaded || profileLoading) {
     return (
@@ -45,26 +39,13 @@ export default function Dashboard() {
     return <Navigate to="/" replace />;
   }
 
-  // Redirect to complete-profile if onboarding not completed
   if (profile && profile.onboarding_status !== 'completed') {
     return <Navigate to="/complete-profile" replace />;
   }
 
-  const profileUrl = profile?.username 
-    ? `${window.location.origin}/${profile.username}` 
-    : null;
-
-  const copyProfileUrl = () => {
-    if (profileUrl) {
-      navigator.clipboard.writeText(profileUrl);
-      setCopied(true);
-      toast({ title: "Link copied!", description: "Your profile URL has been copied to clipboard." });
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
   const isCreator = profile?.account_type === 'creator';
   const growthPositive = (stats?.growthPercentage || 0) >= 0;
+  const hasSocialLinks = Boolean(profile?.twitter || profile?.instagram || profile?.youtube || profile?.facebook || profile?.other_link);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -105,7 +86,7 @@ export default function Dashboard() {
           <>
             {/* Withdrawal PIN Warning */}
             {!profile?.has_withdrawal_pin && (
-              <div className="tipkoro-card mb-8 border-2 border-amber-400 bg-amber-50/50">
+              <div className="tipkoro-card mb-6 border-2 border-amber-400 bg-amber-50/50">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                   <div className="p-3 rounded-full bg-amber-100">
                     <ShieldAlert className="w-6 h-6 text-amber-600" />
@@ -126,35 +107,16 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Profile URL Card */}
-            {profileUrl && (
-              <div className="tipkoro-card mb-8">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <h3 className="font-semibold mb-1">Your TipKoro Page</h3>
-                    <p className="text-sm text-muted-foreground">{profileUrl}</p>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <Button variant="outline" size="sm" onClick={copyProfileUrl} className="gap-2">
-                      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      {copied ? "Copied!" : "Copy Link"}
-                    </Button>
-                    <a href={profileUrl} target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline" size="sm" className="gap-2">
-                        <ExternalLink className="w-4 h-4" />
-                        Visit
-                      </Button>
-                    </a>
-                    <Link to="/donation-image">
-                      <Button variant="outline" size="sm" className="gap-2">
-                        <ImageIcon className="w-4 h-4" />
-                        Create Image
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Setup Checklist */}
+            <SetupChecklist 
+              hasWithdrawalPin={profile?.has_withdrawal_pin || false}
+              isVerified={profile?.is_verified || false}
+              hasSocialLinks={hasSocialLinks}
+              hasAvatar={Boolean(profile?.avatar_url)}
+            />
+
+            {/* Quick Actions */}
+            <DashboardQuickActions username={profile?.username} />
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

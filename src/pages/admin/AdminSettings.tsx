@@ -1,20 +1,66 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Settings, Bell, DollarSign, Shield } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Settings, Bell, DollarSign, Shield, Gift, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 
 export default function AdminSettings() {
   usePageTitle("Admin - Settings");
+  const { config, loading, updateConfig } = usePlatformConfig();
   
-  const handleSave = () => {
-    toast({
-      title: "Settings saved",
-      description: "Platform settings have been updated",
-    });
+  const [creatorFee, setCreatorFee] = useState(150);
+  const [minWithdraw, setMinWithdraw] = useState(100);
+  const [maxWithdraw, setMaxWithdraw] = useState(50000);
+  const [promoEnabled, setPromoEnabled] = useState(false);
+  const [promoDuration, setPromoDuration] = useState(0);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (config) {
+      setCreatorFee(config.creator_account_fee?.amount || 150);
+      setMinWithdraw(config.min_withdrawal?.amount || 100);
+      setMaxWithdraw(config.max_withdrawal?.amount || 50000);
+      setPromoEnabled(config.promo_enabled?.enabled || false);
+      setPromoDuration(config.promo_duration_months?.months || 0);
+    }
+  }, [config]);
+  
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateConfig('creator_account_fee', { amount: creatorFee, currency: 'BDT' });
+      await updateConfig('min_withdrawal', { amount: minWithdraw, currency: 'BDT' });
+      await updateConfig('max_withdrawal', { amount: maxWithdraw, currency: 'BDT' });
+      await updateConfig('promo_enabled', { enabled: promoEnabled });
+      await updateConfig('promo_duration_months', { months: promoDuration });
+      
+      toast({
+        title: "Settings saved",
+        description: "Platform settings have been updated",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save settings",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -37,7 +83,12 @@ export default function AdminSettings() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="monthlyFee">Creator Account Fee (৳)</Label>
-                <Input id="monthlyFee" type="number" defaultValue="150" />
+                <Input 
+                  id="monthlyFee" 
+                  type="number" 
+                  value={creatorFee}
+                  onChange={(e) => setCreatorFee(Number(e.target.value))}
+                />
                 <p className="text-xs text-muted-foreground">Monthly fee for creator accounts</p>
               </div>
               <div className="space-y-2 opacity-50">
@@ -46,6 +97,47 @@ export default function AdminSettings() {
                 <p className="text-xs text-muted-foreground">No fee on tips - creators keep 100%</p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Promo Period Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Gift className="h-5 w-5" />
+              Promo Period
+            </CardTitle>
+            <CardDescription>Configure promotional period for new creators</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="promoEnabled">Enable Promo Period</Label>
+                <p className="text-xs text-muted-foreground">New creators get free access for a limited time</p>
+              </div>
+              <Switch
+                id="promoEnabled"
+                checked={promoEnabled}
+                onCheckedChange={setPromoEnabled}
+              />
+            </div>
+            {promoEnabled && (
+              <div className="space-y-2 pt-2">
+                <Label htmlFor="promoDuration">Promo Duration (months)</Label>
+                <Input 
+                  id="promoDuration" 
+                  type="number" 
+                  value={promoDuration}
+                  onChange={(e) => setPromoDuration(Number(e.target.value))}
+                  min={0}
+                  max={12}
+                  className="max-w-[200px]"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Number of months new creators get free access (0 = no promo)
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -62,11 +154,21 @@ export default function AdminSettings() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="minWithdraw">Minimum Withdrawal (৳)</Label>
-                <Input id="minWithdraw" type="number" defaultValue="500" />
+                <Input 
+                  id="minWithdraw" 
+                  type="number" 
+                  value={minWithdraw}
+                  onChange={(e) => setMinWithdraw(Number(e.target.value))}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="maxWithdraw">Maximum Withdrawal (৳)</Label>
-                <Input id="maxWithdraw" type="number" defaultValue="50000" />
+                <Input 
+                  id="maxWithdraw" 
+                  type="number" 
+                  value={maxWithdraw}
+                  onChange={(e) => setMaxWithdraw(Number(e.target.value))}
+                />
               </div>
             </div>
             <div className="space-y-2">
@@ -124,7 +226,16 @@ export default function AdminSettings() {
         </Card>
 
         <div className="flex justify-end">
-          <Button onClick={handleSave}>Save Settings</Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save Settings'
+            )}
+          </Button>
         </div>
       </div>
     </div>
