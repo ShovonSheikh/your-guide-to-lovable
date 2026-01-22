@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   InputOTP,
@@ -8,7 +8,7 @@ import {
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { toast } from "@/hooks/use-toast";
-import { Lock, Check, Eye, EyeOff, Loader2, ShieldCheck, KeyRound } from "lucide-react";
+import { Lock, Check, Loader2, ShieldCheck, KeyRound, CheckCircle2, ArrowRight } from "lucide-react";
 
 interface WithdrawalPinSetupProps {
   onSuccess?: () => void;
@@ -17,10 +17,23 @@ interface WithdrawalPinSetupProps {
 export function WithdrawalPinSetup({ onSuccess }: WithdrawalPinSetupProps) {
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
-  const [step, setStep] = useState<'enter' | 'confirm'>('enter');
+  const [step, setStep] = useState<'enter' | 'confirm' | 'success'>('enter');
   const [isLoading, setIsLoading] = useState(false);
   const supabase = useSupabaseWithAuth();
   const { refetch } = useProfile();
+  const confirmInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus on confirm input when step changes to 'confirm'
+  useEffect(() => {
+    if (step === 'confirm') {
+      // Small delay to ensure DOM is ready
+      const timer = setTimeout(() => {
+        const firstSlot = document.querySelector('[data-confirm-otp] input') as HTMLInputElement;
+        firstSlot?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [step]);
 
   const handlePinEntered = () => {
     if (pin.length !== 6) {
@@ -55,6 +68,9 @@ export function WithdrawalPinSetup({ onSuccess }: WithdrawalPinSetupProps) {
         throw new Error(data?.error || error?.message || 'Failed to set PIN');
       }
 
+      // Show success state immediately
+      setStep('success');
+
       toast({
         title: "PIN Set Successfully!",
         description: "Your withdrawal PIN has been securely saved",
@@ -62,7 +78,6 @@ export function WithdrawalPinSetup({ onSuccess }: WithdrawalPinSetupProps) {
 
       // Refresh profile to update has_withdrawal_pin
       refetch();
-      onSuccess?.();
     } catch (err: any) {
       toast({
         title: "Error",
@@ -73,6 +88,30 @@ export function WithdrawalPinSetup({ onSuccess }: WithdrawalPinSetupProps) {
       setIsLoading(false);
     }
   };
+
+  // Success state - shows immediately after PIN is set
+  if (step === 'success') {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col items-center text-center py-6">
+          <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4">
+            <CheckCircle2 className="w-10 h-10 text-green-600 dark:text-green-400" />
+          </div>
+          <h3 className="text-xl font-semibold text-foreground mb-2">PIN Set Successfully!</h3>
+          <p className="text-muted-foreground max-w-xs">
+            Your withdrawal PIN has been securely saved. You'll need this PIN to process withdrawals.
+          </p>
+        </div>
+
+        <Button 
+          className="w-full" 
+          onClick={() => onSuccess?.()}
+        >
+          Done
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -86,12 +125,34 @@ export function WithdrawalPinSetup({ onSuccess }: WithdrawalPinSetupProps) {
         </div>
       </div>
 
+      {/* Step indicator */}
+      <div className="flex items-center justify-center gap-2 text-sm">
+        <div className={`flex items-center gap-1.5 ${step === 'enter' ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${step === 'enter' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+            1
+          </div>
+          Enter PIN
+        </div>
+        <ArrowRight className="w-4 h-4 text-muted-foreground" />
+        <div className={`flex items-center gap-1.5 ${step === 'confirm' ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${step === 'confirm' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+            2
+          </div>
+          Confirm
+        </div>
+      </div>
+
       {step === 'enter' ? (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Enter your 6-digit PIN</label>
+            <label className="block text-sm font-medium mb-2 text-center">Enter your 6-digit PIN</label>
             <div className="flex justify-center">
-              <InputOTP maxLength={6} value={pin} onChange={setPin}>
+              <InputOTP 
+                maxLength={6} 
+                value={pin} 
+                onChange={setPin}
+                autoFocus
+              >
                 <InputOTPGroup>
                   <InputOTPSlot index={0} />
                   <InputOTPSlot index={1} />
@@ -116,19 +177,25 @@ export function WithdrawalPinSetup({ onSuccess }: WithdrawalPinSetupProps) {
           </div>
 
           <Button 
-            className="w-full" 
+            className="w-full gap-2" 
             onClick={handlePinEntered}
             disabled={pin.length !== 6}
           >
             Continue
+            <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
       ) : (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Confirm your PIN</label>
-            <div className="flex justify-center">
-              <InputOTP maxLength={6} value={confirmPin} onChange={setConfirmPin}>
+            <label className="block text-sm font-medium mb-2 text-center">Confirm your PIN</label>
+            <div className="flex justify-center" data-confirm-otp>
+              <InputOTP 
+                maxLength={6} 
+                value={confirmPin} 
+                onChange={setConfirmPin}
+                autoFocus
+              >
                 <InputOTPGroup>
                   <InputOTPSlot index={0} />
                   <InputOTPSlot index={1} />
@@ -139,6 +206,9 @@ export function WithdrawalPinSetup({ onSuccess }: WithdrawalPinSetupProps) {
                 </InputOTPGroup>
               </InputOTP>
             </div>
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Re-enter your PIN to confirm
+            </p>
           </div>
 
           <div className="flex gap-2">
