@@ -6,8 +6,9 @@ import { TopNavbar } from "@/components/TopNavbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { Download, Share2, ArrowLeft, Heart, Sparkles } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Download, Share2, ArrowLeft, Heart, Sparkles, Loader2 } from "lucide-react";
+import DynamicShareCard from "@/components/DynamicShareCard";
+import { toPng } from "html-to-image";
 
 interface PrefilledData {
   amount?: string;
@@ -57,48 +58,31 @@ export default function DonationImage() {
 
   const isCreator = profile?.account_type === 'creator';
 
+  const formatTimestamp = () => {
+    const now = new Date();
+    return now.toLocaleString('en-US', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
   const generateImage = async () => {
+    if (!previewRef.current) return;
+
     setIsGenerating(true);
     
     try {
-      // Call edge function to generate SVG
-      const { data, error } = await supabase.functions.invoke('generate-share-image', {
-        body: {
-          amount,
-          creatorName: displayName,
-          supporterName,
-          message,
-          displayName,
-          username: profile?.username,
-          isCreator,
-        }
+      const dataUrl = await toPng(previewRef.current, {
+        quality: 1,
+        pixelRatio: 2,
+        cacheBust: true,
+        skipAutoScale: true,
       });
-
-      if (error) throw error;
-
-      // Convert SVG response to data URL for preview and download
-      const svgBlob = new Blob([data], { type: 'image/svg+xml' });
-      const svgUrl = URL.createObjectURL(svgBlob);
-      
-      // Create an image from SVG to convert to PNG
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = 600;
-        canvas.height = 600;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0);
-          const pngUrl = canvas.toDataURL('image/png');
-          setGeneratedImage(pngUrl);
-        }
-        URL.revokeObjectURL(svgUrl);
-      };
-      img.onerror = () => {
-        // Fallback: use SVG directly
-        setGeneratedImage(svgUrl);
-      };
-      img.src = svgUrl;
+      setGeneratedImage(dataUrl);
 
       toast({
         title: "Image Generated!",
@@ -238,127 +222,53 @@ export default function DonationImage() {
           <div className="tipkoro-card">
             <h2 className="text-xl font-semibold mb-4">Preview</h2>
             
-            {/* Live Preview - This is what gets captured */}
+            {/* Dynamic Share Card Preview */}
             <div className="relative overflow-hidden rounded-xl border border-border mb-4">
-              <div 
+              <DynamicShareCard
                 ref={previewRef}
-                className="w-full aspect-square relative"
-                style={{
-                  background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-                }}
-              >
-                {/* Decorative circles */}
-                <div 
-                  className="absolute rounded-full"
-                  style={{
-                    width: '150px',
-                    height: '150px',
-                    top: '20px',
-                    right: '20px',
-                    background: 'rgba(251, 191, 36, 0.1)',
-                  }}
-                />
-                <div 
-                  className="absolute rounded-full"
-                  style={{
-                    width: '200px',
-                    height: '200px',
-                    bottom: '40px',
-                    left: '-50px',
-                    background: 'rgba(251, 191, 36, 0.08)',
-                  }}
-                />
-                
-                {/* Content */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
-                  {/* TipKoro branding with extra padding */}
-                  <div className="pt-2">
-                    <span className="text-5xl mb-3 block">💛</span>
-                    <span 
-                      className="text-xl font-bold mb-4 block"
-                      style={{ color: '#FBBF24' }}
-                    >
-                      TipKoro
-                    </span>
-                  </div>
-                  
-                  {/* Status text */}
-                  <span className="text-white text-lg mb-2">
-                    {isCreator ? 'I received a tip!' : 'I sent a tip!'}
-                  </span>
-                  
-                  {/* Amount */}
-                  <span 
-                    className="text-4xl font-bold mb-3"
-                    style={{ color: '#FBBF24' }}
-                  >
-                    ৳{amount || '0'}
-                  </span>
-                  
-                  {/* From/To text */}
-                  {supporterName && (
-                    <>
-                      <span className="text-sm" style={{ color: '#a0aec0' }}>
-                        {isCreator ? 'from' : 'to'}
-                      </span>
-                      <span className="text-xl font-bold text-white mt-1">
-                        {supporterName}
-                      </span>
-                    </>
-                  )}
-                  
-                  {/* Message */}
-                  {message && (
-                    <p 
-                      className="italic text-sm mt-4 max-w-[80%]"
-                      style={{ color: '#a0aec0' }}
-                    >
-                      "{message}"
-                    </p>
-                  )}
-                  
-                  {/* Creator/Supporter name */}
-                  <div className="mt-auto pt-6">
-                    <span className="text-lg font-bold text-white block">
-                      {displayName}
-                    </span>
-                    {profile?.username && (
-                      <span 
-                        className="text-sm"
-                        style={{ color: '#FBBF24' }}
-                      >
-                        tipkoro.com/{profile.username}
-                      </span>
-                    )}
-                  </div>
-                  
-                  {/* Footer */}
-                  <span 
-                    className="text-xs mt-4"
-                    style={{ color: '#64748b' }}
-                  >
-                    Support creators with TipKoro
-                  </span>
-                </div>
-              </div>
+                creatorName={isCreator ? displayName : (supporterName || 'Creator')}
+                tipAmount={amount || '0'}
+                userMessage={message}
+                timestamp={formatTimestamp()}
+                supporterName={isCreator ? supporterName : displayName}
+                currency="৳"
+              />
             </div>
             
-            {/* Action buttons - only show after generation */}
-            {generatedImage && (
-              <div className="flex gap-3">
-                <Button onClick={downloadImage} className="flex-1 gap-2">
-                  <Download className="w-4 h-4" />
-                  Download
+            {/* Action buttons */}
+            <div className="flex flex-col gap-3">
+              {!generatedImage ? (
+                <Button 
+                  onClick={generateImage}
+                  disabled={isGenerating}
+                  className="w-full bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" /> Generate Image
+                    </>
+                  )}
                 </Button>
-                <Button onClick={shareImage} variant="outline" className="flex-1 gap-2">
-                  <Share2 className="w-4 h-4" />
-                  Share
-                </Button>
-              </div>
-            )}
+              ) : (
+                <div className="flex gap-3">
+                  <Button onClick={downloadImage} className="flex-1 gap-2">
+                    <Download className="w-4 h-4" />
+                    Download
+                  </Button>
+                  <Button onClick={shareImage} variant="outline" className="flex-1 gap-2">
+                    <Share2 className="w-4 h-4" />
+                    Share
+                  </Button>
+                </div>
+              )}
+            </div>
             
             {!generatedImage && (
-              <p className="text-center text-sm text-muted-foreground">
+              <p className="text-center text-sm text-muted-foreground mt-4">
                 Click "Generate Image" to create your shareable donation image
               </p>
             )}
