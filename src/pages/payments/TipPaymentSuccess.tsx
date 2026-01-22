@@ -8,7 +8,7 @@ import { TopNavbar } from "@/components/TopNavbar";
 import { MainFooter } from "@/components/MainFooter";
 import { Button } from "@/components/ui/button";
 import { Confetti } from "@/components/Confetti";
-import TipKoroCard from "@/components/TipKoroCard";
+import DynamicShareCard from "@/components/DynamicShareCard";
 import { toPng } from "html-to-image";
 import {
   Heart,
@@ -296,7 +296,7 @@ const TipPaymentSuccess: React.FC = () => {
 
             {/* TipKoroCard Preview */}
             <div className="flex justify-center mb-6 overflow-hidden rounded-xl border border-border">
-              <TipKoroCard
+              <DynamicShareCard
                 ref={cardRef}
                 creatorName={creatorName || "Creator"}
                 tipAmount={String(tipData?.amount || paymentAmount || "0")}
@@ -304,6 +304,7 @@ const TipPaymentSuccess: React.FC = () => {
                 timestamp={formatTimestamp()}
                 trxId={transactionIdForCard}
                 verified={creatorVerified}
+                currency="৳"
               />
             </div>
 
