@@ -240,17 +240,9 @@ export default function CreatorProfile() {
               </div>
               
               <div className="text-center md:text-left flex-1">
-                <div className="flex items-center justify-center md:justify-start gap-2 flex-wrap">
-                  <h1 className="text-2xl md:text-3xl font-display font-bold">
-                    {creator?.first_name} {creator?.last_name}
-                  </h1>
-                  {creator?.is_verified && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium">
-                      <BadgeCheck className="w-3 h-3" />
-                      Verified
-                    </span>
-                  )}
-                </div>
+                <h1 className="text-2xl md:text-3xl font-display font-bold">
+                  {creator?.first_name} {creator?.last_name}
+                </h1>
                 <p className="text-muted-foreground">@{creator?.username}</p>
                 
                 {creator?.bio && (
