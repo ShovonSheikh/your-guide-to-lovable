@@ -122,6 +122,30 @@ export default function CreatorProfile() {
       return;
     }
 
+    // Prevent self-tipping: check if the logged-in user's email matches the creator's email
+    // or if their user_id matches via a profile lookup
+    if (user) {
+      try {
+        const { data: userProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (userProfile && userProfile.id === creator?.id) {
+          toast({
+            title: "Cannot tip yourself",
+            description: "You cannot send a tip to your own account.",
+            variant: "destructive",
+          });
+          return;
+        }
+      } catch (err) {
+        // If profile check fails, continue anyway (non-blocking)
+        console.log("Profile check failed:", err);
+      }
+    }
+
     setIsSubmitting(true);
 
     try {

@@ -130,9 +130,15 @@ export default function AdminMailbox() {
         })
       );
 
-      setMailboxes(mailboxesWithCounts);
+      // Only update if data actually changed (prevents re-renders)
+      setMailboxes(prev => {
+        const prevJson = JSON.stringify(prev);
+        const newJson = JSON.stringify(mailboxesWithCounts);
+        if (prevJson === newJson) return prev;
+        return mailboxesWithCounts;
+      });
 
-      if (!selectedMailbox && mailboxesWithCounts.length > 0) {
+      if (!selectedMailboxRef.current && mailboxesWithCounts.length > 0) {
         setSelectedMailbox(mailboxesWithCounts[0]);
       }
     } catch (error) {
@@ -140,7 +146,7 @@ export default function AdminMailbox() {
     } finally {
       setLoading(false);
     }
-  }, [selectedMailbox, supabase]);
+  }, [supabase]);
 
   const fetchEmails = useCallback(async (mailboxId: string, showLoading = true) => {
     if (showLoading) {
@@ -164,7 +170,13 @@ export default function AdminMailbox() {
         attachments: email.attachments ? (email.attachments as unknown as EmailAttachment[]) : null
       }));
 
-      setEmails(typedEmails);
+      // Only update if data actually changed (prevents re-renders)
+      setEmails(prev => {
+        const prevJson = JSON.stringify(prev);
+        const newJson = JSON.stringify(typedEmails);
+        if (prevJson === newJson) return prev;
+        return typedEmails;
+      });
     } catch (error) {
       console.error('Error fetching emails:', error);
     } finally {
@@ -340,8 +352,8 @@ export default function AdminMailbox() {
     );
   }
 
-  // Email List Component
-  const EmailList = () => (
+  // Email List Component - memoized to prevent re-renders
+  const EmailList = useMemo(() => () => (
     <Card className="h-full flex flex-col">
       <CardHeader className="py-3 px-4 border-b flex-shrink-0">
         <div className="flex items-center justify-between gap-2">
@@ -438,10 +450,10 @@ export default function AdminMailbox() {
         )}
       </ScrollArea>
     </Card>
-  );
+  ), [selectedMailbox, mailboxes, isRefreshing, emailsLoading, emails, selectedEmail, handleRefresh, handleMailboxChange, handleSelectEmail]);
 
-  // Email Viewer Component
-  const EmailViewer = () => (
+  // Email Viewer Component - memoized to prevent re-renders
+  const EmailViewer = useMemo(() => () => (
     <Card className="h-full flex flex-col">
       {selectedEmail ? (
         <>
@@ -577,7 +589,7 @@ export default function AdminMailbox() {
         </div>
       )}
     </Card>
-  );
+  ), [selectedEmail, isMobile, showHtml, selectedMailbox, handleMobileBack, openReplyComposer, toggleRead, deleteEmail]);
 
   // Reply Sheet Component with local state to prevent parent re-renders
   const ReplySheetContent = () => {
@@ -721,7 +733,7 @@ export default function AdminMailbox() {
   };
 
   return (
-    <div className="h-[calc(100vh-120px)] md:h-[calc(100vh-160px)] flex flex-col">
+    <div className="h-[calc(100vh-100px)] md:h-[calc(100vh-120px)] flex flex-col">
       {/* Desktop Header */}
       {!isMobile && (
         <div className="flex items-center justify-between mb-4 flex-shrink-0">

@@ -180,8 +180,11 @@ export function VerificationForm() {
     );
   }
 
-  // Already verified
+  // Already verified - also check for admin notes (could contain approval message)
   if (profile?.is_verified) {
+    // Find the most recent approved request with admin_notes
+    const approvedRequest = existingRequest?.status === 'approved' ? existingRequest : null;
+    
     return (
       <div className="text-center py-8">
         <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
@@ -191,6 +194,12 @@ export function VerificationForm() {
         <p className="text-muted-foreground">
           Your account has been verified. Your profile now displays a verification badge.
         </p>
+        {approvedRequest?.admin_notes && (
+          <div className="mt-4 p-4 bg-green-500/10 border border-green-500/20 rounded-xl text-left max-w-md mx-auto">
+            <p className="text-sm font-medium text-green-700 mb-1">Admin Note:</p>
+            <p className="text-sm text-muted-foreground">{approvedRequest.admin_notes}</p>
+          </div>
+        )}
       </div>
     );
   }
