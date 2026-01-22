@@ -499,21 +499,31 @@ export default function AdminShareImage() {
             <Variable className="w-5 h-5 text-muted-foreground" />
             <CardTitle className="text-base">Dynamic Variables</CardTitle>
           </div>
-          <CardDescription>Click a variable to copy it to clipboard</CardDescription>
+          <CardDescription>
+            Use these placeholders in your template. They will be replaced with real data when the image is generated. Click a variable to copy it.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {DYNAMIC_VARIABLES.map((variable) => (
-              <Badge
+              <div
                 key={variable.name}
-                variant="secondary"
-                className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors px-3 py-1.5"
+                className="group p-3 rounded-lg border bg-card hover:bg-accent/50 cursor-pointer transition-colors"
                 onClick={() => insertVariable(variable.name)}
-                title={`${variable.description}\nExample: ${variable.example}`}
               >
-                <Copy className="w-3 h-3 mr-1.5" />
-                {`{{${variable.name}}}`}
-              </Badge>
+                <div className="flex items-center justify-between mb-1.5">
+                  <Badge variant="secondary" className="font-mono text-xs">
+                    {`{{${variable.name}}}`}
+                  </Badge>
+                  <Copy className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {variable.description}
+                </p>
+                <p className="text-xs text-muted-foreground/70 mt-1 font-mono">
+                  e.g. {variable.example}
+                </p>
+              </div>
             ))}
           </div>
         </CardContent>
