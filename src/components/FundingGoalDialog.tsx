@@ -13,9 +13,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Target, Plus, Pencil, Trash2, Calendar } from "lucide-react";
+import { Target, Plus, Pencil, Trash2, Calendar, Share2 } from "lucide-react";
 import { FundingGoal, useFundingGoals } from "@/hooks/useFundingGoals";
 import { FundingGoalCard } from "@/components/FundingGoalCard";
+import { GoalShareCard } from "@/components/GoalShareCard";
 import { format } from "date-fns";
 import {
   AlertDialog,
@@ -32,16 +33,19 @@ interface FundingGoalDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   profileId: string;
+  username?: string;
+  displayName?: string;
 }
 
 type ViewMode = "list" | "create" | "edit";
 
-export function FundingGoalDialog({ open, onOpenChange, profileId }: FundingGoalDialogProps) {
+export function FundingGoalDialog({ open, onOpenChange, profileId, username, displayName }: FundingGoalDialogProps) {
   const { goals, loading, createGoal, updateGoal, deleteGoal, toggleGoalActive } = useFundingGoals(profileId);
   
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [editingGoal, setEditingGoal] = useState<FundingGoal | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [shareGoal, setShareGoal] = useState<FundingGoal | null>(null);
   
   // Form state
   const [title, setTitle] = useState("");
@@ -174,6 +178,16 @@ export function FundingGoalDialog({ open, onOpenChange, profileId }: FundingGoal
                           )}
                         </div>
                         <div className="flex items-center gap-1">
+                          {username && goal.is_active && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-primary hover:text-primary"
+                              onClick={() => setShareGoal(goal)}
+                            >
+                              <Share2 className="w-4 h-4" />
+                            </Button>
+                          )}
                           <Button 
                             variant="ghost" 
                             size="icon" 
@@ -316,6 +330,17 @@ export function FundingGoalDialog({ open, onOpenChange, profileId }: FundingGoal
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Goal Share Card */}
+      {shareGoal && username && (
+        <GoalShareCard
+          open={!!shareGoal}
+          onOpenChange={(open) => !open && setShareGoal(null)}
+          goal={shareGoal}
+          username={username}
+          displayName={displayName}
+        />
+      )}
     </>
   );
 }
