@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useEffect, useState, useCallback, useRef, memo } from "react";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -79,6 +79,295 @@ interface Email {
 
 type MobileView = 'list' | 'email';
 
+// ============= Extracted Memoized Components =============
+
+interface EmailListProps {
+  selectedMailbox: Mailbox | null;
+  mailboxes: Mailbox[];
+  emails: Email[];
+  selectedEmailId: string | null;
+  isRefreshing: boolean;
+  emailsLoading: boolean;
+  onMailboxChange: (mailboxId: string) => void;
+  onSelectEmail: (email: Email) => void;
+  onRefresh: () => void;
+}
+
+const EmailListComponent = memo(function EmailList({
+  selectedMailbox,
+  mailboxes,
+  emails,
+  selectedEmailId,
+  isRefreshing,
+  emailsLoading,
+  onMailboxChange,
+  onSelectEmail,
+  onRefresh,
+}: EmailListProps) {
+  return (
+    <Card className="h-full flex flex-col">
+      <CardHeader className="py-3 px-4 border-b flex-shrink-0">
+        <div className="flex items-center justify-between gap-2">
+          {/* Mailbox Dropdown */}
+          <Select
+            value={selectedMailbox?.id || ""}
+            onValueChange={onMailboxChange}
+          >
+            <SelectTrigger className="w-full max-w-[200px]">
+              <div className="flex items-center gap-2 truncate">
+                <Inbox className="h-4 w-4 flex-shrink-0" />
+                <SelectValue placeholder="Select mailbox" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              {mailboxes.map((mailbox) => (
+                <SelectItem key={mailbox.id} value={mailbox.id}>
+                  <div className="flex items-center justify-between gap-2 w-full">
+                    <span className="truncate">{mailbox.display_name}</span>
+                    {mailbox.unread_count > 0 && (
+                      <Badge variant="default" className="ml-2 text-xs">
+                        {mailbox.unread_count}
+                      </Badge>
+                    )}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onRefresh}
+            className="flex-shrink-0"
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+          </Button>
+        </div>
+      </CardHeader>
+      <ScrollArea className="flex-1">
+        {emailsLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Spinner className="h-6 w-6" />
+          </div>
+        ) : emails.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Mail className="h-12 w-12 mx-auto mb-3 opacity-30" />
+            <p>No emails in this mailbox</p>
+          </div>
+        ) : (
+          <div className="divide-y">
+            {emails.map((email) => (
+              <button
+                key={email.id}
+                onClick={() => onSelectEmail(email)}
+                className={cn(
+                  "w-full text-left p-3 hover:bg-secondary/50 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/30",
+                  selectedEmailId === email.id && "bg-secondary/70",
+                  !email.is_read && "bg-primary/5"
+                )}
+              >
+                <div className="flex items-start gap-2">
+                  {!email.is_read && (
+                    <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                  )}
+                  <div className={cn("flex-1 min-w-0", email.is_read && "ml-4")}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={cn(
+                        "text-sm truncate",
+                        !email.is_read && "font-semibold"
+                      )}>
+                        {email.from_name || email.from_address}
+                      </span>
+                      <span className="text-xs text-muted-foreground flex-shrink-0">
+                        {formatDistanceToNow(new Date(email.received_at), { addSuffix: true })}
+                      </span>
+                    </div>
+                    <p className={cn(
+                      "text-sm truncate",
+                      !email.is_read ? "text-foreground" : "text-muted-foreground"
+                    )}>
+                      {email.subject || '(No Subject)'}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      {email.text_body?.substring(0, 60) || 'No preview'}...
+                    </p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </ScrollArea>
+    </Card>
+  );
+});
+
+interface EmailViewerProps {
+  email: Email | null;
+  isMobile: boolean;
+  showHtml: boolean;
+  onToggleHtml: (show: boolean) => void;
+  onBack: () => void;
+  onReply: () => void;
+  onToggleRead: () => void;
+  onDelete: () => void;
+}
+
+const EmailViewerComponent = memo(function EmailViewer({
+  email,
+  isMobile,
+  showHtml,
+  onToggleHtml,
+  onBack,
+  onReply,
+  onToggleRead,
+  onDelete,
+}: EmailViewerProps) {
+  if (!email) {
+    return (
+      <Card className="h-full flex flex-col">
+        <div className="h-full flex items-center justify-center text-muted-foreground">
+          <div className="text-center">
+            <MailOpen className="h-16 w-16 mx-auto mb-4 opacity-30" />
+            <p>Select an email to view</p>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="h-full flex flex-col">
+      {/* Header */}
+      <CardHeader className="py-3 px-4 border-b flex-shrink-0">
+        <div className="flex items-center justify-between gap-2">
+          {isMobile && (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onBack}>
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+          )}
+          <CardTitle className="text-sm font-medium truncate flex-1">
+            {email.subject || '(No Subject)'}
+          </CardTitle>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={onReply}
+              className="gap-2"
+            >
+              <Reply className="h-4 w-4" />
+              Reply
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={onToggleRead}
+              title={email.is_read ? 'Mark as unread' : 'Mark as read'}
+            >
+              {email.is_read ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive"
+              onClick={onDelete}
+              title="Delete"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+
+      {/* Email Meta */}
+      <div className="p-4 border-b bg-muted/30 flex-shrink-0">
+        <div className="space-y-1 text-sm">
+          <div className="flex gap-2 flex-wrap">
+            <span className="text-muted-foreground w-12 flex-shrink-0">From:</span>
+            <span className="font-medium break-all">
+              {email.from_name ? `${email.from_name} <${email.from_address}>` : email.from_address}
+            </span>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <span className="text-muted-foreground w-12 flex-shrink-0">To:</span>
+            <span className="break-all">
+              {email.to_addresses.map(a => a.name ? `${a.name} <${a.address}>` : a.address).join(', ')}
+            </span>
+          </div>
+          {email.cc_addresses && email.cc_addresses.length > 0 && (
+            <div className="flex gap-2 flex-wrap">
+              <span className="text-muted-foreground w-12 flex-shrink-0">CC:</span>
+              <span className="break-all">
+                {email.cc_addresses.map(a => a.name ? `${a.name} <${a.address}>` : a.address).join(', ')}
+              </span>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <span className="text-muted-foreground w-12 flex-shrink-0">Date:</span>
+            <span>{format(new Date(email.received_at), 'PPpp')}</span>
+          </div>
+        </div>
+        {email.attachments && email.attachments.length > 0 && (
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            <Paperclip className="h-4 w-4 text-muted-foreground" />
+            {email.attachments.map((att, idx) => (
+              <Badge key={idx} variant="outline" className="text-xs">
+                {att.filename}
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Email Body */}
+      <div className="p-4 flex-1 flex flex-col min-h-0 overflow-hidden">
+        <div className="flex items-center gap-2 mb-3 flex-shrink-0">
+          <Button
+            variant={showHtml ? "default" : "outline"}
+            size="sm"
+            onClick={() => onToggleHtml(true)}
+            disabled={!email.html_body}
+          >
+            HTML
+          </Button>
+          <Button
+            variant={!showHtml ? "default" : "outline"}
+            size="sm"
+            onClick={() => onToggleHtml(false)}
+          >
+            Plain Text
+          </Button>
+        </div>
+        <div className="flex-1 min-h-0 overflow-auto">
+          {showHtml && email.html_body ? (
+            <iframe
+              srcDoc={email.html_body}
+              className="w-full h-full border rounded bg-white"
+              style={{ minHeight: '400px' }}
+              sandbox="allow-same-origin"
+              title="Email content"
+            />
+          ) : (
+            <pre className="whitespace-pre-wrap text-sm font-mono bg-muted/30 p-4 rounded h-full overflow-auto">
+              {email.text_body || 'No text content available'}
+            </pre>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+});
+
+// ============= Main Component =============
+
 export default function AdminMailbox() {
   usePageTitle("Admin - Mailbox");
   const supabase = useSupabaseWithAuth();
@@ -96,6 +385,9 @@ export default function AdminMailbox() {
 
   // Ref to avoid stale closure in real-time subscription
   const selectedMailboxRef = useRef<Mailbox | null>(null);
+  
+  // Stable ref for the displayed email - prevents re-renders during auto-refresh
+  const displayedEmailRef = useRef<Email | null>(null);
 
   // Reply composer state
   const [showReplySheet, setShowReplySheet] = useState(false);
@@ -104,6 +396,15 @@ export default function AdminMailbox() {
   useEffect(() => {
     selectedMailboxRef.current = selectedMailbox;
   }, [selectedMailbox]);
+
+  // Update displayed email ref only when a NEW email is selected (not on refresh)
+  useEffect(() => {
+    if (selectedEmail && selectedEmail.id !== displayedEmailRef.current?.id) {
+      displayedEmailRef.current = selectedEmail;
+    } else if (!selectedEmail) {
+      displayedEmailRef.current = null;
+    }
+  }, [selectedEmail]);
 
   const fetchMailboxes = useCallback(async () => {
     try {
@@ -170,13 +471,22 @@ export default function AdminMailbox() {
         attachments: email.attachments ? (email.attachments as unknown as EmailAttachment[]) : null
       }));
 
-      // Only update if data actually changed (prevents re-renders)
+      // Only update emails list if data actually changed
       setEmails(prev => {
         const prevJson = JSON.stringify(prev);
         const newJson = JSON.stringify(typedEmails);
         if (prevJson === newJson) return prev;
         return typedEmails;
       });
+      
+      // Update displayed email's read status if it changed (for toggle read button sync)
+      // But don't trigger a re-render of the email content
+      if (displayedEmailRef.current) {
+        const updatedEmail = typedEmails.find(e => e.id === displayedEmailRef.current?.id);
+        if (updatedEmail && updatedEmail.is_read !== displayedEmailRef.current.is_read) {
+          displayedEmailRef.current = updatedEmail;
+        }
+      }
     } catch (error) {
       console.error('Error fetching emails:', error);
     } finally {
@@ -194,6 +504,7 @@ export default function AdminMailbox() {
     if (selectedMailbox) {
       fetchEmails(selectedMailbox.id);
       setSelectedEmail(null);
+      displayedEmailRef.current = null;
     }
   }, [selectedMailbox, fetchEmails]);
 
@@ -209,6 +520,11 @@ export default function AdminMailbox() {
       setIsRefreshing(false);
     }
   }, [fetchMailboxes, fetchEmails]);
+
+  // Manual refresh handler - stable callback for EmailList
+  const handleManualRefresh = useCallback(() => {
+    handleRefresh(false);
+  }, [handleRefresh]);
 
   // Auto-refresh every 3 seconds (silent to prevent flickering)
   // Skip refresh when reply sheet is open to prevent re-renders
@@ -244,7 +560,7 @@ export default function AdminMailbox() {
     };
   }, [fetchEmails, fetchMailboxes, supabase]);
 
-  const markAsRead = async (email: Email) => {
+  const markAsRead = useCallback(async (email: Email) => {
     if (email.is_read) return;
 
     await supabase
@@ -263,9 +579,9 @@ export default function AdminMailbox() {
           : mb
       )
     );
-  };
+  }, [supabase]);
 
-  const toggleRead = async (email: Email) => {
+  const toggleRead = useCallback(async (email: Email) => {
     const newReadState = !email.is_read;
 
     await supabase
@@ -277,9 +593,9 @@ export default function AdminMailbox() {
       prev.map(e => e.id === email.id ? { ...e, is_read: newReadState } : e)
     );
 
-    if (selectedEmail?.id === email.id) {
-      setSelectedEmail({ ...email, is_read: newReadState });
-    }
+    setSelectedEmail(prev => 
+      prev?.id === email.id ? { ...prev, is_read: newReadState } : prev
+    );
 
     setMailboxes(prev =>
       prev.map(mb =>
@@ -288,9 +604,9 @@ export default function AdminMailbox() {
           : mb
       )
     );
-  };
+  }, [supabase]);
 
-  const deleteEmail = async (email: Email) => {
+  const deleteEmail = useCallback(async (email: Email) => {
     await supabase
       .from('inbound_emails')
       .update({ is_deleted: true })
@@ -300,6 +616,7 @@ export default function AdminMailbox() {
 
     if (selectedEmail?.id === email.id) {
       setSelectedEmail(null);
+      displayedEmailRef.current = null;
       if (isMobile) {
         setMobileView('list');
       }
@@ -314,33 +631,52 @@ export default function AdminMailbox() {
         )
       );
     }
-  };
+  }, [supabase, selectedEmail, isMobile]);
 
-  const handleMailboxChange = (mailboxId: string) => {
+  const handleMailboxChange = useCallback((mailboxId: string) => {
     const mailbox = mailboxes.find(m => m.id === mailboxId);
     if (mailbox) {
       setSelectedMailbox(mailbox);
     }
-  };
+  }, [mailboxes]);
 
-  const handleSelectEmail = (email: Email) => {
+  const handleSelectEmail = useCallback((email: Email) => {
     setSelectedEmail(email);
+    displayedEmailRef.current = email;
     markAsRead(email);
     if (isMobile) {
       setMobileView('email');
     }
-  };
+  }, [isMobile, markAsRead]);
 
-  const handleMobileBack = () => {
+  const handleMobileBack = useCallback(() => {
     setMobileView('list');
     setSelectedEmail(null);
-  };
+    displayedEmailRef.current = null;
+  }, []);
 
-  const openReplyComposer = () => {
+  const openReplyComposer = useCallback(() => {
     if (selectedEmail) {
       setShowReplySheet(true);
     }
-  };
+  }, [selectedEmail]);
+
+  // Stable callbacks for EmailViewer - use the displayed email from ref
+  const handleToggleRead = useCallback(() => {
+    if (displayedEmailRef.current) {
+      toggleRead(displayedEmailRef.current);
+    }
+  }, [toggleRead]);
+
+  const handleDelete = useCallback(() => {
+    if (displayedEmailRef.current) {
+      deleteEmail(displayedEmailRef.current);
+    }
+  }, [deleteEmail]);
+
+  const handleToggleHtml = useCallback((show: boolean) => {
+    setShowHtml(show);
+  }, []);
 
   const totalUnread = mailboxes.reduce((sum, mb) => sum + mb.unread_count, 0);
 
@@ -351,245 +687,6 @@ export default function AdminMailbox() {
       </div>
     );
   }
-
-  // Email List Component - memoized to prevent re-renders
-  const EmailList = useMemo(() => () => (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="py-3 px-4 border-b flex-shrink-0">
-        <div className="flex items-center justify-between gap-2">
-          {/* Mailbox Dropdown */}
-          <Select
-            value={selectedMailbox?.id || ""}
-            onValueChange={handleMailboxChange}
-          >
-            <SelectTrigger className="w-full max-w-[200px]">
-              <div className="flex items-center gap-2 truncate">
-                <Inbox className="h-4 w-4 flex-shrink-0" />
-                <SelectValue placeholder="Select mailbox" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              {mailboxes.map((mailbox) => (
-                <SelectItem key={mailbox.id} value={mailbox.id}>
-                  <div className="flex items-center justify-between gap-2 w-full">
-                    <span className="truncate">{mailbox.display_name}</span>
-                    {mailbox.unread_count > 0 && (
-                      <Badge variant="default" className="ml-2 text-xs">
-                        {mailbox.unread_count}
-                      </Badge>
-                    )}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleRefresh(false)}
-            className="flex-shrink-0"
-            disabled={isRefreshing}
-          >
-            <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-          </Button>
-        </div>
-      </CardHeader>
-      <ScrollArea className="flex-1">
-        {emailsLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Spinner className="h-6 w-6" />
-          </div>
-        ) : emails.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Mail className="h-12 w-12 mx-auto mb-3 opacity-30" />
-            <p>No emails in this mailbox</p>
-          </div>
-        ) : (
-          <div className="divide-y">
-            {emails.map((email) => (
-              <button
-                key={email.id}
-                onClick={() => handleSelectEmail(email)}
-                className={cn(
-                  "w-full text-left p-3 hover:bg-secondary/50 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/30",
-                  selectedEmail?.id === email.id && "bg-secondary/70",
-                  !email.is_read && "bg-primary/5"
-                )}
-              >
-                <div className="flex items-start gap-2">
-                  {!email.is_read && (
-                    <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                  )}
-                  <div className={cn("flex-1 min-w-0", email.is_read && "ml-4")}>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className={cn(
-                        "text-sm truncate",
-                        !email.is_read && "font-semibold"
-                      )}>
-                        {email.from_name || email.from_address}
-                      </span>
-                      <span className="text-xs text-muted-foreground flex-shrink-0">
-                        {formatDistanceToNow(new Date(email.received_at), { addSuffix: true })}
-                      </span>
-                    </div>
-                    <p className={cn(
-                      "text-sm truncate",
-                      !email.is_read ? "text-foreground" : "text-muted-foreground"
-                    )}>
-                      {email.subject || '(No Subject)'}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">
-                      {email.text_body?.substring(0, 60) || 'No preview'}...
-                    </p>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </ScrollArea>
-    </Card>
-  ), [selectedMailbox, mailboxes, isRefreshing, emailsLoading, emails, selectedEmail, handleRefresh, handleMailboxChange, handleSelectEmail]);
-
-  // Email Viewer Component - memoized to prevent re-renders
-  const EmailViewer = useMemo(() => () => (
-    <Card className="h-full flex flex-col">
-      {selectedEmail ? (
-        <>
-          {/* Header */}
-          <CardHeader className="py-3 px-4 border-b flex-shrink-0">
-            <div className="flex items-center justify-between gap-2">
-              {isMobile && (
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleMobileBack}>
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-              )}
-              <CardTitle className="text-sm font-medium truncate flex-1">
-                {selectedEmail.subject || '(No Subject)'}
-              </CardTitle>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={openReplyComposer}
-                  className="gap-2"
-                >
-                  <Reply className="h-4 w-4" />
-                  Reply
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => toggleRead(selectedEmail)}
-                  title={selectedEmail.is_read ? 'Mark as unread' : 'Mark as read'}
-                >
-                  {selectedEmail.is_read ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-destructive"
-                  onClick={() => deleteEmail(selectedEmail)}
-                  title="Delete"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-
-          {/* Email Meta */}
-          <div className="p-4 border-b bg-muted/30 flex-shrink-0">
-            <div className="space-y-1 text-sm">
-              <div className="flex gap-2 flex-wrap">
-                <span className="text-muted-foreground w-12 flex-shrink-0">From:</span>
-                <span className="font-medium break-all">
-                  {selectedEmail.from_name ? `${selectedEmail.from_name} <${selectedEmail.from_address}>` : selectedEmail.from_address}
-                </span>
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                <span className="text-muted-foreground w-12 flex-shrink-0">To:</span>
-                <span className="break-all">
-                  {selectedEmail.to_addresses.map(a => a.name ? `${a.name} <${a.address}>` : a.address).join(', ')}
-                </span>
-              </div>
-              {selectedEmail.cc_addresses && selectedEmail.cc_addresses.length > 0 && (
-                <div className="flex gap-2 flex-wrap">
-                  <span className="text-muted-foreground w-12 flex-shrink-0">CC:</span>
-                  <span className="break-all">
-                    {selectedEmail.cc_addresses.map(a => a.name ? `${a.name} <${a.address}>` : a.address).join(', ')}
-                  </span>
-                </div>
-              )}
-              <div className="flex gap-2">
-                <span className="text-muted-foreground w-12 flex-shrink-0">Date:</span>
-                <span>{format(new Date(selectedEmail.received_at), 'PPpp')}</span>
-              </div>
-            </div>
-            {selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
-              <div className="mt-3 flex items-center gap-2 flex-wrap">
-                <Paperclip className="h-4 w-4 text-muted-foreground" />
-                {selectedEmail.attachments.map((att, idx) => (
-                  <Badge key={idx} variant="outline" className="text-xs">
-                    {att.filename}
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Email Body */}
-          <div className="p-4 flex-1 flex flex-col min-h-0 overflow-hidden">
-            <div className="flex items-center gap-2 mb-3 flex-shrink-0">
-              <Button
-                variant={showHtml ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowHtml(true)}
-                disabled={!selectedEmail.html_body}
-              >
-                HTML
-              </Button>
-              <Button
-                variant={!showHtml ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowHtml(false)}
-              >
-                Plain Text
-              </Button>
-            </div>
-            <div className="flex-1 min-h-0 overflow-auto">
-              {showHtml && selectedEmail.html_body ? (
-                <iframe
-                  srcDoc={selectedEmail.html_body}
-                  className="w-full h-full border rounded bg-white"
-                  style={{ minHeight: '400px' }}
-                  sandbox="allow-same-origin"
-                  title="Email content"
-                />
-              ) : (
-                <pre className="whitespace-pre-wrap text-sm font-mono bg-muted/30 p-4 rounded h-full overflow-auto">
-                  {selectedEmail.text_body || 'No text content available'}
-                </pre>
-              )}
-            </div>
-          </div>
-        </>
-      ) : (
-        <div className="h-full flex items-center justify-center text-muted-foreground">
-          <div className="text-center">
-            <MailOpen className="h-16 w-16 mx-auto mb-4 opacity-30" />
-            <p>Select an email to view</p>
-          </div>
-        </div>
-      )}
-    </Card>
-  ), [selectedEmail, isMobile, showHtml, selectedMailbox, handleMobileBack, openReplyComposer, toggleRead, deleteEmail]);
 
   // Reply Sheet Component with local state to prevent parent re-renders
   const ReplySheetContent = () => {
@@ -771,10 +868,29 @@ export default function AdminMailbox() {
         {!isMobile && (
           <>
             <div className="col-span-5 h-full">
-              <EmailList />
+              <EmailListComponent
+                selectedMailbox={selectedMailbox}
+                mailboxes={mailboxes}
+                emails={emails}
+                selectedEmailId={selectedEmail?.id || null}
+                isRefreshing={isRefreshing}
+                emailsLoading={emailsLoading}
+                onMailboxChange={handleMailboxChange}
+                onSelectEmail={handleSelectEmail}
+                onRefresh={handleManualRefresh}
+              />
             </div>
             <div className="col-span-7 h-full">
-              <EmailViewer />
+              <EmailViewerComponent
+                email={displayedEmailRef.current}
+                isMobile={isMobile}
+                showHtml={showHtml}
+                onToggleHtml={handleToggleHtml}
+                onBack={handleMobileBack}
+                onReply={openReplyComposer}
+                onToggleRead={handleToggleRead}
+                onDelete={handleDelete}
+              />
             </div>
           </>
         )}
@@ -782,7 +898,30 @@ export default function AdminMailbox() {
         {/* Mobile: View switching */}
         {isMobile && (
           <div className="h-full">
-            {mobileView === 'list' ? <EmailList /> : <EmailViewer />}
+            {mobileView === 'list' ? (
+              <EmailListComponent
+                selectedMailbox={selectedMailbox}
+                mailboxes={mailboxes}
+                emails={emails}
+                selectedEmailId={selectedEmail?.id || null}
+                isRefreshing={isRefreshing}
+                emailsLoading={emailsLoading}
+                onMailboxChange={handleMailboxChange}
+                onSelectEmail={handleSelectEmail}
+                onRefresh={handleManualRefresh}
+              />
+            ) : (
+              <EmailViewerComponent
+                email={displayedEmailRef.current}
+                isMobile={isMobile}
+                showHtml={showHtml}
+                onToggleHtml={handleToggleHtml}
+                onBack={handleMobileBack}
+                onReply={openReplyComposer}
+                onToggleRead={handleToggleRead}
+                onDelete={handleDelete}
+              />
+            )}
           </div>
         )}
       </div>
