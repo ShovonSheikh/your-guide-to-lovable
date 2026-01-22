@@ -151,7 +151,7 @@ serve(async (req) => {
     // Verify the creator exists
     const { data: creator, error: creatorError } = await supabase
       .from('profiles')
-      .select('id, account_type, total_received, total_supporters')
+      .select('id, account_type, total_received, total_supporters, email')
       .eq('id', creator_id)
       .maybeSingle();
 
@@ -159,6 +159,14 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "Creator not found" }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Prevent self-tipping: check if supporter email matches creator email
+    if (creator.email && supporter_email.toLowerCase() === creator.email.toLowerCase()) {
+      return new Response(
+        JSON.stringify({ error: "You cannot tip yourself" }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
