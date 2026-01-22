@@ -291,21 +291,23 @@ const TipPaymentSuccess: React.FC = () => {
 
         {/* Image Creator Section */}
         {showImageCreator && (
-          <div className="tipkoro-card mt-8 max-w-xl w-full p-6">
+          <div className="tipkoro-card mt-8 max-w-2xl w-full p-6">
             <h2 className="text-xl font-semibold mb-4 text-center">Create & Share Your Donation</h2>
 
             {/* TipKoroCard Preview */}
-            <div className="flex justify-center mb-6 overflow-hidden rounded-xl border border-border">
-              <DynamicShareCard
-                ref={cardRef}
-                creatorName={creatorName || "Creator"}
-                tipAmount={String(tipData?.amount || paymentAmount || "0")}
-                userMessage={tipData?.message || ""}
-                timestamp={formatTimestamp()}
-                trxId={transactionIdForCard}
-                verified={creatorVerified}
-                currency="৳"
-              />
+            <div className="flex justify-center mb-6 overflow-x-auto rounded-xl border border-border bg-muted/30 p-4">
+              <div className="flex-shrink-0">
+                <DynamicShareCard
+                  ref={cardRef}
+                  creatorName={creatorName || "Creator"}
+                  tipAmount={String(tipData?.amount || paymentAmount || "0")}
+                  userMessage={tipData?.message || ""}
+                  timestamp={formatTimestamp()}
+                  trxId={transactionIdForCard}
+                  verified={creatorVerified}
+                  currency="৳"
+                />
+              </div>
             </div>
 
             {/* Action Buttons */}

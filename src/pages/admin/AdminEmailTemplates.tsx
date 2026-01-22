@@ -30,6 +30,9 @@ const EMAIL_TYPES = [
   { id: 'withdrawal_otp', label: 'Withdrawal OTP', description: 'OTP code for withdrawal verification' },
   { id: 'verification_approved', label: 'Verification Approved', description: 'Sent when creator verification is approved' },
   { id: 'verification_rejected', label: 'Verification Rejected', description: 'Sent when creator verification is rejected' },
+  { id: 'goal_milestone_50', label: 'Goal 50% Reached', description: 'Sent when a funding goal hits 50%' },
+  { id: 'goal_milestone_75', label: 'Goal 75% Reached', description: 'Sent when a funding goal hits 75%' },
+  { id: 'goal_milestone_100', label: 'Goal Completed', description: 'Sent when a funding goal is fully achieved' },
 ];
 
 // Available dynamic variables per email type
@@ -79,6 +82,24 @@ const DYNAMIC_VARIABLES: Record<string, Array<{ name: string; description: strin
   verification_rejected: [
     { name: 'creator_name', description: 'Creator name', example: 'John Doe' },
     { name: 'reason', description: 'Rejection reason', example: 'Documents are unclear or incomplete' },
+  ],
+  goal_milestone_50: [
+    { name: 'goal_title', description: 'Name of the funding goal', example: 'New Camera Equipment' },
+    { name: 'current_amount', description: 'Current amount raised', example: '5000' },
+    { name: 'target_amount', description: 'Target amount', example: '10000' },
+    { name: 'percentage', description: 'Current percentage', example: '50' },
+  ],
+  goal_milestone_75: [
+    { name: 'goal_title', description: 'Name of the funding goal', example: 'New Camera Equipment' },
+    { name: 'current_amount', description: 'Current amount raised', example: '7500' },
+    { name: 'target_amount', description: 'Target amount', example: '10000' },
+    { name: 'percentage', description: 'Current percentage', example: '75' },
+  ],
+  goal_milestone_100: [
+    { name: 'goal_title', description: 'Name of the funding goal', example: 'New Camera Equipment' },
+    { name: 'current_amount', description: 'Current amount raised', example: '10000' },
+    { name: 'target_amount', description: 'Target amount', example: '10000' },
+    { name: 'percentage', description: 'Current percentage', example: '100' },
   ],
 };
 
@@ -294,6 +315,81 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
       <p style="color: #4A453D; text-align: center;">You can submit a new verification request with updated documents from your settings page.</p>
       <div style="text-align: center; margin-top: 28px;">
         <a href="https://tipkoro.com/settings?tab=verification" style="display: inline-block; background: #1F1C18; color: #fff; padding: 16px 40px; border-radius: 12px; text-decoration: none; font-weight: 600;">Try Again</a>
+      </div>
+    </div>
+  </div>
+</div>`,
+  },
+  goal_milestone_50: {
+    subject: '🎯 Halfway There! {{goal_title}} is 50% Funded',
+    html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+  <div style="max-width: 560px; margin: 0 auto;">
+    <div style="text-align: center; padding: 24px 0;">
+      <span style="font-size: 28px; font-weight: 700; color: #1F1C18;">💛 TipKoro</span>
+    </div>
+    <div style="background: #FEFDFB; border: 1px solid #E5E0D5; border-radius: 20px; padding: 44px 36px;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <span style="font-size: 48px;">🎯</span>
+      </div>
+      <h1 style="font-size: 26px; font-weight: 700; text-align: center; margin: 0 0 10px;">Halfway There! 50% 🎉</h1>
+      <p style="color: #7A7469; text-align: center; margin: 0 0 28px;">Amazing progress on "{{goal_title}}"!</p>
+      <div style="background: #FEF7E0; border-radius: 16px; padding: 32px; text-align: center; margin: 28px 0;">
+        <p style="font-size: 48px; font-weight: 700; margin: 0;">৳{{current_amount}}</p>
+        <p style="color: #7A7469; margin-top: 8px;">of ৳{{target_amount}} goal</p>
+      </div>
+      <p style="color: #4A453D; text-align: center;">You're making great progress! Keep sharing your page to reach your goal faster.</p>
+      <div style="text-align: center; margin-top: 28px;">
+        <a href="https://tipkoro.com/dashboard" style="display: inline-block; background: #1F1C18; color: #fff; padding: 16px 40px; border-radius: 12px; text-decoration: none; font-weight: 600;">View Progress</a>
+      </div>
+    </div>
+  </div>
+</div>`,
+  },
+  goal_milestone_75: {
+    subject: '🔥 Almost There! {{goal_title}} is 75% Funded',
+    html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+  <div style="max-width: 560px; margin: 0 auto;">
+    <div style="text-align: center; padding: 24px 0;">
+      <span style="font-size: 28px; font-weight: 700; color: #1F1C18;">💛 TipKoro</span>
+    </div>
+    <div style="background: #FEFDFB; border: 1px solid #E5E0D5; border-radius: 20px; padding: 44px 36px;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <span style="font-size: 48px;">🔥</span>
+      </div>
+      <h1 style="font-size: 26px; font-weight: 700; text-align: center; margin: 0 0 10px;">Almost There! 75% 🔥</h1>
+      <p style="color: #7A7469; text-align: center; margin: 0 0 28px;">You're so close to completing "{{goal_title}}"!</p>
+      <div style="background: #FEF7E0; border-radius: 16px; padding: 32px; text-align: center; margin: 28px 0;">
+        <p style="font-size: 48px; font-weight: 700; margin: 0;">৳{{current_amount}}</p>
+        <p style="color: #7A7469; margin-top: 8px;">of ৳{{target_amount}} goal</p>
+      </div>
+      <p style="color: #4A453D; text-align: center;">Only 25% to go! Your supporters are rallying behind you. Keep the momentum going!</p>
+      <div style="text-align: center; margin-top: 28px;">
+        <a href="https://tipkoro.com/dashboard" style="display: inline-block; background: #1F1C18; color: #fff; padding: 16px 40px; border-radius: 12px; text-decoration: none; font-weight: 600;">View Progress</a>
+      </div>
+    </div>
+  </div>
+</div>`,
+  },
+  goal_milestone_100: {
+    subject: '🎉 Goal Achieved! {{goal_title}} is 100% Funded!',
+    html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+  <div style="max-width: 560px; margin: 0 auto;">
+    <div style="text-align: center; padding: 24px 0;">
+      <span style="font-size: 28px; font-weight: 700; color: #1F1C18;">💛 TipKoro</span>
+    </div>
+    <div style="background: #FEFDFB; border: 1px solid #E5E0D5; border-radius: 20px; padding: 44px 36px;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <span style="font-size: 48px;">🎉</span>
+      </div>
+      <h1 style="font-size: 26px; font-weight: 700; text-align: center; margin: 0 0 10px;">Goal Achieved! 🎊</h1>
+      <p style="color: #7A7469; text-align: center; margin: 0 0 28px;">Congratulations! "{{goal_title}}" is fully funded!</p>
+      <div style="background: #DCFCE7; border: 1px solid #86EFAC; border-radius: 16px; padding: 32px; text-align: center; margin: 28px 0;">
+        <p style="font-size: 48px; font-weight: 700; color: #166534; margin: 0;">৳{{current_amount}}</p>
+        <p style="color: #166534; margin-top: 8px;">Goal Complete! 🎯</p>
+      </div>
+      <p style="color: #4A453D; text-align: center;">Your amazing community helped you reach this milestone. Time to celebrate and maybe set a new goal!</p>
+      <div style="text-align: center; margin-top: 28px;">
+        <a href="https://tipkoro.com/dashboard" style="display: inline-block; background: #166534; color: #fff; padding: 16px 40px; border-radius: 12px; text-decoration: none; font-weight: 600;">Celebrate & Set New Goal</a>
       </div>
     </div>
   </div>

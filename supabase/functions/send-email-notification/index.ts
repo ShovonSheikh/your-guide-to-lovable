@@ -9,7 +9,7 @@ const corsHeaders = {
 interface EmailNotificationRequest {
   profile_id?: string;
   email?: string; // Direct email for non-registered supporters
-  type: 'tip_received' | 'tip_sent' | 'withdrawal_submitted' | 'withdrawal_processing' | 'withdrawal_completed' | 'withdrawal_rejected' | 'promotion' | 'welcome_creator' | 'welcome_user' | 'weekly_summary' | 'withdrawal_otp' | 'verification_approved' | 'verification_rejected';
+  type: 'tip_received' | 'tip_sent' | 'withdrawal_submitted' | 'withdrawal_processing' | 'withdrawal_completed' | 'withdrawal_rejected' | 'promotion' | 'welcome_creator' | 'welcome_user' | 'weekly_summary' | 'withdrawal_otp' | 'verification_approved' | 'verification_rejected' | 'goal_milestone_50' | 'goal_milestone_75' | 'goal_milestone_100';
   data?: {
     amount?: number;
     supporter_name?: string;
@@ -30,6 +30,12 @@ interface EmailNotificationRequest {
     otp_code?: string;
     withdrawal_amount?: number;
     first_name?: string;
+    // Goal milestone data
+    goal_title?: string;
+    milestone?: number;
+    current_amount?: number;
+    target_amount?: number;
+    percentage?: number;
   };
 }
 
@@ -54,6 +60,10 @@ function getSenderEmail(type: string): string {
     case 'verification_approved':
     case 'verification_rejected':
       return 'TipKoro Team <welcome@tipkoro.com>';
+    case 'goal_milestone_50':
+    case 'goal_milestone_75':
+    case 'goal_milestone_100':
+      return 'TipKoro Notifications <notifications@tipkoro.com>';
     default:
       return 'TipKoro Support <support@tipkoro.com>';
   }
@@ -921,6 +931,135 @@ function getEmailContent(type: string, data: EmailNotificationRequest['data'] = 
         `
       };
 
+    case 'goal_milestone_50':
+      return {
+        subject: `🎯 Halfway There! ${data.goal_title || 'Your Goal'} is 50% Funded`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">${baseStyle}</head>
+          <body>
+            <div class="wrapper">
+              <div class="container">
+                <div class="header">
+                  <div class="logo-row">
+                    <span class="logo-heart">💛</span>
+                    <span class="logo">TipKoro</span>
+                  </div>
+                  <div class="logo-subtitle">Creator Support Platform</div>
+                </div>
+                <div class="card">
+                  <div class="emoji-icon">🎯</div>
+                  <h1 class="title">Halfway There! 50% 🎉</h1>
+                  <p class="subtitle">Amazing progress on "${data.goal_title || 'your goal'}"!</p>
+                  
+                  <div class="amount-box">
+                    <p class="amount">৳${data.current_amount || 0}</p>
+                    <p class="amount-label">of ৳${data.target_amount || 0} goal</p>
+                  </div>
+                  
+                  <p class="message" style="text-align: center;">
+                    You're making great progress! Keep sharing your page to reach your goal faster.
+                  </p>
+                  
+                  <div class="button-container">
+                    <a href="https://tipkoro.com/dashboard" class="button">View Progress</a>
+                  </div>
+                </div>
+                ${footerHtml}
+              </div>
+            </div>
+          </body>
+          </html>
+        `
+      };
+
+    case 'goal_milestone_75':
+      return {
+        subject: `🔥 Almost There! ${data.goal_title || 'Your Goal'} is 75% Funded`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">${baseStyle}</head>
+          <body>
+            <div class="wrapper">
+              <div class="container">
+                <div class="header">
+                  <div class="logo-row">
+                    <span class="logo-heart">💛</span>
+                    <span class="logo">TipKoro</span>
+                  </div>
+                  <div class="logo-subtitle">Creator Support Platform</div>
+                </div>
+                <div class="card">
+                  <div class="emoji-icon" style="background: #FEF3C7;">🔥</div>
+                  <h1 class="title">Almost There! 75% 🔥</h1>
+                  <p class="subtitle">You're so close to completing "${data.goal_title || 'your goal'}"!</p>
+                  
+                  <div class="amount-box">
+                    <p class="amount">৳${data.current_amount || 0}</p>
+                    <p class="amount-label">of ৳${data.target_amount || 0} goal</p>
+                  </div>
+                  
+                  <p class="message" style="text-align: center;">
+                    Only 25% to go! Your supporters are rallying behind you. Keep the momentum going!
+                  </p>
+                  
+                  <div class="button-container">
+                    <a href="https://tipkoro.com/dashboard" class="button">View Progress</a>
+                  </div>
+                </div>
+                ${footerHtml}
+              </div>
+            </div>
+          </body>
+          </html>
+        `
+      };
+
+    case 'goal_milestone_100':
+      return {
+        subject: `🎉 Goal Achieved! ${data.goal_title || 'Your Goal'} is 100% Funded!`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">${baseStyle}</head>
+          <body>
+            <div class="wrapper">
+              <div class="container">
+                <div class="header">
+                  <div class="logo-row">
+                    <span class="logo-heart">💛</span>
+                    <span class="logo">TipKoro</span>
+                  </div>
+                  <div class="logo-subtitle">Creator Support Platform</div>
+                </div>
+                <div class="card">
+                  <div class="emoji-icon success">🎉</div>
+                  <h1 class="title">Goal Achieved! 🎊</h1>
+                  <p class="subtitle">Congratulations! "${data.goal_title || 'Your goal'}" is fully funded!</p>
+                  
+                  <div class="amount-box" style="background: #DCFCE7; border-color: #86EFAC;">
+                    <p class="amount" style="color: #166534;">৳${data.current_amount || 0}</p>
+                    <p class="amount-label" style="color: #166534;">Goal Complete! 🎯</p>
+                  </div>
+                  
+                  <p class="message" style="text-align: center;">
+                    Your amazing community helped you reach this milestone. Time to celebrate and maybe set a new goal!
+                  </p>
+                  
+                  <div class="button-container">
+                    <a href="https://tipkoro.com/dashboard" class="button" style="background: #166534;">Celebrate & Set New Goal</a>
+                  </div>
+                </div>
+                ${footerHtml}
+              </div>
+            </div>
+          </body>
+          </html>
+        `
+      };
+
     default:
       return {
         subject: '🔔 TipKoro Notification',
@@ -1097,19 +1236,31 @@ const handler = async (req: Request): Promise<Response> => {
         // Replace all {{variable}} placeholders with actual data
         const replacements: Record<string, string> = {
           amount: String(data?.amount || ''),
-          supporter_name: data?.supporter_name || '',
+          supporter_name: data?.supporter_name || 'Anonymous',
           creator_name: data?.creator_name || '',
           message: data?.message || '',
           reason: data?.reason || '',
           username: data?.username || '',
-          first_name: data?.first_name || '',
-          week_tips_count: String(data?.week_tips_count || ''),
-          week_earnings: String(data?.week_earnings || ''),
-          new_supporters: String(data?.new_supporters || ''),
-          previous_week_earnings: String(data?.previous_week_earnings || ''),
+          first_name: data?.first_name || profileData?.first_name || '',
+          week_tips_count: String(data?.week_tips_count || '0'),
+          week_earnings: String(data?.week_earnings || '0'),
+          new_supporters: String(data?.new_supporters || '0'),
+          previous_week_earnings: String(data?.previous_week_earnings || '0'),
           otp_code: data?.otp_code || '',
           withdrawal_amount: String(data?.withdrawal_amount || ''),
+          // Goal milestone variables
+          goal_title: data?.goal_title || '',
+          milestone: String(data?.milestone || ''),
+          current_amount: String(data?.current_amount || ''),
+          target_amount: String(data?.target_amount || ''),
+          percentage: String(Math.round(data?.percentage || 0)),
+          // Additional variables
+          tip_id: data?.tip_id || '',
+          url: data?.url || '',
         };
+        
+        console.log(`[EMAIL] Using custom template for ${type}`);
+        console.log(`[EMAIL] Replacements available:`, Object.keys(replacements).join(', '));
         
         for (const [key, value] of Object.entries(replacements)) {
           const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
@@ -1122,8 +1273,6 @@ const handler = async (req: Request): Promise<Response> => {
         html = html.replace(ifRegex, (_, varName, content) => {
           return replacements[varName] ? content : '';
         });
-        
-        console.log(`[EMAIL] Using custom template for ${type}`);
       } else {
         // Fall back to default template
         const defaultContent = getEmailContent(type, data);
