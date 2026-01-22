@@ -7,13 +7,17 @@ interface PlatformConfig {
   min_withdrawal: { amount: number; currency: string };
   max_withdrawal: { amount: number; currency: string };
   payout_methods: string[];
+  promo_enabled: { enabled: boolean };
+  promo_duration_months: { months: number };
 }
 
 const DEFAULT_CONFIG: PlatformConfig = {
   creator_account_fee: { amount: 150, currency: 'BDT' },
   min_withdrawal: { amount: 100, currency: 'BDT' },
   max_withdrawal: { amount: 50000, currency: 'BDT' },
-  payout_methods: ['bKash', 'Nagad', 'Rocket']
+  payout_methods: ['bKash', 'Nagad', 'Rocket'],
+  promo_enabled: { enabled: false },
+  promo_duration_months: { months: 0 }
 };
 
 export function usePlatformConfig() {
@@ -48,6 +52,10 @@ export function usePlatformConfig() {
             configMap.max_withdrawal = item.value as { amount: number; currency: string };
           } else if (item.key === 'payout_methods') {
             configMap.payout_methods = item.value as string[];
+          } else if (item.key === 'promo_enabled') {
+            configMap.promo_enabled = item.value as { enabled: boolean };
+          } else if (item.key === 'promo_duration_months') {
+            configMap.promo_duration_months = item.value as { months: number };
           }
         });
         

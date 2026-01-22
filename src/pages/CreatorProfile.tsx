@@ -8,19 +8,21 @@ import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { CreatorStats } from "@/components/CreatorStats";
+import { RecentSupporters } from "@/components/RecentSupporters";
 import { supabase } from "@/integrations/supabase/client";
 import { createTipCheckout } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import SEO from "@/components/SEO";
 import { 
   Heart, 
-  ExternalLink, 
   Twitter, 
   Instagram, 
   Youtube, 
   Facebook,
   Link as LinkIcon,
-  BadgeCheck
+  BadgeCheck,
+  Sparkles
 } from "lucide-react";
 
 interface CreatorData {
@@ -37,6 +39,7 @@ interface CreatorData {
   youtube: string | null;
   facebook: string | null;
   other_link: string | null;
+  created_at: string | null;
 }
 
 const tipAmounts = [50, 100, 200, 500, 1000];
@@ -48,7 +51,6 @@ export default function CreatorProfile() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  // Dynamic page title based on creator
   usePageTitle(creator ? `${creator.first_name || creator.username} - Creator` : "Creator Profile");
   
   const [selectedAmount, setSelectedAmount] = useState<number | null>(100);
@@ -123,7 +125,6 @@ export default function CreatorProfile() {
     setIsSubmitting(true);
 
     try {
-      // Store tip info in localStorage to complete after payment
       localStorage.setItem('tipkoro_tip_data', JSON.stringify({
         creator_id: creator?.id,
         amount,
@@ -199,138 +200,157 @@ export default function CreatorProfile() {
         <TopNavbar />
         <div className="h-24" />
 
-      <main className="container max-w-4xl py-8 px-4">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Creator Info */}
-          <div className="lg:col-span-2">
-            <div className="tipkoro-card">
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+        <main className="container max-w-5xl py-8 px-4">
+          {/* Hero Section */}
+          <div className="tipkoro-card mb-8">
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+              <div className="relative">
                 <Avatar size="x-large" image={creator?.avatar_url || undefined}>
                   {(creator?.first_name?.[0] || creator?.username?.[0] || '?').toUpperCase()}
                 </Avatar>
-                
-                <div className="text-center sm:text-left flex-1">
-                  <div className="flex items-center justify-center sm:justify-start gap-2">
-                    <h1 className="text-2xl font-display font-bold">
-                      {creator?.first_name} {creator?.last_name}
-                    </h1>
-                    {creator?.is_verified && (
-                      <BadgeCheck className="w-6 h-6 text-green-600" />
-                    )}
+                {creator?.is_verified && (
+                  <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-1">
+                    <BadgeCheck className="w-6 h-6 text-green-600" />
                   </div>
-                  <p className="text-muted-foreground">@{creator?.username}</p>
-                  
-                  {creator?.bio && (
-                    <p className="mt-4 text-foreground/80">{creator.bio}</p>
-                  )}
-                  
-                  {/* Social Links */}
-                  {socialLinks.length > 0 && (
-                    <div className="flex items-center justify-center sm:justify-start gap-3 mt-4">
-                      {socialLinks.map((link) => (
-                        <a
-                          key={link.key}
-                          href={`https://${link.url}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2 rounded-lg bg-secondary hover:bg-accent/20 transition-colors"
-                        >
-                          <link.icon className="w-5 h-5" />
-                        </a>
-                      ))}
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center justify-center sm:justify-start gap-4 mt-6 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Heart className="w-4 h-4" />
-                      {creator?.total_supporters || 0} supporters
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Tip Card */}
-          <div className="lg:col-span-1">
-            <div className="tipkoro-card sticky top-28">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Heart className="w-5 h-5 text-destructive" />
-                Send a Tip
-              </h3>
-              
-              {/* Amount Selection */}
-              <div className="grid grid-cols-3 gap-2 mb-4">
-                {tipAmounts.map((amount) => (
-                  <button
-                    key={amount}
-                    onClick={() => {
-                      setSelectedAmount(amount);
-                      setCustomAmount('');
-                    }}
-                    className={`py-2 px-3 rounded-lg font-medium text-sm transition-all ${
-                      selectedAmount === amount
-                        ? 'bg-accent text-accent-foreground'
-                        : 'bg-secondary hover:bg-secondary/80'
-                    }`}
-                  >
-                    ৳{amount}
-                  </button>
-                ))}
-              </div>
-              
-              {/* Custom Amount */}
-              <div className="mb-4">
-                <Input
-                  type="number"
-                  value={customAmount}
-                  onChange={(e) => {
-                    setCustomAmount(e.target.value);
-                    setSelectedAmount(null);
-                  }}
-                  placeholder="Custom amount (min ৳10)"
-                  className="tipkoro-input"
-                  min={10}
-                />
-              </div>
-              
-              {/* Message */}
-              <div className="mb-4">
-                <Textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Add a message (optional)"
-                  className="tipkoro-input min-h-[80px]"
-                  maxLength={200}
-                />
-              </div>
-              
-              {/* Send Button */}
-              <Button
-                onClick={handleTip}
-                disabled={isSubmitting || (!selectedAmount && !customAmount)}
-                className="w-full h-12 bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover font-semibold"
-              >
-                {isSubmitting ? (
-                  "Processing..."
-                ) : (
-                  <>
-                    <Heart className="w-5 h-5 mr-2" />
-                    Send ৳{selectedAmount || customAmount || 0}
-                  </>
                 )}
-              </Button>
+              </div>
               
-              <p className="text-xs text-center text-muted-foreground mt-3">
-                100% goes to the creator (minus platform fee)
-              </p>
+              <div className="text-center md:text-left flex-1">
+                <div className="flex items-center justify-center md:justify-start gap-2 flex-wrap">
+                  <h1 className="text-2xl md:text-3xl font-display font-bold">
+                    {creator?.first_name} {creator?.last_name}
+                  </h1>
+                  {creator?.is_verified && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+                      <BadgeCheck className="w-3 h-3" />
+                      Verified
+                    </span>
+                  )}
+                </div>
+                <p className="text-muted-foreground">@{creator?.username}</p>
+                
+                {creator?.bio && (
+                  <p className="mt-4 text-foreground/80 max-w-xl">{creator.bio}</p>
+                )}
+                
+                {/* Social Links */}
+                {socialLinks.length > 0 && (
+                  <div className="flex items-center justify-center md:justify-start gap-3 mt-4">
+                    {socialLinks.map((link) => (
+                      <a
+                        key={link.key}
+                        href={link.url?.startsWith('http') ? link.url : `https://${link.url}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 rounded-lg bg-secondary hover:bg-accent/20 transition-colors"
+                      >
+                        <link.icon className="w-5 h-5" />
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </main>
 
-      <MainFooter />
+          {/* Main Content Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Column - Tip Card */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="tipkoro-card">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Sparkles className="w-5 h-5 text-primary" />
+                  </div>
+                  <h2 className="text-lg font-semibold">Support {creator?.first_name || 'this creator'}</h2>
+                </div>
+                
+                <p className="text-muted-foreground text-sm mb-6">
+                  Show your appreciation by sending a tip. 100% goes directly to the creator!
+                </p>
+                
+                {/* Amount Selection */}
+                <div className="grid grid-cols-5 gap-2 mb-4">
+                  {tipAmounts.map((amount) => (
+                    <button
+                      key={amount}
+                      onClick={() => {
+                        setSelectedAmount(amount);
+                        setCustomAmount('');
+                      }}
+                      className={`py-3 px-2 rounded-xl font-medium text-sm transition-all ${
+                        selectedAmount === amount
+                          ? 'bg-accent text-accent-foreground shadow-md scale-105'
+                          : 'bg-secondary hover:bg-secondary/80'
+                      }`}
+                    >
+                      ৳{amount}
+                    </button>
+                  ))}
+                </div>
+                
+                {/* Custom Amount */}
+                <div className="mb-4">
+                  <Input
+                    type="number"
+                    value={customAmount}
+                    onChange={(e) => {
+                      setCustomAmount(e.target.value);
+                      setSelectedAmount(null);
+                    }}
+                    placeholder="Or enter custom amount (min ৳10)"
+                    className="tipkoro-input"
+                    min={10}
+                  />
+                </div>
+                
+                {/* Message */}
+                <div className="mb-6">
+                  <Textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Add an encouraging message (optional)"
+                    className="tipkoro-input min-h-[100px]"
+                    maxLength={200}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1 text-right">
+                    {message.length}/200
+                  </p>
+                </div>
+                
+                {/* Send Button */}
+                <Button
+                  onClick={handleTip}
+                  disabled={isSubmitting || (!selectedAmount && !customAmount)}
+                  className="w-full h-14 bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover font-semibold text-lg rounded-xl"
+                >
+                  {isSubmitting ? (
+                    "Processing..."
+                  ) : (
+                    <>
+                      <Heart className="w-5 h-5 mr-2" />
+                      Send ৳{selectedAmount || customAmount || 0} Tip
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Right Column - Stats & Recent Supporters */}
+            <div className="space-y-6">
+              <CreatorStats 
+                totalSupporters={creator?.total_supporters || 0}
+                createdAt={creator?.created_at || null}
+              />
+              
+              {creator?.id && (
+                <RecentSupporters creatorId={creator.id} />
+              )}
+            </div>
+          </div>
+        </main>
+
+        <MainFooter />
       </div>
     </>
   );
