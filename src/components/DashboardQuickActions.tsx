@@ -124,6 +124,8 @@ export function DashboardQuickActions({ username, profileId, displayName }: Dash
           open={goalsOpen} 
           onOpenChange={setGoalsOpen} 
           profileId={profileId}
+          username={username}
+          displayName={displayName}
         />
       )}
     </>
