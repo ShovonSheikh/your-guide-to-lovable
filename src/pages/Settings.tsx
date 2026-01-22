@@ -3,7 +3,6 @@ import { useUser } from "@clerk/clerk-react";
 import { Navigate, useSearchParams, Link } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { TopNavbar } from "@/components/TopNavbar";
-import { MainFooter } from "@/components/MainFooter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -236,7 +235,7 @@ export default function Settings() {
       <TopNavbar />
       <div className="h-24" />
 
-      <main className="container max-w-4xl py-8 px-4 flex-1">
+      <main className="container max-w-4xl py-8 px-4 pb-16 flex-1">
         {/* Back to Dashboard button */}
         <Link to="/dashboard" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6">
           <ArrowLeft className="w-4 h-4" />
@@ -531,8 +530,6 @@ export default function Settings() {
           </div>
         </div>
       </main>
-
-      <MainFooter />
     </div>
   );
 }
