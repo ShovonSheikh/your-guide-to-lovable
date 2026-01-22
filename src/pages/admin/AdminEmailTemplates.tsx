@@ -525,24 +525,35 @@ export default function AdminEmailTemplates() {
       {/* Dynamic Variables */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Variable className="h-4 w-4" />
-            Available Variables
-          </CardTitle>
-          <CardDescription>Click to copy. Use these in your template.</CardDescription>
+          <div className="flex items-center gap-2">
+            <Variable className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-base">Dynamic Variables</CardTitle>
+          </div>
+          <CardDescription>
+            Use these placeholders in your template. They will be replaced with real data when the email is sent. Click a variable to copy it.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {currentVariables.map(variable => (
-              <button
+              <div
                 key={variable.name}
+                className="group p-3 rounded-lg border bg-card hover:bg-accent/50 cursor-pointer transition-colors"
                 onClick={() => copyVariable(variable.name)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary hover:bg-secondary/80 text-sm transition-colors group"
-                title={variable.description}
               >
-                <code className="text-xs font-mono text-primary">{`{{${variable.name}}}`}</code>
-                <Copy className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </button>
+                <div className="flex items-center justify-between mb-1.5">
+                  <Badge variant="secondary" className="font-mono text-xs">
+                    {`{{${variable.name}}}`}
+                  </Badge>
+                  <Copy className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {variable.description}
+                </p>
+                <p className="text-xs text-muted-foreground/70 mt-1 font-mono">
+                  e.g. {variable.example}
+                </p>
+              </div>
             ))}
           </div>
         </CardContent>
