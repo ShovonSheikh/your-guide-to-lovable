@@ -362,6 +362,48 @@ export type Database = {
         }
         Relationships: []
       }
+      funding_goals: {
+        Row: {
+          created_at: string | null
+          current_amount: number | null
+          description: string | null
+          end_date: string | null
+          id: string
+          is_active: boolean | null
+          profile_id: string
+          start_date: string | null
+          target_amount: number
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_amount?: number | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          profile_id: string
+          start_date?: string | null
+          target_amount: number
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_amount?: number | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          profile_id?: string
+          start_date?: string | null
+          target_amount?: number
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       inbound_emails: {
         Row: {
           attachments: Json | null
