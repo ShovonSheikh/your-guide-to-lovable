@@ -474,7 +474,7 @@ export default function AdminShareImage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -532,9 +532,9 @@ export default function AdminShareImage() {
         </CardContent>
       </Card>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-6 overflow-hidden min-w-0">
         {/* Code Editor Panel */}
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0 overflow-hidden">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'jsx' | 'css')}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="jsx" className="gap-2">
@@ -622,7 +622,7 @@ export default function AdminShareImage() {
         </div>
 
         {/* Preview Panel */}
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0 overflow-hidden">
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -674,11 +674,15 @@ export default function AdminShareImage() {
               <style>{cssCode}</style>
               <div 
                 ref={previewContainerRef}
-                className="flex justify-center overflow-auto rounded-xl border border-border bg-muted/30 max-h-[500px]"
+                className="flex justify-center overflow-hidden rounded-xl border border-border bg-muted/30 max-h-[500px] w-full"
               >
                 <div 
-                  className="transform origin-top p-4"
-                  style={{ transform: `scale(${zoomLevel})` }}
+                  className="transform origin-top p-4 max-w-full"
+                  style={{ 
+                    transform: `scale(${zoomLevel})`,
+                    width: `${100 / zoomLevel}%`,
+                    maxWidth: `${100 / zoomLevel}%`
+                  }}
                 >
                   <div 
                     ref={previewRef}
@@ -690,7 +694,7 @@ export default function AdminShareImage() {
           </Card>
 
           {/* Test Values */}
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <Play className="w-5 h-5 text-muted-foreground" />
