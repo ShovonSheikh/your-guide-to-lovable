@@ -1,20 +1,37 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/clerk-react";
 import { HeartIcon } from "./icons/PaymentIcons";
 import { useProfile } from "@/hooks/useProfile";
-import { Menu, X, LayoutGrid, Shield } from "lucide-react";
+import { useSupabase } from "@/hooks/useSupabase";
+import { Menu, X, LayoutGrid, Shield, Mail } from "lucide-react";
 
 export function TopNavbar({ className }: { className?: string }) {
   const { isSignedIn, isLoaded } = useUser();
   const { profile } = useProfile();
+  const supabase = useSupabase();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [unreadEmails, setUnreadEmails] = useState(0);
   const location = useLocation();
   const navigate = useNavigate();
 
   const isAdmin = profile?.is_admin;
+
+  // Fetch unread email count for admins
+  useEffect(() => {
+    if (isAdmin) {
+      supabase
+        .from('inbound_emails')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_read', false)
+        .eq('is_deleted', false)
+        .then(({ count }) => {
+          setUnreadEmails(count || 0);
+        });
+    }
+  }, [isAdmin, supabase]);
 
   const scrollToSection = (id: string) => {
     // If we're on the home page, scroll directly
@@ -69,9 +86,12 @@ export function TopNavbar({ className }: { className?: string }) {
                   <div className="flex items-center gap-3">
                     {isAdmin && (
                       <Link to="/admin">
-                        <Button variant="outline" className="rounded-full px-4 h-9 gap-2">
+                        <Button variant="outline" className="rounded-full px-4 h-9 gap-2 relative">
                           <Shield className="w-4 h-4" />
                           Admin
+                          {unreadEmails > 0 && (
+                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-destructive rounded-full border-2 border-background" />
+                          )}
                         </Button>
                       </Link>
                     )}

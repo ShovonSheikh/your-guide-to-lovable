@@ -9,7 +9,7 @@ const corsHeaders = {
 interface EmailNotificationRequest {
   profile_id?: string;
   email?: string; // Direct email for non-registered supporters
-  type: 'tip_received' | 'tip_sent' | 'withdrawal_submitted' | 'withdrawal_processing' | 'withdrawal_completed' | 'withdrawal_rejected' | 'promotion' | 'welcome_creator' | 'weekly_summary' | 'withdrawal_otp' | 'verification_approved' | 'verification_rejected';
+  type: 'tip_received' | 'tip_sent' | 'withdrawal_submitted' | 'withdrawal_processing' | 'withdrawal_completed' | 'withdrawal_rejected' | 'promotion' | 'welcome_creator' | 'welcome_user' | 'weekly_summary' | 'withdrawal_otp' | 'verification_approved' | 'verification_rejected';
   data?: {
     amount?: number;
     supporter_name?: string;
@@ -50,6 +50,7 @@ function getSenderEmail(type: string): string {
     case 'weekly_summary':
       return 'TipKoro <hello@tipkoro.com>';
     case 'welcome_creator':
+    case 'welcome_user':
     case 'verification_approved':
     case 'verification_rejected':
       return 'TipKoro Team <welcome@tipkoro.com>';
@@ -688,6 +689,63 @@ function getEmailContent(type: string, data: EmailNotificationRequest['data'] = 
                   
                   <div class="button-container">
                     <a href="https://tipkoro.com/dashboard" class="button">Go to Dashboard</a>
+                  </div>
+                </div>
+                ${footerHtml}
+              </div>
+            </div>
+          </body>
+          </html>
+        `
+      };
+
+    case 'welcome_user':
+      return {
+        subject: `👋 Welcome to TipKoro, ${data.first_name || 'there'}!`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">${baseStyle}</head>
+          <body>
+            <div class="wrapper">
+              <div class="container">
+                <div class="header">
+                  <div class="logo-row">
+                    <span class="logo-heart">💛</span>
+                    <span class="logo">TipKoro</span>
+                  </div>
+                  <div class="logo-subtitle">Creator Support Platform</div>
+                </div>
+                <div class="card">
+                  <div class="emoji-icon">👋</div>
+                  <h1 class="title">Welcome to TipKoro!</h1>
+                  <p class="subtitle">Hi ${data.first_name || 'there'}, thanks for joining our community.</p>
+                  
+                  <p class="message" style="text-align: center; margin: 24px 0;">
+                    TipKoro is Bangladesh's creator support platform where fans can directly support their favorite creators through bKash, Nagad, and Rocket.
+                  </p>
+                  
+                  <div class="divider"></div>
+                  
+                  <p class="message" style="font-size: 16px; text-align: center; font-weight: 500;">
+                    What would you like to do?
+                  </p>
+                  
+                  <div style="display: flex; gap: 12px; margin: 20px 0;">
+                    <div style="flex: 1; background: #F4F0E8; border-radius: 12px; padding: 20px; text-align: center;">
+                      <span style="font-size: 32px; display: block; margin-bottom: 8px;">💛</span>
+                      <p style="font-weight: 600; color: #1F1C18; margin: 0 0 4px 0;">Support Creators</p>
+                      <p style="font-size: 13px; color: #7A7469; margin: 0;">Send tips to your favorite creators</p>
+                    </div>
+                    <div style="flex: 1; background: #F4F0E8; border-radius: 12px; padding: 20px; text-align: center;">
+                      <span style="font-size: 32px; display: block; margin-bottom: 8px;">🎨</span>
+                      <p style="font-weight: 600; color: #1F1C18; margin: 0 0 4px 0;">Become a Creator</p>
+                      <p style="font-size: 13px; color: #7A7469; margin: 0;">Start receiving tips from fans</p>
+                    </div>
+                  </div>
+                  
+                  <div class="button-container">
+                    <a href="https://tipkoro.com/explore" class="button">Explore Creators</a>
                   </div>
                 </div>
                 ${footerHtml}

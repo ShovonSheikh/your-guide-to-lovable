@@ -1,5 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import React, { useState, useEffect, useRef } from "react";
 import {
   InputOTP,
   InputOTPGroup,
@@ -8,7 +7,7 @@ import {
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { toast } from "@/hooks/use-toast";
-import { Lock, Check, Loader2, ShieldCheck, KeyRound, CheckCircle2, ArrowRight } from "lucide-react";
+import { Lock, ShieldCheck, KeyRound, CheckCircle2, ArrowRight, Loader2 } from "lucide-react";
 
 interface WithdrawalPinSetupProps {
   onSuccess?: () => void;
@@ -21,44 +20,54 @@ export function WithdrawalPinSetup({ onSuccess }: WithdrawalPinSetupProps) {
   const [isLoading, setIsLoading] = useState(false);
   const supabase = useSupabaseWithAuth();
   const { refetch } = useProfile();
-  const confirmInputRef = useRef<HTMLInputElement>(null);
+  const hasSubmittedRef = useRef(false);
 
-  // Auto-focus on confirm input when step changes to 'confirm'
+  // Auto-advance to confirm step when first PIN is complete
+  useEffect(() => {
+    if (pin.length === 6 && step === 'enter') {
+      // Small delay for visual feedback
+      setTimeout(() => {
+        setStep('confirm');
+      }, 200);
+    }
+  }, [pin, step]);
+
+  // Auto-focus confirm input when step changes
   useEffect(() => {
     if (step === 'confirm') {
-      // Small delay to ensure DOM is ready
-      const timer = setTimeout(() => {
+      setTimeout(() => {
         const firstSlot = document.querySelector('[data-confirm-otp] input') as HTMLInputElement;
         firstSlot?.focus();
       }, 100);
-      return () => clearTimeout(timer);
     }
   }, [step]);
 
-  const handlePinEntered = () => {
-    if (pin.length !== 6) {
-      toast({
-        title: "Invalid PIN",
-        description: "Please enter a 6-digit PIN",
-        variant: "destructive",
-      });
-      return;
+  // Auto-submit when confirm PIN is complete and matches
+  useEffect(() => {
+    if (confirmPin.length === 6 && step === 'confirm' && !isLoading && !hasSubmittedRef.current) {
+      handleSetPin();
     }
-    setStep('confirm');
-  };
+  }, [confirmPin, step, isLoading]);
 
   const handleSetPin = async () => {
+    if (hasSubmittedRef.current) return;
+    
     if (confirmPin !== pin) {
       toast({
         title: "PINs don't match",
-        description: "Please make sure both PINs match",
+        description: "Please try again from the beginning",
         variant: "destructive",
       });
+      // Reset and start over
+      setPin('');
       setConfirmPin('');
+      setStep('enter');
       return;
     }
 
+    hasSubmittedRef.current = true;
     setIsLoading(true);
+    
     try {
       const { data, error } = await supabase.functions.invoke('withdrawal-security', {
         body: { action: 'set-pin', pin },
@@ -78,12 +87,22 @@ export function WithdrawalPinSetup({ onSuccess }: WithdrawalPinSetupProps) {
 
       // Refresh profile to update has_withdrawal_pin
       refetch();
+      
+      // Auto-call onSuccess after brief delay to show success state
+      setTimeout(() => {
+        onSuccess?.();
+      }, 1500);
     } catch (err: any) {
+      hasSubmittedRef.current = false;
       toast({
         title: "Error",
         description: err.message || 'Failed to set PIN',
         variant: "destructive",
       });
+      // Reset on error
+      setPin('');
+      setConfirmPin('');
+      setStep('enter');
     } finally {
       setIsLoading(false);
     }
@@ -102,13 +121,6 @@ export function WithdrawalPinSetup({ onSuccess }: WithdrawalPinSetupProps) {
             Your withdrawal PIN has been securely saved. You'll need this PIN to process withdrawals.
           </p>
         </div>
-
-        <Button 
-          className="w-full" 
-          onClick={() => onSuccess?.()}
-        >
-          Done
-        </Button>
       </div>
     );
   }
@@ -175,26 +187,20 @@ export function WithdrawalPinSetup({ onSuccess }: WithdrawalPinSetupProps) {
               Don't use obvious patterns like 123456
             </p>
           </div>
-
-          <Button 
-            className="w-full gap-2" 
-            onClick={handlePinEntered}
-            disabled={pin.length !== 6}
-          >
-            Continue
-            <ArrowRight className="w-4 h-4" />
-          </Button>
         </div>
       ) : (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2 text-center">Confirm your PIN</label>
-            <div className="flex justify-center" data-confirm-otp>
+            <label className="block text-sm font-medium mb-2 text-center">
+              {isLoading ? "Setting your PIN..." : "Confirm your PIN"}
+            </label>
+            <div className="flex justify-center relative" data-confirm-otp>
               <InputOTP 
                 maxLength={6} 
                 value={confirmPin} 
                 onChange={setConfirmPin}
                 autoFocus
+                disabled={isLoading}
               >
                 <InputOTPGroup>
                   <InputOTPSlot index={0} />
@@ -205,36 +211,28 @@ export function WithdrawalPinSetup({ onSuccess }: WithdrawalPinSetupProps) {
                   <InputOTPSlot index={5} />
                 </InputOTPGroup>
               </InputOTP>
+              {isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/50 rounded-lg">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              )}
             </div>
             <p className="text-xs text-muted-foreground text-center mt-2">
               Re-enter your PIN to confirm
             </p>
           </div>
 
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              className="flex-1"
-              onClick={() => {
-                setStep('enter');
-                setConfirmPin('');
-              }}
-            >
-              Back
-            </Button>
-            <Button 
-              className="flex-1 gap-2" 
-              onClick={handleSetPin}
-              disabled={confirmPin.length !== 6 || isLoading}
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Check className="w-4 h-4" />
-              )}
-              Set PIN
-            </Button>
-          </div>
+          <button
+            type="button"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-center"
+            onClick={() => {
+              setStep('enter');
+              setPin('');
+              setConfirmPin('');
+            }}
+          >
+            ← Start over
+          </button>
         </div>
       )}
     </div>

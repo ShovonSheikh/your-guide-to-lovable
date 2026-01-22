@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 interface SecurityRequest {
-  action: 'set-pin' | 'verify-pin' | 'send-otp' | 'verify-otp' | 'change-pin';
+  action: 'set-pin' | 'verify-pin' | 'send-otp' | 'verify-otp' | 'change-pin' | 'set-pin-after-otp';
   pin?: string;
   otp?: string;
   new_pin?: string;
@@ -408,6 +408,69 @@ const handler = async (req: Request): Promise<Response> => {
 
         return new Response(
           JSON.stringify({ success: true, message: "Withdrawal PIN updated successfully" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      case 'set-pin-after-otp': {
+        // This action allows setting a new PIN after OTP verification
+        // Used when changing PIN via OTP flow (forgot PIN or change PIN)
+        if (!new_pin || new_pin.length !== 6 || !/^\d{6}$/.test(new_pin)) {
+          return new Response(
+            JSON.stringify({ error: "New PIN must be exactly 6 digits" }),
+            { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+
+        // Verify that OTP was recently verified (within last 10 minutes)
+        const { data: recentOtps, error: otpCheckError } = await supabase
+          .from("withdrawal_otps")
+          .select("*")
+          .eq("profile_id", profile.id)
+          .eq("used", true)
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        if (otpCheckError || !recentOtps || recentOtps.length === 0) {
+          return new Response(
+            JSON.stringify({ error: "Please verify with OTP first" }),
+            { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+
+        const lastOtp = recentOtps[0];
+        const otpUsedTime = new Date(lastOtp.created_at).getTime();
+        const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+
+        if (otpUsedTime < tenMinutesAgo) {
+          return new Response(
+            JSON.stringify({ error: "OTP verification expired. Please verify again." }),
+            { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+
+        // Hash new PIN
+        const salt = bcrypt.genSaltSync(10);
+        const hashedNewPin = bcrypt.hashSync(new_pin, salt);
+
+        // Update PIN
+        const { error: updateError } = await supabase
+          .from("profiles")
+          .update({ 
+            withdrawal_pin_hash: hashedNewPin,
+            withdrawal_pin_set_at: new Date().toISOString()
+          })
+          .eq("id", profile.id);
+
+        if (updateError) {
+          return new Response(
+            JSON.stringify({ error: "Failed to update PIN" }),
+            { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, message: "Withdrawal PIN set successfully" }),
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }

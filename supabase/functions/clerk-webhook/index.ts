@@ -132,6 +132,27 @@ Deno.serve(async (req: Request) => {
       }
 
       console.info('Profile upserted:', upserted);
+
+      // Send welcome email to new users
+      try {
+        const { error: emailError } = await supabase.functions.invoke('send-email-notification', {
+          body: {
+            email: profile.email,
+            type: 'welcome_user',
+            data: { 
+              first_name: profile.first_name || 'there',
+            },
+          },
+        });
+        if (emailError) {
+          console.warn('Welcome email failed (non-critical):', emailError);
+        } else {
+          console.info('Welcome email sent to:', profile.email);
+        }
+      } catch (e) {
+        console.warn('Welcome email failed (non-critical):', e);
+      }
+
       return new Response(JSON.stringify({ success: true, profile: upserted }), { status: 200, headers: corsHeaders });
     }
 

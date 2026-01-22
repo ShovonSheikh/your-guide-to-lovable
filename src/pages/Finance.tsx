@@ -36,7 +36,9 @@ import {
   CheckCircle,
   XCircle,
   Loader2,
-  ShieldAlert
+  ShieldAlert,
+  ArrowLeft,
+  ShieldCheck
 } from "lucide-react";
 import { format } from "date-fns";
 import { WithdrawalVerificationDialog } from "@/components/WithdrawalVerificationDialog";
@@ -179,6 +181,16 @@ export default function Finance() {
       return;
     }
 
+    // Check if user is verified
+    if (!profile?.is_verified) {
+      toast({
+        title: "Verification Required",
+        description: "Please complete identity verification in Settings before requesting withdrawals.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Check if user has withdrawal PIN set
     if (!profile?.has_withdrawal_pin) {
       toast({
@@ -258,9 +270,38 @@ export default function Finance() {
       <TopNavbar />
       <div className="h-24" />
 
-      <main className="container max-w-4xl py-8 px-4">
+      <main className="container max-w-4xl py-8 px-4 pb-16">
+        {/* Back to Dashboard */}
+        <Link to="/dashboard" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6">
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Dashboard</span>
+        </Link>
+
         <h1 className="text-3xl font-display font-bold mb-2">Finance</h1>
-        <p className="text-muted-foreground mb-8">Manage your earnings and withdrawals</p>
+        <p className="text-muted-foreground mb-6">Manage your earnings and withdrawals</p>
+
+        {/* Verification Warning */}
+        {!profile?.is_verified && (
+          <div className="tipkoro-card mb-6 border-2 border-amber-400 bg-amber-50/50 dark:bg-amber-900/20">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900/50">
+                <ShieldCheck className="w-6 h-6 text-amber-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-amber-900 dark:text-amber-100">Verification Required</h3>
+                <p className="text-sm text-amber-700 dark:text-amber-200">
+                  Complete identity verification to enable withdrawals. This helps us keep your funds secure.
+                </p>
+              </div>
+              <Link to="/settings?tab=verification">
+                <Button variant="outline" className="border-amber-400 text-amber-700 hover:bg-amber-100 gap-2 whitespace-nowrap">
+                  <ShieldCheck className="w-4 h-4" />
+                  Verify Now
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
