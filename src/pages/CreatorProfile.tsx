@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { CreatorStats } from "@/components/CreatorStats";
 import { RecentSupporters } from "@/components/RecentSupporters";
+import { FundingGoalCard } from "@/components/FundingGoalCard";
+import { usePublicFundingGoals } from "@/hooks/useFundingGoals";
 import { supabase } from "@/integrations/supabase/client";
 import { createTipCheckout } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
@@ -52,6 +54,9 @@ export default function CreatorProfile() {
   const [notFound, setNotFound] = useState(false);
 
   usePageTitle(creator ? `${creator.first_name || creator.username} - Creator` : "Creator Profile");
+  
+  // Fetch public funding goals for this creator
+  const { goals: fundingGoals } = usePublicFundingGoals(creator?.id);
   
   const [selectedAmount, setSelectedAmount] = useState<number | null>(100);
   const [customAmount, setCustomAmount] = useState('');
@@ -352,8 +357,17 @@ export default function CreatorProfile() {
               </div>
             </div>
 
-            {/* Right Column - Stats & Recent Supporters */}
+            {/* Right Column - Stats, Goals & Recent Supporters */}
             <div className="space-y-6">
+              {/* Funding Goals */}
+              {fundingGoals.length > 0 && (
+                <div className="space-y-3">
+                  {fundingGoals.map((goal) => (
+                    <FundingGoalCard key={goal.id} goal={goal} />
+                  ))}
+                </div>
+              )}
+              
               <CreatorStats 
                 totalSupporters={creator?.total_supporters || 0}
                 createdAt={creator?.created_at || null}
