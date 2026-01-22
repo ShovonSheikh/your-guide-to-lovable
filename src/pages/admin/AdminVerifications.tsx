@@ -269,33 +269,43 @@ export default function AdminVerifications() {
               {filteredRequests.map((request) => (
                 <Card key={request.id}>
                   <CardContent className="py-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                    {/* Mobile-first stacked layout */}
+                    <div className="flex flex-col gap-4">
+                      {/* User info row */}
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
                           {request.profile?.avatar_url ? (
                             <img src={request.profile.avatar_url} alt="" className="w-full h-full object-cover" />
                           ) : (
                             <User className="h-6 w-6 text-muted-foreground" />
                           )}
                         </div>
-                        <div>
-                          <p className="font-semibold">
-                            {request.profile?.first_name} {request.profile?.last_name}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold truncate">
+                              {request.profile?.first_name} {request.profile?.last_name}
+                            </p>
+                            {getStatusBadge(request.status)}
+                          </div>
+                          <p className="text-sm text-muted-foreground truncate">
+                            @{request.profile?.username || 'unknown'}
                           </p>
-                          <p className="text-sm text-muted-foreground">
-                            @{request.profile?.username || 'unknown'} • {request.profile?.email}
+                          <p className="text-sm text-muted-foreground truncate">
+                            {request.profile?.email}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
                             Submitted {format(new Date(request.created_at), 'PPp')}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        {getStatusBadge(request.status)}
+                      
+                      {/* Action buttons - stacked on mobile, row on desktop */}
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => viewRequest(request)}
+                          className="w-full sm:w-auto"
                         >
                           <Eye className="h-4 w-4 mr-2" />
                           View Documents
@@ -306,7 +316,7 @@ export default function AdminVerifications() {
                               variant="default"
                               size="sm"
                               onClick={() => handleAction(request, 'approve')}
-                              className="bg-green-600 hover:bg-green-700"
+                              className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
                             >
                               <CheckCircle className="h-4 w-4 mr-2" />
                               Approve
@@ -315,6 +325,7 @@ export default function AdminVerifications() {
                               variant="destructive"
                               size="sm"
                               onClick={() => handleAction(request, 'reject')}
+                              className="w-full sm:w-auto"
                             >
                               <XCircle className="h-4 w-4 mr-2" />
                               Reject
@@ -323,6 +334,7 @@ export default function AdminVerifications() {
                         )}
                       </div>
                     </div>
+                    
                     {request.admin_notes && (
                       <div className="mt-3 p-3 bg-muted/50 rounded-lg">
                         <p className="text-sm text-muted-foreground">
