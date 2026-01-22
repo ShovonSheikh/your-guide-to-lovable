@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { Code, Eye, RotateCcw, Save, Variable, Copy, ZoomIn, ZoomOut, Maximize2, Mail, Send } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useSupabaseWithAuth } from '@/hooks/useSupabaseWithAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { Json } from '@/integrations/supabase/types';
 
 // Email types
@@ -302,6 +304,7 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
 export default function AdminEmailTemplates() {
   usePageTitle("Admin - Email Templates");
   const supabaseAuth = useSupabaseWithAuth();
+  const isMobile = useIsMobile();
   
   const [selectedType, setSelectedType] = useState(EMAIL_TYPES[0].id);
   const [subjectCode, setSubjectCode] = useState(DEFAULT_TEMPLATES[EMAIL_TYPES[0].id].subject);
@@ -310,7 +313,7 @@ export default function AdminEmailTemplates() {
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [savedTemplates, setSavedTemplates] = useState<Record<string, { subject: string; html: string }>>({});
-  const [zoomLevel, setZoomLevel] = useState(0.6);
+  const [zoomLevel, setZoomLevel] = useState(isMobile ? 0.4 : 0.6);
   const [testValues, setTestValues] = useState<Record<string, string>>({});
   
   const previewContainerRef = useRef<HTMLDivElement>(null);
@@ -591,24 +594,33 @@ export default function AdminEmailTemplates() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="h-[600px] border-t">
-                <Editor
-                  height="100%"
-                  language="html"
+              {isMobile ? (
+                <Textarea
                   value={htmlCode}
-                  onChange={(value) => setHtmlCode(value || '')}
-                  theme="vs-dark"
-                  options={{
-                    minimap: { enabled: false },
-                    fontSize: 13,
-                    lineNumbers: 'on',
-                    wordWrap: 'on',
-                    scrollBeyondLastLine: false,
-                    folding: true,
-                    automaticLayout: true,
-                  }}
+                  onChange={(e) => setHtmlCode(e.target.value)}
+                  className="min-h-[400px] font-mono text-xs border-0 rounded-none resize-none focus-visible:ring-0"
+                  placeholder="Enter HTML template..."
                 />
-              </div>
+              ) : (
+                <div className="h-[600px] border-t">
+                  <Editor
+                    height="100%"
+                    language="html"
+                    value={htmlCode}
+                    onChange={(value) => setHtmlCode(value || '')}
+                    theme="vs-dark"
+                    options={{
+                      minimap: { enabled: false },
+                      fontSize: 13,
+                      lineNumbers: 'on',
+                      wordWrap: 'on',
+                      scrollBeyondLastLine: false,
+                      folding: true,
+                      automaticLayout: true,
+                    }}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -651,24 +663,24 @@ export default function AdminEmailTemplates() {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Zoom Controls */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <ZoomOut className="w-4 h-4 text-muted-foreground" />
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <ZoomOut className="w-4 h-4 text-muted-foreground hidden sm:block" />
                   <Slider
                     value={[zoomLevel * 100]}
                     onValueChange={(value) => setZoomLevel(value[0] / 100)}
                     min={30}
                     max={100}
                     step={5}
-                    className="w-32"
+                    className="w-20 sm:w-32"
                   />
-                  <ZoomIn className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground w-10">{Math.round(zoomLevel * 100)}%</span>
+                  <ZoomIn className="w-4 h-4 text-muted-foreground hidden sm:block" />
+                  <span className="text-xs text-muted-foreground">{Math.round(zoomLevel * 100)}%</span>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoomLevel(0.5)}>50%</Button>
-                  <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoomLevel(0.75)}>75%</Button>
-                  <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoomLevel(1)}>100%</Button>
+                  <Button variant="outline" size="sm" className="h-7 px-2 text-xs hidden sm:flex" onClick={() => setZoomLevel(0.75)}>75%</Button>
+                  <Button variant="outline" size="sm" className="h-7 px-2 text-xs hidden sm:flex" onClick={() => setZoomLevel(1)}>100%</Button>
                   <Button 
                     variant="outline" 
                     size="sm" 
@@ -679,8 +691,8 @@ export default function AdminEmailTemplates() {
                       setZoomLevel(fitScale);
                     }}
                   >
-                    <Maximize2 className="w-3 h-3 mr-1" />
-                    Fit
+                    <Maximize2 className="w-3 h-3 sm:mr-1" />
+                    <span className="hidden sm:inline">Fit</span>
                   </Button>
                 </div>
               </div>
