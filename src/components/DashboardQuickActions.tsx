@@ -1,12 +1,17 @@
-import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, ExternalLink, Share2, QrCode, Code2, Link2, Target } from "lucide-react";
+import { Copy, Check, ExternalLink, Share2, QrCode, Code2, Link2, Target, MoreHorizontal } from "lucide-react";
 import { useState } from "react";
 import { toast } from "@/hooks/use-toast";
 import { QRCodeDialog } from "@/components/QRCodeDialog";
 import { BioLinkDialog } from "@/components/BioLinkDialog";
 import { EmbedCodeDialog } from "@/components/EmbedCodeDialog";
 import { FundingGoalDialog } from "@/components/FundingGoalDialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface DashboardQuickActionsProps {
   username: string | null | undefined;
@@ -56,7 +61,8 @@ export function DashboardQuickActions({ username, profileId, displayName }: Dash
     <>
       <div className="tipkoro-card mb-6">
         <h3 className="text-sm font-medium text-muted-foreground mb-3">Quick Actions</h3>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Primary Actions */}
           <Button variant="outline" size="sm" onClick={copyProfileUrl} className="gap-2">
             {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
             {copied ? "Copied!" : "Copy Link"}
@@ -69,32 +75,40 @@ export function DashboardQuickActions({ username, profileId, displayName }: Dash
             </Button>
           </a>
           
-          <Button variant="outline" size="sm" onClick={() => setQrOpen(true)} className="gap-2">
-            <QrCode className="w-4 h-4" />
-            QR Code
-          </Button>
-          
           <Button variant="outline" size="sm" onClick={shareProfile} className="gap-2">
             <Share2 className="w-4 h-4" />
             Share
           </Button>
-          
-          <Button variant="outline" size="sm" onClick={() => setEmbedOpen(true)} className="gap-2">
-            <Code2 className="w-4 h-4" />
-            Embed
-          </Button>
-          
-          <Button variant="outline" size="sm" onClick={() => setBioLinksOpen(true)} className="gap-2">
-            <Link2 className="w-4 h-4" />
-            Bio Links
-          </Button>
-          
-          {profileId && (
-            <Button variant="outline" size="sm" onClick={() => setGoalsOpen(true)} className="gap-2">
-              <Target className="w-4 h-4" />
-              Goals
-            </Button>
-          )}
+
+          {/* Secondary Actions in Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <MoreHorizontal className="w-4 h-4" />
+                More
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => setQrOpen(true)} className="gap-2 cursor-pointer">
+                <QrCode className="w-4 h-4" />
+                QR Code
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setEmbedOpen(true)} className="gap-2 cursor-pointer">
+                <Code2 className="w-4 h-4" />
+                Embed Widget
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setBioLinksOpen(true)} className="gap-2 cursor-pointer">
+                <Link2 className="w-4 h-4" />
+                Bio Links
+              </DropdownMenuItem>
+              {profileId && (
+                <DropdownMenuItem onClick={() => setGoalsOpen(true)} className="gap-2 cursor-pointer">
+                  <Target className="w-4 h-4" />
+                  Funding Goals
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

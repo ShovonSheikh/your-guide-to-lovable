@@ -38,8 +38,8 @@ export function GoalShareCard({ open, onOpenChange, goal, username, displayName 
     try {
       const dataUrl = await toPng(cardRef.current, {
         quality: 1,
-        pixelRatio: 2,
-        backgroundColor: '#ffffff',
+        pixelRatio: 3,
+        cacheBust: true,
       });
       
       const link = document.createElement('a');
