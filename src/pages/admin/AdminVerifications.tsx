@@ -139,9 +139,13 @@ export default function AdminVerifications() {
         await supabase.functions.invoke('send-email-notification', {
           body: {
             profile_id: selectedRequest.profile_id,
+            email: selectedRequest.profile?.email, // Fallback email
             type: action === 'approve' ? 'verification_approved' : 'verification_rejected',
             data: {
-              reason: adminNotes || undefined
+              reason: adminNotes || undefined,
+              creator_name: `${selectedRequest.profile?.first_name || ''} ${selectedRequest.profile?.last_name || ''}`.trim(),
+              username: selectedRequest.profile?.username,
+              first_name: selectedRequest.profile?.first_name,
             }
           }
         });

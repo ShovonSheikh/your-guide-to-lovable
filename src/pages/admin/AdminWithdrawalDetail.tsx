@@ -170,10 +170,12 @@ export default function AdminWithdrawalDetail() {
         await supabase.functions.invoke('send-email-notification', {
           body: {
             profile_id: withdrawal.profile_id,
+            email: withdrawal.creator?.email, // Fallback email
             type: notificationType,
             data: {
               amount: withdrawal.amount,
               reason: adminNotes || undefined,
+              first_name: withdrawal.creator?.first_name,
             },
           },
         });
