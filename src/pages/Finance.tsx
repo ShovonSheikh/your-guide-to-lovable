@@ -235,9 +235,11 @@ export default function Finance() {
         await supabase.functions.invoke('send-email-notification', {
           body: {
             profile_id: profile?.id,
+            email: profile?.email, // Fallback email
             type: 'withdrawal_submitted',
             data: {
               amount,
+              first_name: profile?.first_name,
             },
           },
         });
@@ -392,7 +394,7 @@ export default function Finance() {
                 </div>
 
                 <Button 
-                  onClick={handleWithdraw}
+                  onClick={initiateWithdraw}
                   disabled={isSubmitting}
                   className="w-full bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover"
                 >
@@ -544,6 +546,19 @@ export default function Finance() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Withdrawal Verification Dialog */}
+      <WithdrawalVerificationDialog
+        open={verificationDialogOpen}
+        onOpenChange={setVerificationDialogOpen}
+        amount={parseFloat(withdrawAmount) || 0}
+        payoutMethod={payoutMethod}
+        payoutDetails={payoutDetails}
+        onSuccess={() => {
+          setVerificationDialogOpen(false);
+          handleWithdraw();
+        }}
+      />
     </div>
   );
 }
