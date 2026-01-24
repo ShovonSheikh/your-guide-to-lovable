@@ -1060,15 +1060,21 @@ const handler = async (req: Request): Promise<Response> => {
         .single();
 
       if (profileError || !profile?.email) {
-        console.error("Profile not found or no email:", profileError);
-        return new Response(
-          JSON.stringify({ success: false, message: "Profile not found or no email" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        console.error("Profile lookup failed:", profileError);
+        // Use fallback email if provided
+        if (directEmail) {
+          console.log(`[EMAIL] Using fallback email: ${directEmail}`);
+          recipientEmail = directEmail;
+        } else {
+          return new Response(
+            JSON.stringify({ success: false, message: "Profile not found and no fallback email" }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } else {
+        recipientEmail = profile.email;
+        profileData = profile;
       }
-
-      recipientEmail = profile.email;
-      profileData = profile;
 
       // Check notification settings only for registered users
       const { data: settings } = await supabase
