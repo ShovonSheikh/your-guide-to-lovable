@@ -9,7 +9,7 @@ const corsHeaders = {
 interface EmailNotificationRequest {
   profile_id?: string;
   email?: string; // Direct email for non-registered supporters
-  type: 'tip_received' | 'tip_sent' | 'withdrawal_submitted' | 'withdrawal_processing' | 'withdrawal_completed' | 'withdrawal_rejected' | 'promotion' | 'welcome_creator' | 'welcome_user' | 'weekly_summary' | 'withdrawal_otp' | 'verification_approved' | 'verification_rejected' | 'goal_milestone_50' | 'goal_milestone_75' | 'goal_milestone_100';
+  type: 'tip_received' | 'tip_sent' | 'withdrawal_submitted' | 'withdrawal_processing' | 'withdrawal_completed' | 'withdrawal_rejected' | 'promotion' | 'welcome_creator' | 'welcome_user' | 'weekly_summary' | 'withdrawal_otp' | 'verification_approved' | 'verification_rejected' | 'goal_milestone_25' | 'goal_milestone_50' | 'goal_milestone_75' | 'goal_milestone_100';
   data?: {
     amount?: number;
     supporter_name?: string;
@@ -60,6 +60,7 @@ function getSenderEmail(type: string): string {
     case 'verification_approved':
     case 'verification_rejected':
       return 'TipKoro Team <welcome@tipkoro.com>';
+    case 'goal_milestone_25':
     case 'goal_milestone_50':
     case 'goal_milestone_75':
     case 'goal_milestone_100':
@@ -877,6 +878,36 @@ function getEmailContent(type: string, data: EmailNotificationRequest['data'] = 
                 </p>
                 
                 ${buttonHtml('Try Again', 'https://tipkoro.com/settings?tab=verification')}
+              ${cardEnd}
+              ${footerHtml}
+            ${wrapperEnd}
+          </body>
+          </html>
+        `
+      };
+
+    case 'goal_milestone_25':
+      return {
+        subject: `🌱 Strong Start! ${data.goal_title || 'Your Goal'} is 25% Funded`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">${baseStyle}</head>
+          <body style="margin: 0; padding: 0; background-color: #F5F1E8;">
+            ${wrapperStart}
+              ${headerHtml}
+              ${cardStart}
+                <div style="display: block; width: 76px; height: 76px; margin: 0 auto 24px auto; background: #E0F2FE; border-radius: 50%; text-align: center; line-height: 76px; font-size: 34px;">🌱</div>
+                <h1 style="color: #1F1C18; font-family: ${fontDisplay}; font-size: 26px; font-weight: 700; margin: 0 0 10px 0; text-align: center; letter-spacing: -0.3px;">Strong Start! 25% 🌱</h1>
+                <p style="color: #7A7469; font-size: 15px; text-align: center; margin: 0 0 28px 0; line-height: 1.5;">You're off to a great start on "${data.goal_title || 'your goal'}"!</p>
+                
+                ${amountBox(`৳${data.current_amount || 0}`, `of ৳${data.target_amount || 0} goal`)}
+                
+                <p style="color: #4A453D; font-size: 15px; line-height: 1.75; text-align: center; margin: 24px 0;">
+                  You've reached the first major milestone. Keep sharing with your fans to build momentum!
+                </p>
+                
+                ${buttonHtml('View Progress', 'https://tipkoro.com/dashboard')}
               ${cardEnd}
               ${footerHtml}
             ${wrapperEnd}
