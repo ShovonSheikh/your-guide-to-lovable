@@ -19,95 +19,95 @@ import type { Json } from '@/integrations/supabase/types';
 
 // Email types
 const EMAIL_TYPES = [
-  { id: 'tip_received', label: 'Tip Received', description: 'Sent to creator when they receive a tip' },
-  { id: 'tip_sent', label: 'Tip Sent', description: 'Sent to supporter after sending a tip' },
-  { id: 'withdrawal_submitted', label: 'Withdrawal Submitted', description: 'Confirmation when withdrawal is requested' },
-  { id: 'withdrawal_processing', label: 'Withdrawal Processing', description: 'When withdrawal is approved for processing' },
-  { id: 'withdrawal_completed', label: 'Withdrawal Completed', description: 'When withdrawal is successfully completed' },
-  { id: 'withdrawal_rejected', label: 'Withdrawal Rejected', description: 'When withdrawal request is rejected' },
-  { id: 'welcome_creator', label: 'Welcome Creator', description: 'Welcome email for new creators' },
-  { id: 'weekly_summary', label: 'Weekly Summary', description: 'Weekly earnings summary for creators' },
-  { id: 'withdrawal_otp', label: 'Withdrawal OTP', description: 'OTP code for withdrawal verification' },
-  { id: 'verification_approved', label: 'Verification Approved', description: 'Sent when creator verification is approved' },
-  { id: 'verification_rejected', label: 'Verification Rejected', description: 'Sent when creator verification is rejected' },
-  { id: 'goal_milestone_50', label: 'Goal 50% Reached', description: 'Sent when a funding goal hits 50%' },
-  { id: 'goal_milestone_75', label: 'Goal 75% Reached', description: 'Sent when a funding goal hits 75%' },
-  { id: 'goal_milestone_100', label: 'Goal Completed', description: 'Sent when a funding goal is fully achieved' },
+    { id: 'tip_received', label: 'Tip Received', description: 'Sent to creator when they receive a tip' },
+    { id: 'tip_sent', label: 'Tip Sent', description: 'Sent to supporter after sending a tip' },
+    { id: 'withdrawal_submitted', label: 'Withdrawal Submitted', description: 'Confirmation when withdrawal is requested' },
+    { id: 'withdrawal_processing', label: 'Withdrawal Processing', description: 'When withdrawal is approved for processing' },
+    { id: 'withdrawal_completed', label: 'Withdrawal Completed', description: 'When withdrawal is successfully completed' },
+    { id: 'withdrawal_rejected', label: 'Withdrawal Rejected', description: 'When withdrawal request is rejected' },
+    { id: 'welcome_creator', label: 'Welcome Creator', description: 'Welcome email for new creators' },
+    { id: 'weekly_summary', label: 'Weekly Summary', description: 'Weekly earnings summary for creators' },
+    { id: 'withdrawal_otp', label: 'Withdrawal OTP', description: 'OTP code for withdrawal verification' },
+    { id: 'verification_approved', label: 'Verification Approved', description: 'Sent when creator verification is approved' },
+    { id: 'verification_rejected', label: 'Verification Rejected', description: 'Sent when creator verification is rejected' },
+    { id: 'goal_milestone_50', label: 'Goal 50% Reached', description: 'Sent when a funding goal hits 50%' },
+    { id: 'goal_milestone_75', label: 'Goal 75% Reached', description: 'Sent when a funding goal hits 75%' },
+    { id: 'goal_milestone_100', label: 'Goal Completed', description: 'Sent when a funding goal is fully achieved' },
 ];
 
 // Available dynamic variables per email type
 const DYNAMIC_VARIABLES: Record<string, Array<{ name: string; description: string; example: string }>> = {
-  tip_received: [
-    { name: 'amount', description: 'Tip amount', example: '500' },
-    { name: 'supporter_name', description: 'Name of the supporter', example: 'Jane Smith' },
-    { name: 'message', description: 'Tip message', example: 'Thanks for the amazing content!' },
-  ],
-  tip_sent: [
-    { name: 'amount', description: 'Tip amount', example: '500' },
-    { name: 'creator_name', description: 'Name of the creator', example: 'John Doe' },
-    { name: 'message', description: 'Tip message', example: 'Keep up the great work!' },
-  ],
-  withdrawal_submitted: [
-    { name: 'amount', description: 'Withdrawal amount', example: '1000' },
-  ],
-  withdrawal_processing: [
-    { name: 'amount', description: 'Withdrawal amount', example: '1000' },
-  ],
-  withdrawal_completed: [
-    { name: 'amount', description: 'Withdrawal amount', example: '1000' },
-  ],
-  withdrawal_rejected: [
-    { name: 'amount', description: 'Withdrawal amount', example: '1000' },
-    { name: 'reason', description: 'Rejection reason', example: 'Insufficient balance' },
-  ],
-  welcome_creator: [
-    { name: 'username', description: 'Creator username', example: 'johndoe' },
-    { name: 'first_name', description: 'Creator first name', example: 'John' },
-  ],
-  weekly_summary: [
-    { name: 'week_tips_count', description: 'Number of tips this week', example: '12' },
-    { name: 'week_earnings', description: 'Total earnings this week', example: '2500' },
-    { name: 'new_supporters', description: 'New supporters this week', example: '5' },
-    { name: 'previous_week_earnings', description: 'Last week earnings', example: '2000' },
-  ],
-  withdrawal_otp: [
-    { name: 'otp_code', description: 'OTP verification code', example: '123456' },
-    { name: 'withdrawal_amount', description: 'Withdrawal amount', example: '1000' },
-    { name: 'first_name', description: 'Creator first name', example: 'John' },
-  ],
-  verification_approved: [
-    { name: 'creator_name', description: 'Creator name', example: 'John Doe' },
-    { name: 'username', description: 'Creator username', example: 'johndoe' },
-  ],
-  verification_rejected: [
-    { name: 'creator_name', description: 'Creator name', example: 'John Doe' },
-    { name: 'reason', description: 'Rejection reason', example: 'Documents are unclear or incomplete' },
-  ],
-  goal_milestone_50: [
-    { name: 'goal_title', description: 'Name of the funding goal', example: 'New Camera Equipment' },
-    { name: 'current_amount', description: 'Current amount raised', example: '5000' },
-    { name: 'target_amount', description: 'Target amount', example: '10000' },
-    { name: 'percentage', description: 'Current percentage', example: '50' },
-  ],
-  goal_milestone_75: [
-    { name: 'goal_title', description: 'Name of the funding goal', example: 'New Camera Equipment' },
-    { name: 'current_amount', description: 'Current amount raised', example: '7500' },
-    { name: 'target_amount', description: 'Target amount', example: '10000' },
-    { name: 'percentage', description: 'Current percentage', example: '75' },
-  ],
-  goal_milestone_100: [
-    { name: 'goal_title', description: 'Name of the funding goal', example: 'New Camera Equipment' },
-    { name: 'current_amount', description: 'Current amount raised', example: '10000' },
-    { name: 'target_amount', description: 'Target amount', example: '10000' },
-    { name: 'percentage', description: 'Current percentage', example: '100' },
-  ],
+    tip_received: [
+        { name: 'amount', description: 'Tip amount', example: '500' },
+        { name: 'supporter_name', description: 'Name of the supporter', example: 'Jane Smith' },
+        { name: 'message', description: 'Tip message', example: 'Thanks for the amazing content!' },
+    ],
+    tip_sent: [
+        { name: 'amount', description: 'Tip amount', example: '500' },
+        { name: 'creator_name', description: 'Name of the creator', example: 'John Doe' },
+        { name: 'message', description: 'Tip message', example: 'Keep up the great work!' },
+    ],
+    withdrawal_submitted: [
+        { name: 'amount', description: 'Withdrawal amount', example: '1000' },
+    ],
+    withdrawal_processing: [
+        { name: 'amount', description: 'Withdrawal amount', example: '1000' },
+    ],
+    withdrawal_completed: [
+        { name: 'amount', description: 'Withdrawal amount', example: '1000' },
+    ],
+    withdrawal_rejected: [
+        { name: 'amount', description: 'Withdrawal amount', example: '1000' },
+        { name: 'reason', description: 'Rejection reason', example: 'Insufficient balance' },
+    ],
+    welcome_creator: [
+        { name: 'username', description: 'Creator username', example: 'johndoe' },
+        { name: 'first_name', description: 'Creator first name', example: 'John' },
+    ],
+    weekly_summary: [
+        { name: 'week_tips_count', description: 'Number of tips this week', example: '12' },
+        { name: 'week_earnings', description: 'Total earnings this week', example: '2500' },
+        { name: 'new_supporters', description: 'New supporters this week', example: '5' },
+        { name: 'previous_week_earnings', description: 'Last week earnings', example: '2000' },
+    ],
+    withdrawal_otp: [
+        { name: 'otp_code', description: 'OTP verification code', example: '123456' },
+        { name: 'withdrawal_amount', description: 'Withdrawal amount', example: '1000' },
+        { name: 'first_name', description: 'Creator first name', example: 'John' },
+    ],
+    verification_approved: [
+        { name: 'creator_name', description: 'Creator name', example: 'John Doe' },
+        { name: 'username', description: 'Creator username', example: 'johndoe' },
+    ],
+    verification_rejected: [
+        { name: 'creator_name', description: 'Creator name', example: 'John Doe' },
+        { name: 'reason', description: 'Rejection reason', example: 'Documents are unclear or incomplete' },
+    ],
+    goal_milestone_50: [
+        { name: 'goal_title', description: 'Name of the funding goal', example: 'New Camera Equipment' },
+        { name: 'current_amount', description: 'Current amount raised', example: '5000' },
+        { name: 'target_amount', description: 'Target amount', example: '10000' },
+        { name: 'percentage', description: 'Current percentage', example: '50' },
+    ],
+    goal_milestone_75: [
+        { name: 'goal_title', description: 'Name of the funding goal', example: 'New Camera Equipment' },
+        { name: 'current_amount', description: 'Current amount raised', example: '7500' },
+        { name: 'target_amount', description: 'Target amount', example: '10000' },
+        { name: 'percentage', description: 'Current percentage', example: '75' },
+    ],
+    goal_milestone_100: [
+        { name: 'goal_title', description: 'Name of the funding goal', example: 'New Camera Equipment' },
+        { name: 'current_amount', description: 'Current amount raised', example: '10000' },
+        { name: 'target_amount', description: 'Target amount', example: '10000' },
+        { name: 'percentage', description: 'Current percentage', example: '100' },
+    ],
 };
 
 // Default templates (simplified versions)
 const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
-  tip_received: {
-    subject: '💰 You received ৳{{amount}} on TipKoro!',
-    html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+    tip_received: {
+        subject: '💰 You received ৳{{amount}} on TipKoro!',
+        html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
   <div style="max-width: 560px; margin: 0 auto;">
     <div style="text-align: center; padding: 24px 0;">
       <span style="font-size: 28px; font-weight: 700; color: #1F1C18;">💛 TipKoro</span>
@@ -133,10 +133,10 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
     </div>
   </div>
 </div>`,
-  },
-  tip_sent: {
-    subject: '❤️ Your tip of ৳{{amount}} was sent successfully!',
-    html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+    },
+    tip_sent: {
+        subject: '❤️ Your tip of ৳{{amount}} was sent successfully!',
+        html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
   <div style="max-width: 560px; margin: 0 auto;">
     <div style="text-align: center; padding: 24px 0;">
       <span style="font-size: 28px; font-weight: 700; color: #1F1C18;">💛 TipKoro</span>
@@ -157,10 +157,10 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
     </div>
   </div>
 </div>`,
-  },
-  withdrawal_submitted: {
-    subject: '📤 Withdrawal Request Received - ৳{{amount}}',
-    html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+    },
+    withdrawal_submitted: {
+        subject: '📤 Withdrawal Request Received - ৳{{amount}}',
+        html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
   <div style="max-width: 560px; margin: 0 auto;">
     <div style="background: #FEFDFB; border: 1px solid #E5E0D5; border-radius: 20px; padding: 44px 36px;">
       <h1 style="font-size: 26px; font-weight: 700; text-align: center;">Withdrawal Request Submitted</h1>
@@ -172,10 +172,10 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
     </div>
   </div>
 </div>`,
-  },
-  withdrawal_processing: {
-    subject: '⏳ Withdrawal Processing - ৳{{amount}}',
-    html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+    },
+    withdrawal_processing: {
+        subject: '⏳ Withdrawal Processing - ৳{{amount}}',
+        html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
   <div style="max-width: 560px; margin: 0 auto;">
     <div style="background: #FEFDFB; border: 1px solid #E5E0D5; border-radius: 20px; padding: 44px 36px;">
       <h1 style="font-size: 26px; font-weight: 700; text-align: center;">Withdrawal Being Processed</h1>
@@ -186,10 +186,10 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
     </div>
   </div>
 </div>`,
-  },
-  withdrawal_completed: {
-    subject: '✅ Withdrawal Completed - ৳{{amount}}',
-    html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+    },
+    withdrawal_completed: {
+        subject: '✅ Withdrawal Completed - ৳{{amount}}',
+        html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
   <div style="max-width: 560px; margin: 0 auto;">
     <div style="background: #FEFDFB; border: 1px solid #E5E0D5; border-radius: 20px; padding: 44px 36px;">
       <h1 style="font-size: 26px; font-weight: 700; text-align: center;">Withdrawal Completed!</h1>
@@ -200,10 +200,10 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
     </div>
   </div>
 </div>`,
-  },
-  withdrawal_rejected: {
-    subject: '❌ Withdrawal Rejected - ৳{{amount}}',
-    html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+    },
+    withdrawal_rejected: {
+        subject: '❌ Withdrawal Rejected - ৳{{amount}}',
+        html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
   <div style="max-width: 560px; margin: 0 auto;">
     <div style="background: #FEFDFB; border: 1px solid #E5E0D5; border-radius: 20px; padding: 44px 36px;">
       <h1 style="font-size: 26px; font-weight: 700; text-align: center;">Withdrawal Rejected</h1>
@@ -215,10 +215,10 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
     </div>
   </div>
 </div>`,
-  },
-  welcome_creator: {
-    subject: '🎉 Welcome to TipKoro, {{first_name}}!',
-    html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+    },
+    welcome_creator: {
+        subject: '🎉 Welcome to TipKoro, {{first_name}}!',
+        html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
   <div style="max-width: 560px; margin: 0 auto;">
     <div style="background: #FEFDFB; border: 1px solid #E5E0D5; border-radius: 20px; padding: 44px 36px;">
       <h1 style="font-size: 26px; font-weight: 700; text-align: center;">Welcome to TipKoro! 🎉</h1>
@@ -229,10 +229,10 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
     </div>
   </div>
 </div>`,
-  },
-  weekly_summary: {
-    subject: '📊 Your Weekly Summary - ৳{{week_earnings}} earned!',
-    html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+    },
+    weekly_summary: {
+        subject: '📊 Your Weekly Summary - ৳{{week_earnings}} earned!',
+        html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
   <div style="max-width: 560px; margin: 0 auto;">
     <div style="background: #FEFDFB; border: 1px solid #E5E0D5; border-radius: 20px; padding: 44px 36px;">
       <h1 style="font-size: 26px; font-weight: 700; text-align: center;">Your Weekly Summary 📊</h1>
@@ -255,10 +255,10 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
     </div>
   </div>
 </div>`,
-  },
-  withdrawal_otp: {
-    subject: '🔐 Your Withdrawal Verification Code',
-    html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+    },
+    withdrawal_otp: {
+        subject: '🔐 Your Withdrawal Verification Code',
+        html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
   <div style="max-width: 560px; margin: 0 auto;">
     <div style="background: #FEFDFB; border: 1px solid #E5E0D5; border-radius: 20px; padding: 44px 36px;">
       <h1 style="font-size: 26px; font-weight: 700; text-align: center;">Verification Code</h1>
@@ -270,10 +270,10 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
     </div>
   </div>
 </div>`,
-  },
-  verification_approved: {
-    subject: '✅ Congratulations! Your Account is Verified',
-    html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+    },
+    verification_approved: {
+        subject: '✅ Congratulations! Your Account is Verified',
+        html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
   <div style="max-width: 560px; margin: 0 auto;">
     <div style="text-align: center; padding: 24px 0;">
       <span style="font-size: 28px; font-weight: 700; color: #1F1C18;">💛 TipKoro</span>
@@ -294,10 +294,10 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
     </div>
   </div>
 </div>`,
-  },
-  verification_rejected: {
-    subject: '❌ Verification Request Declined',
-    html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+    },
+    verification_rejected: {
+        subject: '❌ Verification Request Declined',
+        html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
   <div style="max-width: 560px; margin: 0 auto;">
     <div style="text-align: center; padding: 24px 0;">
       <span style="font-size: 28px; font-weight: 700; color: #1F1C18;">💛 TipKoro</span>
@@ -319,10 +319,10 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
     </div>
   </div>
 </div>`,
-  },
-  goal_milestone_50: {
-    subject: '🎯 Halfway There! {{goal_title}} is 50% Funded',
-    html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+    },
+    goal_milestone_50: {
+        subject: '🎯 Halfway There! {{goal_title}} is 50% Funded',
+        html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
   <div style="max-width: 560px; margin: 0 auto;">
     <div style="text-align: center; padding: 24px 0;">
       <span style="font-size: 28px; font-weight: 700; color: #1F1C18;">💛 TipKoro</span>
@@ -344,10 +344,10 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
     </div>
   </div>
 </div>`,
-  },
-  goal_milestone_75: {
-    subject: '🔥 Almost There! {{goal_title}} is 75% Funded',
-    html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+    },
+    goal_milestone_75: {
+        subject: '🔥 Almost There! {{goal_title}} is 75% Funded',
+        html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
   <div style="max-width: 560px; margin: 0 auto;">
     <div style="text-align: center; padding: 24px 0;">
       <span style="font-size: 28px; font-weight: 700; color: #1F1C18;">💛 TipKoro</span>
@@ -369,10 +369,10 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
     </div>
   </div>
 </div>`,
-  },
-  goal_milestone_100: {
-    subject: '🎉 Goal Achieved! {{goal_title}} is 100% Funded!',
-    html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+    },
+    goal_milestone_100: {
+        subject: '🎉 Goal Achieved! {{goal_title}} is 100% Funded!',
+        html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
   <div style="max-width: 560px; margin: 0 auto;">
     <div style="text-align: center; padding: 24px 0;">
       <span style="font-size: 28px; font-weight: 700; color: #1F1C18;">💛 TipKoro</span>
@@ -394,424 +394,425 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
     </div>
   </div>
 </div>`,
-  },
+    },
 };
 
 export default function AdminEmailTemplates() {
-  usePageTitle("Admin - Email Templates");
-  const supabaseAuth = useSupabaseWithAuth();
-  const isMobile = useIsMobile();
-  
-  const [selectedType, setSelectedType] = useState(EMAIL_TYPES[0].id);
-  const [subjectCode, setSubjectCode] = useState(DEFAULT_TEMPLATES[EMAIL_TYPES[0].id].subject);
-  const [htmlCode, setHtmlCode] = useState(DEFAULT_TEMPLATES[EMAIL_TYPES[0].id].html);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
-  const [savedTemplates, setSavedTemplates] = useState<Record<string, { subject: string; html: string }>>({});
-  const [zoomLevel, setZoomLevel] = useState(isMobile ? 0.4 : 0.6);
-  const [testValues, setTestValues] = useState<Record<string, string>>({});
-  
-  const previewContainerRef = useRef<HTMLDivElement>(null);
+    usePageTitle("Admin - Email Templates");
+    const supabaseAuth = useSupabaseWithAuth();
+    const isMobile = useIsMobile();
 
-  // Fetch saved templates
-  useEffect(() => {
-    const fetchTemplates = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('platform_config')
-          .select('key, value')
-          .like('key', 'email_template_%');
-        
-        if (error) throw error;
-        
-        const templates: Record<string, { subject: string; html: string }> = {};
-        data?.forEach(item => {
-          const typeId = item.key.replace('email_template_', '');
-          const value = item.value as { subject?: string; html?: string } | null;
-          if (value) {
-            templates[typeId] = {
-              subject: value.subject || DEFAULT_TEMPLATES[typeId]?.subject || '',
-              html: value.html || DEFAULT_TEMPLATES[typeId]?.html || '',
-            };
-          }
-        });
-        
-        setSavedTemplates(templates);
-        
-        // Load current template
-        const currentTemplate = templates[selectedType] || DEFAULT_TEMPLATES[selectedType];
+    const [selectedType, setSelectedType] = useState(EMAIL_TYPES[0].id);
+    const [subjectCode, setSubjectCode] = useState(DEFAULT_TEMPLATES[EMAIL_TYPES[0].id].subject);
+    const [htmlCode, setHtmlCode] = useState(DEFAULT_TEMPLATES[EMAIL_TYPES[0].id].html);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [hasChanges, setHasChanges] = useState(false);
+    const [savedTemplates, setSavedTemplates] = useState<Record<string, { subject: string; html: string }>>({});
+    const [zoomLevel, setZoomLevel] = useState(isMobile ? 0.4 : 0.6);
+    const [testValues, setTestValues] = useState<Record<string, string>>({});
+
+    const previewContainerRef = useRef<HTMLDivElement>(null);
+
+    // Fetch saved templates
+    useEffect(() => {
+        const fetchTemplates = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('platform_config')
+                    .select('key, value')
+                    .like('key', 'email_template_%');
+
+                if (error) throw error;
+
+                const templates: Record<string, { subject: string; html: string }> = {};
+                data?.forEach(item => {
+                    const typeId = item.key.replace('email_template_', '');
+                    const value = item.value as { subject?: string; html?: string } | null;
+                    if (value) {
+                        templates[typeId] = {
+                            subject: value.subject || DEFAULT_TEMPLATES[typeId]?.subject || '',
+                            html: value.html || DEFAULT_TEMPLATES[typeId]?.html || '',
+                        };
+                    }
+                });
+
+                setSavedTemplates(templates);
+
+                // Load current template
+                const currentTemplate = templates[selectedType] || DEFAULT_TEMPLATES[selectedType];
+                setSubjectCode(currentTemplate.subject);
+                setHtmlCode(currentTemplate.html);
+            } catch (error) {
+                console.error('Error fetching templates:', error);
+                toast({ title: "Error", description: "Failed to load templates", variant: "destructive" });
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchTemplates();
+    }, []);
+
+    // Load template when type changes
+    useEffect(() => {
+        const currentTemplate = savedTemplates[selectedType] || DEFAULT_TEMPLATES[selectedType];
         setSubjectCode(currentTemplate.subject);
         setHtmlCode(currentTemplate.html);
-      } catch (error) {
-        console.error('Error fetching templates:', error);
-        toast({ title: "Error", description: "Failed to load templates", variant: "destructive" });
-      } finally {
-        setLoading(false);
-      }
+        setHasChanges(false);
+
+        // Set default test values
+        const vars = DYNAMIC_VARIABLES[selectedType] || [];
+        const defaults: Record<string, string> = {};
+        vars.forEach(v => {
+            defaults[v.name] = v.example;
+        });
+        setTestValues(defaults);
+    }, [selectedType, savedTemplates]);
+
+    // Track changes
+    useEffect(() => {
+        const savedTemplate = savedTemplates[selectedType] || DEFAULT_TEMPLATES[selectedType];
+        setHasChanges(
+            subjectCode !== savedTemplate.subject ||
+            htmlCode !== savedTemplate.html
+        );
+    }, [subjectCode, htmlCode, selectedType, savedTemplates]);
+
+    // Render preview with variable replacement
+    const renderedHtml = useMemo(() => {
+        let rendered = htmlCode;
+
+        // Replace {{variable}} with test values
+        Object.entries(testValues).forEach(([key, value]) => {
+            const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+            rendered = rendered.replace(regex, value);
+        });
+
+        // Handle simple {{#if var}}...{{/if}} blocks
+        const ifRegex = /\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g;
+        rendered = rendered.replace(ifRegex, (_, varName, content) => {
+            return testValues[varName] ? content : '';
+        });
+
+        return rendered;
+    }, [htmlCode, testValues]);
+
+    const renderedSubject = useMemo(() => {
+        let rendered = subjectCode;
+        Object.entries(testValues).forEach(([key, value]) => {
+            const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+            rendered = rendered.replace(regex, value);
+        });
+        return rendered;
+    }, [subjectCode, testValues]);
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            const key = `email_template_${selectedType}`;
+            const value: Json = { subject: subjectCode, html: htmlCode };
+
+            const { data: existing } = await supabase
+                .from('platform_config')
+                .select('id')
+                .eq('key', key)
+                .maybeSingle();
+
+            if (existing) {
+                const { error } = await supabaseAuth
+                    .from('platform_config')
+                    .update({ value, updated_at: new Date().toISOString() })
+                    .eq('key', key);
+                if (error) throw error;
+            } else {
+                const { error } = await supabaseAuth
+                    .from('platform_config')
+                    .insert([{ key, value, description: `Email template for ${selectedType}` }]);
+                if (error) throw error;
+            }
+
+            setSavedTemplates(prev => ({
+                ...prev,
+                [selectedType]: { subject: subjectCode, html: htmlCode },
+            }));
+            setHasChanges(false);
+
+            toast({ title: "Success", description: "Email template saved!" });
+        } catch (error) {
+            console.error('Error saving template:', error);
+            toast({ title: "Error", description: "Failed to save template", variant: "destructive" });
+        } finally {
+            setSaving(false);
+        }
     };
-    
-    fetchTemplates();
-  }, []);
 
-  // Load template when type changes
-  useEffect(() => {
-    const currentTemplate = savedTemplates[selectedType] || DEFAULT_TEMPLATES[selectedType];
-    setSubjectCode(currentTemplate.subject);
-    setHtmlCode(currentTemplate.html);
-    setHasChanges(false);
-    
-    // Set default test values
-    const vars = DYNAMIC_VARIABLES[selectedType] || [];
-    const defaults: Record<string, string> = {};
-    vars.forEach(v => {
-      defaults[v.name] = v.example;
-    });
-    setTestValues(defaults);
-  }, [selectedType, savedTemplates]);
+    const handleReset = () => {
+        // Load from savedTemplates (last saved in database), fallback to DEFAULT_TEMPLATES
+        const template = savedTemplates[selectedType] || DEFAULT_TEMPLATES[selectedType];
+        setSubjectCode(template.subject);
+        setHtmlCode(template.html);
+    };
 
-  // Track changes
-  useEffect(() => {
-    const savedTemplate = savedTemplates[selectedType] || DEFAULT_TEMPLATES[selectedType];
-    setHasChanges(
-      subjectCode !== savedTemplate.subject ||
-      htmlCode !== savedTemplate.html
-    );
-  }, [subjectCode, htmlCode, selectedType, savedTemplates]);
+    const copyVariable = (varName: string) => {
+        navigator.clipboard.writeText(`{{${varName}}}`);
+        toast({ title: "Copied", description: `{{${varName}}} copied to clipboard` });
+    };
 
-  // Render preview with variable replacement
-  const renderedHtml = useMemo(() => {
-    let rendered = htmlCode;
-    
-    // Replace {{variable}} with test values
-    Object.entries(testValues).forEach(([key, value]) => {
-      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-      rendered = rendered.replace(regex, value);
-    });
-    
-    // Handle simple {{#if var}}...{{/if}} blocks
-    const ifRegex = /\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g;
-    rendered = rendered.replace(ifRegex, (_, varName, content) => {
-      return testValues[varName] ? content : '';
-    });
-    
-    return rendered;
-  }, [htmlCode, testValues]);
-
-  const renderedSubject = useMemo(() => {
-    let rendered = subjectCode;
-    Object.entries(testValues).forEach(([key, value]) => {
-      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-      rendered = rendered.replace(regex, value);
-    });
-    return rendered;
-  }, [subjectCode, testValues]);
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const key = `email_template_${selectedType}`;
-      const value: Json = { subject: subjectCode, html: htmlCode };
-      
-      const { data: existing } = await supabase
-        .from('platform_config')
-        .select('id')
-        .eq('key', key)
-        .maybeSingle();
-      
-      if (existing) {
-        const { error } = await supabaseAuth
-          .from('platform_config')
-          .update({ value, updated_at: new Date().toISOString() })
-          .eq('key', key);
-        if (error) throw error;
-      } else {
-        const { error } = await supabaseAuth
-          .from('platform_config')
-          .insert([{ key, value, description: `Email template for ${selectedType}` }]);
-        if (error) throw error;
-      }
-      
-      setSavedTemplates(prev => ({
-        ...prev,
-        [selectedType]: { subject: subjectCode, html: htmlCode },
-      }));
-      setHasChanges(false);
-      
-      toast({ title: "Success", description: "Email template saved!" });
-    } catch (error) {
-      console.error('Error saving template:', error);
-      toast({ title: "Error", description: "Failed to save template", variant: "destructive" });
-    } finally {
-      setSaving(false);
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <Spinner className="h-8 w-8" />
+            </div>
+        );
     }
-  };
 
-  const handleReset = () => {
-    const defaultTemplate = DEFAULT_TEMPLATES[selectedType];
-    setSubjectCode(defaultTemplate.subject);
-    setHtmlCode(defaultTemplate.html);
-  };
+    const currentEmailType = EMAIL_TYPES.find(t => t.id === selectedType);
+    const currentVariables = DYNAMIC_VARIABLES[selectedType] || [];
 
-  const copyVariable = (varName: string) => {
-    navigator.clipboard.writeText(`{{${varName}}}`);
-    toast({ title: "Copied", description: `{{${varName}}} copied to clipboard` });
-  };
-
-  if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Spinner className="h-8 w-8" />
-      </div>
-    );
-  }
-
-  const currentEmailType = EMAIL_TYPES.find(t => t.id === selectedType);
-  const currentVariables = DYNAMIC_VARIABLES[selectedType] || [];
-
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Mail className="h-6 w-6" />
-            Email Templates
-          </h1>
-          <p className="text-muted-foreground">Customize email templates for notifications</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {hasChanges && (
-            <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-              Unsaved changes
-            </Badge>
-          )}
-          <Button variant="outline" size="sm" onClick={handleReset}>
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Reset
-          </Button>
-          <Button size="sm" onClick={handleSave} disabled={saving || !hasChanges}>
-            {saving ? <Spinner className="h-4 w-4 mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-            Save
-          </Button>
-        </div>
-      </div>
-
-      {/* Email Type Selector */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Select Email Type</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Select value={selectedType} onValueChange={setSelectedType}>
-            <SelectTrigger className="w-full sm:w-[300px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {EMAIL_TYPES.map(type => (
-                <SelectItem key={type.id} value={type.id}>
-                  <div className="flex flex-col">
-                    <span>{type.label}</span>
-                    <span className="text-xs text-muted-foreground">{type.description}</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
-
-      {/* Dynamic Variables */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <Variable className="h-5 w-5 text-muted-foreground" />
-            <CardTitle className="text-base">Dynamic Variables</CardTitle>
-          </div>
-          <CardDescription>
-            Use these placeholders in your template. They will be replaced with real data when the email is sent. Click a variable to copy it.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {currentVariables.map(variable => (
-              <div
-                key={variable.name}
-                className="group p-3 rounded-lg border bg-card hover:bg-accent/50 cursor-pointer transition-colors"
-                onClick={() => copyVariable(variable.name)}
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <Badge variant="secondary" className="font-mono text-xs">
-                    {`{{${variable.name}}}`}
-                  </Badge>
-                  <Copy className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                        <Mail className="h-6 w-6" />
+                        Email Templates
+                    </h1>
+                    <p className="text-muted-foreground">Customize email templates for notifications</p>
                 </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {variable.description}
-                </p>
-                <p className="text-xs text-muted-foreground/70 mt-1 font-mono">
-                  e.g. {variable.example}
-                </p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Editor & Preview Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Editor Column */}
-        <div className="space-y-4">
-          {/* Subject Editor */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Send className="h-4 w-4" />
-                Subject Line
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Input
-                value={subjectCode}
-                onChange={(e) => setSubjectCode(e.target.value)}
-                placeholder="Email subject..."
-                className="font-mono text-sm"
-              />
-            </CardContent>
-          </Card>
-
-          {/* HTML Editor */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <Code className="h-4 w-4" />
-                <span className="text-sm font-medium">HTML Template</span>
-                <Badge variant="outline" className="text-xs">HTML</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              {isMobile ? (
-                <Textarea
-                  value={htmlCode}
-                  onChange={(e) => setHtmlCode(e.target.value)}
-                  className="min-h-[400px] font-mono text-xs border-0 rounded-none resize-none focus-visible:ring-0"
-                  placeholder="Enter HTML template..."
-                />
-              ) : (
-                <div className="h-[600px] border-t">
-                  <Editor
-                    height="100%"
-                    language="html"
-                    value={htmlCode}
-                    onChange={(value) => setHtmlCode(value || '')}
-                    theme="vs-dark"
-                    options={{
-                      minimap: { enabled: false },
-                      fontSize: 13,
-                      lineNumbers: 'on',
-                      wordWrap: 'on',
-                      scrollBeyondLastLine: false,
-                      folding: true,
-                      automaticLayout: true,
-                    }}
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Preview Column */}
-        <div className="space-y-4">
-          {/* Test Values */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Test Values</CardTitle>
-              <CardDescription>Modify these to preview different scenarios</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                {currentVariables.map(variable => (
-                  <div key={variable.name} className="space-y-1">
-                    <Label className="text-xs">{variable.name}</Label>
-                    <Input
-                      value={testValues[variable.name] || ''}
-                      onChange={(e) => setTestValues(prev => ({ ...prev, [variable.name]: e.target.value }))}
-                      placeholder={variable.example}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Preview */}
-          <Card className="flex-1">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Eye className="h-4 w-4" />
-                  <CardTitle className="text-base">Live Preview</CardTitle>
+                    {hasChanges && (
+                        <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                            Unsaved changes
+                        </Badge>
+                    )}
+                    <Button variant="outline" size="sm" onClick={handleReset}>
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Reset
+                    </Button>
+                    <Button size="sm" onClick={handleSave} disabled={saving || !hasChanges}>
+                        {saving ? <Spinner className="h-4 w-4 mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                        Save
+                    </Button>
                 </div>
-              </div>
-              <CardDescription>Subject: {renderedSubject}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Zoom Controls */}
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <ZoomOut className="w-4 h-4 text-muted-foreground hidden sm:block" />
-                  <Slider
-                    value={[zoomLevel * 100]}
-                    onValueChange={(value) => setZoomLevel(value[0] / 100)}
-                    min={30}
-                    max={100}
-                    step={5}
-                    className="w-20 sm:w-32"
-                  />
-                  <ZoomIn className="w-4 h-4 text-muted-foreground hidden sm:block" />
-                  <span className="text-xs text-muted-foreground">{Math.round(zoomLevel * 100)}%</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoomLevel(0.5)}>50%</Button>
-                  <Button variant="outline" size="sm" className="h-7 px-2 text-xs hidden sm:flex" onClick={() => setZoomLevel(0.75)}>75%</Button>
-                  <Button variant="outline" size="sm" className="h-7 px-2 text-xs hidden sm:flex" onClick={() => setZoomLevel(1)}>100%</Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-7 px-2 text-xs"
-                    onClick={() => {
-                      const containerWidth = previewContainerRef.current?.clientWidth || 480;
-                      const fitScale = Math.min((containerWidth - 32) / 600, 1);
-                      setZoomLevel(fitScale);
-                    }}
-                  >
-                    <Maximize2 className="w-3 h-3 sm:mr-1" />
-                    <span className="hidden sm:inline">Fit</span>
-                  </Button>
-                </div>
-              </div>
+            </div>
 
-              {/* Preview Container */}
-              <div 
-                ref={previewContainerRef}
-                className="overflow-auto rounded-xl border bg-muted/30 max-h-[500px]"
-              >
-                <div 
-                  className="transform origin-top-left p-4"
-                  style={{ transform: `scale(${zoomLevel})` }}
-                >
-                  <div 
-                    dangerouslySetInnerHTML={{ __html: renderedHtml }}
-                    className="min-w-[600px]"
-                  />
+            {/* Email Type Selector */}
+            <Card>
+                <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Select Email Type</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Select value={selectedType} onValueChange={setSelectedType}>
+                        <SelectTrigger className="w-full sm:w-[300px]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {EMAIL_TYPES.map(type => (
+                                <SelectItem key={type.id} value={type.id}>
+                                    <div className="flex flex-col">
+                                        <span>{type.label}</span>
+                                        <span className="text-xs text-muted-foreground">{type.description}</span>
+                                    </div>
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </CardContent>
+            </Card>
+
+            {/* Dynamic Variables */}
+            <Card>
+                <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                        <Variable className="h-5 w-5 text-muted-foreground" />
+                        <CardTitle className="text-base">Dynamic Variables</CardTitle>
+                    </div>
+                    <CardDescription>
+                        Use these placeholders in your template. They will be replaced with real data when the email is sent. Click a variable to copy it.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {currentVariables.map(variable => (
+                            <div
+                                key={variable.name}
+                                className="group p-3 rounded-lg border bg-card hover:bg-accent/50 cursor-pointer transition-colors"
+                                onClick={() => copyVariable(variable.name)}
+                            >
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <Badge variant="secondary" className="font-mono text-xs">
+                                        {`{{${variable.name}}}`}
+                                    </Badge>
+                                    <Copy className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                                <p className="text-xs text-muted-foreground leading-relaxed">
+                                    {variable.description}
+                                </p>
+                                <p className="text-xs text-muted-foreground/70 mt-1 font-mono">
+                                    e.g. {variable.example}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Editor & Preview Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Editor Column */}
+                <div className="space-y-4">
+                    {/* Subject Editor */}
+                    <Card>
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <Send className="h-4 w-4" />
+                                Subject Line
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <Input
+                                value={subjectCode}
+                                onChange={(e) => setSubjectCode(e.target.value)}
+                                placeholder="Email subject..."
+                                className="font-mono text-sm"
+                            />
+                        </CardContent>
+                    </Card>
+
+                    {/* HTML Editor */}
+                    <Card>
+                        <CardHeader className="pb-3">
+                            <div className="flex items-center gap-2">
+                                <Code className="h-4 w-4" />
+                                <span className="text-sm font-medium">HTML Template</span>
+                                <Badge variant="outline" className="text-xs">HTML</Badge>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            {isMobile ? (
+                                <Textarea
+                                    value={htmlCode}
+                                    onChange={(e) => setHtmlCode(e.target.value)}
+                                    className="min-h-[400px] font-mono text-xs border-0 rounded-none resize-none focus-visible:ring-0"
+                                    placeholder="Enter HTML template..."
+                                />
+                            ) : (
+                                <div className="h-[600px] border-t">
+                                    <Editor
+                                        height="100%"
+                                        language="html"
+                                        value={htmlCode}
+                                        onChange={(value) => setHtmlCode(value || '')}
+                                        theme="vs-dark"
+                                        options={{
+                                            minimap: { enabled: false },
+                                            fontSize: 13,
+                                            lineNumbers: 'on',
+                                            wordWrap: 'on',
+                                            scrollBeyondLastLine: false,
+                                            folding: true,
+                                            automaticLayout: true,
+                                        }}
+                                    />
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+
+                {/* Preview Column */}
+                <div className="space-y-4">
+                    {/* Test Values */}
+                    <Card>
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-base">Test Values</CardTitle>
+                            <CardDescription>Modify these to preview different scenarios</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-2 gap-3">
+                                {currentVariables.map(variable => (
+                                    <div key={variable.name} className="space-y-1">
+                                        <Label className="text-xs">{variable.name}</Label>
+                                        <Input
+                                            value={testValues[variable.name] || ''}
+                                            onChange={(e) => setTestValues(prev => ({ ...prev, [variable.name]: e.target.value }))}
+                                            placeholder={variable.example}
+                                            className="h-8 text-sm"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Preview */}
+                    <Card className="flex-1">
+                        <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Eye className="h-4 w-4" />
+                                    <CardTitle className="text-base">Live Preview</CardTitle>
+                                </div>
+                            </div>
+                            <CardDescription>Subject: {renderedSubject}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {/* Zoom Controls */}
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                                <div className="flex items-center gap-2 sm:gap-3">
+                                    <ZoomOut className="w-4 h-4 text-muted-foreground hidden sm:block" />
+                                    <Slider
+                                        value={[zoomLevel * 100]}
+                                        onValueChange={(value) => setZoomLevel(value[0] / 100)}
+                                        min={30}
+                                        max={100}
+                                        step={5}
+                                        className="w-20 sm:w-32"
+                                    />
+                                    <ZoomIn className="w-4 h-4 text-muted-foreground hidden sm:block" />
+                                    <span className="text-xs text-muted-foreground">{Math.round(zoomLevel * 100)}%</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoomLevel(0.5)}>50%</Button>
+                                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs hidden sm:flex" onClick={() => setZoomLevel(0.75)}>75%</Button>
+                                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs hidden sm:flex" onClick={() => setZoomLevel(1)}>100%</Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 px-2 text-xs"
+                                        onClick={() => {
+                                            const containerWidth = previewContainerRef.current?.clientWidth || 480;
+                                            const fitScale = Math.min((containerWidth - 32) / 600, 1);
+                                            setZoomLevel(fitScale);
+                                        }}
+                                    >
+                                        <Maximize2 className="w-3 h-3 sm:mr-1" />
+                                        <span className="hidden sm:inline">Fit</span>
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/* Preview Container */}
+                            <div
+                                ref={previewContainerRef}
+                                className="overflow-auto rounded-xl border bg-muted/30 max-h-[500px]"
+                            >
+                                <div
+                                    className="transform origin-top-left p-4"
+                                    style={{ transform: `scale(${zoomLevel})` }}
+                                >
+                                    <div
+                                        dangerouslySetInnerHTML={{ __html: renderedHtml }}
+                                        className="min-w-[600px]"
+                                    />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 }
