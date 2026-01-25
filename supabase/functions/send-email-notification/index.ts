@@ -1227,6 +1227,27 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailData = await emailResponse.json();
 
+    // Log email attempt to database for tracking
+    try {
+      const logEntry = {
+        recipient_email: recipientEmail,
+        email_type: type,
+        status: emailResponse.ok ? 'sent' : 'failed',
+        resend_id: emailData?.id || null,
+        error_message: emailResponse.ok ? null : JSON.stringify(emailData),
+      };
+      
+      const { error: logError } = await supabase.from('email_logs').insert(logEntry);
+      
+      if (logError) {
+        console.error('[EMAIL] Failed to log to email_logs:', logError);
+      } else {
+        console.log(`[EMAIL] Logged to email_logs: ${type} -> ${recipientEmail}, status: ${logEntry.status}`);
+      }
+    } catch (logError) {
+      console.error('[EMAIL] Exception logging email:', logError);
+    }
+
     if (!emailResponse.ok) {
       console.error("Resend API error:", emailData);
       return new Response(
