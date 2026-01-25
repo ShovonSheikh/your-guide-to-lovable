@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-clerk-user-id",
 };
 
 interface EmailNotificationRequest {
@@ -1143,7 +1143,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Try to fetch custom template from database
     let subject: string;
     let html: string;
-    
+
     const { data: customTemplate } = await supabase
       .from('platform_config')
       .select('value')
@@ -1156,7 +1156,7 @@ const handler = async (req: Request): Promise<Response> => {
         // Use custom template with variable replacement
         subject = template.subject;
         html = template.html;
-        
+
         // Replace all {{variable}} placeholders with actual data
         const replacements: Record<string, string> = {
           amount: String(data?.amount || ''),
@@ -1182,16 +1182,16 @@ const handler = async (req: Request): Promise<Response> => {
           tip_id: data?.tip_id || '',
           url: data?.url || '',
         };
-        
+
         console.log(`[EMAIL] Using custom template for ${type}`);
         console.log(`[EMAIL] Replacements available:`, Object.keys(replacements).join(', '));
-        
+
         for (const [key, value] of Object.entries(replacements)) {
           const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
           subject = subject.replace(regex, value);
           html = html.replace(regex, value);
         }
-        
+
         // Handle simple {{#if var}}...{{/if}} blocks
         const ifRegex = /\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g;
         html = html.replace(ifRegex, (_, varName, content) => {
@@ -1236,9 +1236,9 @@ const handler = async (req: Request): Promise<Response> => {
         resend_id: emailData?.id || null,
         error_message: emailResponse.ok ? null : JSON.stringify(emailData),
       };
-      
+
       const { error: logError } = await supabase.from('email_logs').insert(logEntry);
-      
+
       if (logError) {
         console.error('[EMAIL] Failed to log to email_logs:', logError);
       } else {
