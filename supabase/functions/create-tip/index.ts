@@ -17,16 +17,16 @@ const RATE_LIMIT_WINDOW = 60000; // 1 minute
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
   const record = rateLimitMap.get(ip);
-  
+
   if (!record || now > record.resetTime) {
     rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
     return false;
   }
-  
+
   if (record.count >= RATE_LIMIT) {
     return true;
   }
-  
+
   record.count++;
   return false;
 }
@@ -172,7 +172,7 @@ serve(async (req) => {
 
     // For non-dummy transactions, verify with Rupantor API
     const isDummyPayment = transaction_id.startsWith('dummy_');
-    
+
     if (!isDummyPayment && apiKey && clientHost) {
       try {
         console.log("Verifying payment with Rupantor API:", transaction_id);
@@ -190,7 +190,7 @@ serve(async (req) => {
         console.log("Rupantor verify response:", verifyData);
 
         const isCompleted = verifyData.status === "COMPLETED" || verifyData.status === true || verifyData.status === 1;
-        
+
         if (!isCompleted) {
           console.error("Payment not verified:", verifyData);
           return new Response(
@@ -265,6 +265,100 @@ serve(async (req) => {
       console.log("Creator email notification failed (non-critical):", notifError);
     }
 
+    // Helper to update goal progress and send milestone notifications
+    const updateGoalProgress = async (creatorId: string, tipAmount: number, supporterName: string, creatorName: string, creatorEmail: string) => {
+      try {
+        // Fetch active goal
+        const { data: goals } = await supabase
+          .from('funding_goals')
+          .select('*')
+          .eq('profile_id', creatorId)
+          .eq('is_active', true)
+          .limit(1);
+
+        if (!goals || goals.length === 0) return;
+
+        const goal = goals[0];
+        if (!goal.target_amount || goal.target_amount <= 0) return;
+
+        // Calculate progress
+        const oldAmount = goal.current_amount || 0;
+        const newAmount = oldAmount + tipAmount;
+
+        const oldPercentage = (oldAmount / goal.target_amount) * 100;
+        const newPercentage = (newAmount / goal.target_amount) * 100;
+
+        // Update goal amount
+        await supabase
+          .from('funding_goals')
+          .update({
+            current_amount: newAmount,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', goal.id);
+
+        console.log(`Goal updated: ${oldAmount} -> ${newAmount} (${oldPercentage.toFixed(1)}% -> ${newPercentage.toFixed(1)}%)`);
+
+        // Check for milestones (25, 50, 75, 100)
+        let milestoneCrossed: number | null = null;
+        let milestoneType: string | null = null;
+
+        if (oldPercentage < 100 && newPercentage >= 100) {
+          milestoneCrossed = 100;
+          milestoneType = 'goal_milestone_100';
+        } else if (oldPercentage < 75 && newPercentage >= 75 && newPercentage < 100) {
+          milestoneCrossed = 75;
+          milestoneType = 'goal_milestone_75';
+        } else if (oldPercentage < 50 && newPercentage >= 50 && newPercentage < 75) {
+          milestoneCrossed = 50;
+          milestoneType = 'goal_milestone_50';
+        } else if (oldPercentage < 25 && newPercentage >= 25 && newPercentage < 50) {
+          milestoneCrossed = 25;
+          milestoneType = 'goal_milestone_25';
+        }
+
+        if (milestoneCrossed && milestoneType) {
+          console.log(`Goal milestone reached: ${milestoneCrossed}%`);
+
+          // Insert database notification
+          await supabase.from('notifications').insert({
+            profile_id: creatorId,
+            type: milestoneType,
+            title: milestoneCrossed === 100 ? '🎉 Goal Achieved!' : `🎯 Goal Progress: ${milestoneCrossed}%`,
+            message: `${goal.title} reached ${milestoneCrossed}%`,
+            data: {
+              goal_id: goal.id,
+              goal_title: goal.title,
+              milestone: milestoneCrossed,
+              current_amount: newAmount,
+              target_amount: goal.target_amount,
+              percentage: newPercentage
+            }
+          });
+
+          // Send email notification
+          await supabase.functions.invoke('send-email-notification', {
+            body: {
+              profile_id: creatorId, // Send to creator based on ID
+              type: milestoneType,
+              data: {
+                goal_title: goal.title,
+                milestone: milestoneCrossed,
+                current_amount: newAmount,
+                target_amount: goal.target_amount,
+                percentage: newPercentage,
+                first_name: creatorName,
+                url: `https://tipkoro.com/dashboard`
+              },
+            },
+          });
+          console.log(`Milestone email sent: ${milestoneType}`);
+        }
+      } catch (err) {
+        console.error("Error updating goal progress:", err);
+      }
+    };
+
     // Send confirmation email to supporter
     try {
       await supabase.functions.invoke('send-email-notification', {
@@ -281,6 +375,18 @@ serve(async (req) => {
       console.log("Confirmation email sent to supporter");
     } catch (notifError) {
       console.log("Supporter email notification failed (non-critical):", notifError);
+    }
+
+    // Process goal updates asynchronously
+    if (creator_profile) {
+      // Don't await this to keep response fast
+      updateGoalProgress(
+        creator_id,
+        parsedAmount,
+        supporter_name,
+        creator_profile.first_name || creator_profile.username || 'Creator',
+        creator.email
+      );
     }
 
     return new Response(
