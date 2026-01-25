@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { User, Link as LinkIcon, Shield, CreditCard, ArrowLeft, Info, Calendar, CheckCircle, Clock, BadgeCheck, Lock, ShieldCheck } from "lucide-react";
+import { User, Link as LinkIcon, Shield, CreditCard, ArrowLeft, Info, Calendar, CheckCircle, Clock, BadgeCheck, Lock, ShieldCheck, Bell } from "lucide-react";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -21,6 +21,7 @@ import { ChangePinDialog } from "@/components/ChangePinDialog";
 const tabs = [
   { id: 'profile', label: 'Profile', icon: User },
   { id: 'links', label: 'Social Links', icon: LinkIcon },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'verification', label: 'Verification', icon: BadgeCheck, creatorOnly: true },
   { id: 'security', label: 'Security', icon: Shield },
   { id: 'billing', label: 'Billing', icon: CreditCard },
@@ -104,6 +105,133 @@ function SecurityTab({ profile }: { profile: any }) {
             )}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Notifications Tab Component
+function NotificationsTab({ profile }: { profile: any }) {
+  const supabase = useSupabaseWithAuth();
+  const [settings, setSettings] = useState({
+    tips_enabled: true,
+    withdrawals_enabled: true,
+    promotions_enabled: false,
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      if (!profile?.id) return;
+      
+      const { data } = await supabase
+        .from('notification_settings')
+        .select('*')
+        .eq('profile_id', profile.id)
+        .maybeSingle();
+      
+      if (data) {
+        setSettings({
+          tips_enabled: data.tips_enabled ?? true,
+          withdrawals_enabled: data.withdrawals_enabled ?? true,
+          promotions_enabled: data.promotions_enabled ?? false,
+        });
+      }
+      setLoading(false);
+    };
+    
+    fetchSettings();
+  }, [profile?.id, supabase]);
+
+  const handleSave = async () => {
+    if (!profile?.id) return;
+    
+    setSaving(true);
+    const { error } = await supabase
+      .from('notification_settings')
+      .upsert({
+        profile_id: profile.id,
+        tips_enabled: settings.tips_enabled,
+        withdrawals_enabled: settings.withdrawals_enabled,
+        promotions_enabled: settings.promotions_enabled,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'profile_id' });
+    
+    if (error) {
+      toast({ 
+        title: "Error", 
+        description: "Failed to save notification settings", 
+        variant: "destructive" 
+      });
+    } else {
+      toast({ 
+        title: "Saved!", 
+        description: "Notification preferences updated" 
+      });
+    }
+    setSaving(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="tipkoro-card">
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 bg-secondary rounded w-1/3" />
+          <div className="h-16 bg-secondary rounded" />
+          <div className="h-16 bg-secondary rounded" />
+          <div className="h-16 bg-secondary rounded" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="tipkoro-card">
+        <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+          <Bell className="w-5 h-5" />
+          Email Notifications
+        </h2>
+        
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl">
+            <div className="flex-1 pr-4">
+              <p className="font-medium">Tip Notifications</p>
+              <p className="text-sm text-muted-foreground">Receive emails when you receive or send tips</p>
+            </div>
+            <Switch 
+              checked={settings.tips_enabled}
+              onCheckedChange={(checked) => setSettings(s => ({ ...s, tips_enabled: checked }))}
+            />
+          </div>
+          
+          <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl">
+            <div className="flex-1 pr-4">
+              <p className="font-medium">Withdrawal Notifications</p>
+              <p className="text-sm text-muted-foreground">Updates on withdrawal requests and OTP codes</p>
+            </div>
+            <Switch 
+              checked={settings.withdrawals_enabled}
+              onCheckedChange={(checked) => setSettings(s => ({ ...s, withdrawals_enabled: checked }))}
+            />
+          </div>
+          
+          <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl">
+            <div className="flex-1 pr-4">
+              <p className="font-medium">Promotional Emails</p>
+              <p className="text-sm text-muted-foreground">News, tips, and platform updates from TipKoro</p>
+            </div>
+            <Switch 
+              checked={settings.promotions_enabled}
+              onCheckedChange={(checked) => setSettings(s => ({ ...s, promotions_enabled: checked }))}
+            />
+          </div>
+        </div>
+        
+        <Button onClick={handleSave} disabled={saving} className="mt-6">
+          {saving ? "Saving..." : "Save Preferences"}
+        </Button>
       </div>
     </div>
   );
@@ -431,6 +559,9 @@ export default function Settings() {
               </div>
             )}
 
+            {currentTab === 'notifications' && (
+              <NotificationsTab profile={profile} />
+            )}
 
             {currentTab === 'security' && (
               <SecurityTab profile={profile} />
