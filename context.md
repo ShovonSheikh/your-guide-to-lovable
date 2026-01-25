@@ -1,112 +1,68 @@
-# Project Context
+# Context: Fix PostgreSQL net.http_post Error
 
-This file documents the changes made to the project, why they were made, and the current state of the project. This is meant to help anyone who takes over this project understand what's been done.
+## Issue
 
----
+When a supporter tips a creator, the application throws the following PostgreSQL error:
 
-## Latest Update: January 16, 2026
-
-### Issue Fixed: Vercel 404 Routing Error
-
-**Problem:**  
-After deploying to Vercel, certain routes like `/payments/creator/success` returned 404 errors:
-```
-404: NOT_FOUND
-Code: NOT_FOUND
-```
-
-**Root Cause:**  
-The project is a **Vite + React SPA** using **React Router** for client-side routing. When deployed to Vercel:
-- Vercel tried to find physical files matching the URL path (e.g., `/payments/creator/success`)
-- Since these are client-side routes (not actual files), Vercel returned 404
-- The app works in development because Vite dev server handles this automatically
-
-**Solution:**  
-Created `vercel.json` at the project root with rewrite rules to serve `index.html` for all non-API routes:
 ```json
 {
-  "rewrites": [
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
-  ],
-  "routes": [
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
-  ]
+  "code": "42883",
+  "message": "function net.http_post(url => text, headers => jsonb, body => text) does not exist",
+  "hint": "No function matches the given name and argument types."
 }
 ```
 
-**Files Changed:**
-- `vercel.json` (NEW) - Vercel routing configuration
+## Root Cause
 
----
+Two database triggers were created that use `net.http_post` from the `pg_net` extension:
 
-## Project Overview
+1. **Goal Milestone Email Trigger** (`20260124035607_ece0ce9d-7c51-46b7-b4fe-e3545cdb0b8d.sql`)
+   - Function: `send_goal_milestone_email()`
+   - Trigger: `send_goal_milestone_email_trigger` on `notifications` table
 
-### Tech Stack
-- **Frontend:** Vite + React + TypeScript
-- **Routing:** React Router DOM
-- **Styling:** Tailwind CSS
-- **Backend:** Supabase (Auth, Database, Storage, Edge Functions)
-- **Deployment:** Vercel
+2. **Weekly Summary Cron Job** (`20260119093401_77459f81-bb8d-41d2-b13a-c86a2361aabb.sql`)
+   - Cron job: `weekly-creator-summary`
 
-### Key Routes & Pages
+The `pg_net` extension is **not available on hosted Supabase instances** - it requires a self-hosted setup with specific configuration.
 
-| Route | Component | Description |
-|-------|-----------|-------------|
-| `/` | `Home.tsx` | Landing page |
-| `/explore` | `Explore.tsx` | Browse creators |
-| `/dashboard` | `Dashboard.tsx` | User dashboard |
-| `/settings` | `Settings.tsx` | User settings |
-| `/finance` | `Finance.tsx` | Financial overview |
-| `/payments/creator/success` | `CreatorPaymentSuccess.tsx` | Creator fee payment success |
-| `/payments/creator/failed` | `CreatorPaymentFailed.tsx` | Creator fee payment failed |
-| `/payments/tips/success` | `TipPaymentSuccess.tsx` | Tip payment success |
-| `/payments/tips/failed` | `TipPaymentFailed.tsx` | Tip payment failed |
-| `/admin/*` | `AdminLayout.tsx` | Admin panel routes |
-| `/:username` | `CreatorProfile.tsx` | Creator public profile |
+## Solution
 
-### Directory Structure
-```
-├── src/
-│   ├── components/     # Reusable UI components
-│   ├── hooks/          # Custom React hooks
-│   ├── lib/            # Utilities, API functions
-│   ├── pages/          # Page components
-│   │   ├── admin/      # Admin panel pages
-│   │   └── payments/   # Payment status pages
-│   └── App.tsx         # Main routing configuration
-├── supabase/
-│   └── functions/      # Supabase Edge Functions
-├── public/             # Static assets
-├── vercel.json         # Vercel deployment config
-└── package.json        # Dependencies
-```
+Created a migration to remove the pg_net-dependent components:
 
----
+### Migration File
+`supabase/migrations/20260126161000_remove_pgnet_triggers.sql`
 
-## What Needs to Be Done
+This migration:
+- Drops the `send_goal_milestone_email_trigger` trigger
+- Drops the `send_goal_milestone_email()` function
+- Unschedules the `weekly-creator-summary` cron job
 
-1. **Test Vercel Deployment** - After pushing changes, verify the payment routes work correctly
-2. **Push Notification Debugging** - Previous conversation mentioned `SyntaxError: Invalid key usage` in edge function logs (may need VAPID key fix)
-3. **Monitor Payment Flow** - Ensure creator registration and tip payments complete successfully
+### Alternative Approach
 
----
+Email notifications are already handled correctly through:
+1. **Edge Functions** called from the frontend/backend directly
+2. **send-email-notification Edge Function** handles all email sending via Resend API
 
-## Deployment Notes
+No functionality is lost - the database triggers were redundant.
 
-- **Production URL:** https://tipkoro.com
-- **Vercel Project:** Linked to GitHub repository
-- **Auto-Deploy:** Pushing to main branch triggers automatic deployment
+## Files Changed
 
----
+| File | Change |
+|------|--------|
+| `supabase/migrations/20260126161000_remove_pgnet_triggers.sql` | **NEW** - Migration to remove pg_net triggers |
+| `context.md` | **NEW** - This documentation file |
 
-## How to Handle Future Route Issues
+## Migration Instructions
 
-If you add new client-side routes and they return 404 on Vercel:
-1. Ensure the route is defined in `src/App.tsx`
-2. The `vercel.json` rewrite rules should handle it automatically
-3. If you add API routes, place them in `/api` directory (they won't be rewritten)
+**IMPORTANT:** Do **NOT** run `supabase db push` or similar commands.
 
----
+Run the migration SQL manually in the Supabase SQL Editor:
+1. Go to Supabase Dashboard → SQL Editor
+2. Paste the contents of `20260126161000_remove_pgnet_triggers.sql`
+3. Execute
 
-*Last updated: January 16, 2026*
+## Current State
+
+- Branch: `fix/pg-net-http-post-error`
+- Migration file created but NOT applied
+- Ready for manual migration execution and merge to main
