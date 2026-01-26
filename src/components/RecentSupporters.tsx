@@ -6,7 +6,7 @@ import { Avatar } from "@/components/Avatar";
 
 interface RecentSupporter {
   id: string;
-  supporter_name: string;
+  supporter_display_name: string;
   amount: number;
   is_anonymous: boolean;
   created_at: string;
@@ -26,11 +26,11 @@ export function RecentSupporters({ creatorId }: RecentSupportersProps) {
 
   const fetchRecentSupporters = async () => {
     try {
+      // Use public_tips view to avoid exposing supporter emails
       const { data, error } = await supabase
-        .from('tips')
-        .select('id, supporter_name, amount, is_anonymous, created_at')
+        .from('public_tips')
+        .select('id, supporter_display_name, amount, is_anonymous, created_at')
         .eq('creator_id', creatorId)
-        .eq('payment_status', 'completed')
         .order('created_at', { ascending: false })
         .limit(5);
 
@@ -79,7 +79,7 @@ export function RecentSupporters({ creatorId }: RecentSupportersProps) {
       <h3 className="text-sm font-medium text-muted-foreground mb-4">Recent Supporters</h3>
       <div className="space-y-3">
         {supporters.map((supporter) => {
-          const displayName = supporter.is_anonymous ? 'Anonymous' : supporter.supporter_name;
+          const displayName = supporter.supporter_display_name;
           const initial = displayName[0]?.toUpperCase() || '?';
           
           return (

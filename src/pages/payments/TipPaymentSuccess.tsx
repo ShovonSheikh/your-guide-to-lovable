@@ -105,9 +105,9 @@ const TipPaymentSuccess: React.FC = () => {
         return;
       }
 
-      // Fetch creator name and verification status
+      // Fetch creator name and verification status using public view
       const { data: creator } = await supabase
-        .from("profiles")
+        .from("public_profiles")
         .select("first_name, last_name, username, is_verified")
         .eq("id", tipInfo.creator_id)
         .single();

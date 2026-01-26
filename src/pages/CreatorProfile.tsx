@@ -71,11 +71,13 @@ export default function CreatorProfile() {
 
   const fetchCreator = async () => {
     try {
+      // Use public_profiles view to avoid exposing sensitive data like email/pin hashes
       const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
+        .from('public_profiles')
+        .select('id, username, first_name, last_name, bio, avatar_url, is_verified, total_supporters, twitter, instagram, youtube, facebook, other_link, created_at')
         .eq('username', username?.toLowerCase())
         .eq('account_type', 'creator')
+        .eq('onboarding_status', 'completed')
         .single();
 
       if (error || !data) {

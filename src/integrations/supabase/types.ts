@@ -1096,6 +1096,54 @@ export type Database = {
         }
         Relationships: []
       }
+      public_tips: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          creator_id: string | null
+          currency: string | null
+          id: string | null
+          is_anonymous: boolean | null
+          message: string | null
+          supporter_display_name: string | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string | null
+          creator_id?: string | null
+          currency?: string | null
+          id?: string | null
+          is_anonymous?: boolean | null
+          message?: string | null
+          supporter_display_name?: never
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string | null
+          creator_id?: string | null
+          currency?: string | null
+          id?: string | null
+          is_anonymous?: boolean | null
+          message?: string | null
+          supporter_display_name?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tips_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tips_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       cleanup_expired_otps: { Args: never; Returns: undefined }
