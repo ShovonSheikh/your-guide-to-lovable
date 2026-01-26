@@ -8,6 +8,7 @@ import { Settings, Bell, DollarSign, Shield, Gift, Loader2 } from "lucide-react"
 import { toast } from "@/hooks/use-toast";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
+import MaintenanceSettings from "@/components/admin/MaintenanceSettings";
 
 export default function AdminSettings() {
   usePageTitle("Admin - Settings");
@@ -68,6 +69,9 @@ export default function AdminSettings() {
         <h1 className="text-2xl font-bold">Settings</h1>
         <p className="text-muted-foreground">Configure platform settings</p>
       </div>
+
+      {/* Maintenance Mode Section */}
+      <MaintenanceSettings />
 
       <div className="grid gap-6">
         {/* Platform Fees */}

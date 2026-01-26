@@ -490,6 +490,33 @@ export type Database = {
         }
         Relationships: []
       }
+      maintenance_whitelist: {
+        Row: {
+          added_by: string | null
+          created_at: string | null
+          id: string
+          reason: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           created_at: string | null
@@ -1146,6 +1173,10 @@ export type Database = {
       }
     }
     Functions: {
+      can_bypass_maintenance: {
+        Args: { clerk_user_id: string }
+        Returns: boolean
+      }
       cleanup_expired_otps: { Args: never; Returns: undefined }
       get_creator_current_month_stats: {
         Args: { creator_profile_id: string }
