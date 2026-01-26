@@ -9,6 +9,8 @@ interface PlatformConfig {
   payout_methods: string[];
   promo_enabled: { enabled: boolean };
   promo_duration_months: { months: number };
+  maintenance_mode: { enabled: boolean };
+  maintenance_message: { message: string };
 }
 
 const DEFAULT_CONFIG: PlatformConfig = {
@@ -17,7 +19,9 @@ const DEFAULT_CONFIG: PlatformConfig = {
   max_withdrawal: { amount: 50000, currency: 'BDT' },
   payout_methods: ['bKash', 'Nagad', 'Rocket'],
   promo_enabled: { enabled: false },
-  promo_duration_months: { months: 0 }
+  promo_duration_months: { months: 0 },
+  maintenance_mode: { enabled: false },
+  maintenance_message: { message: 'We are currently performing scheduled maintenance. Please check back soon!' }
 };
 
 export function usePlatformConfig() {
@@ -56,6 +60,10 @@ export function usePlatformConfig() {
             configMap.promo_enabled = item.value as { enabled: boolean };
           } else if (item.key === 'promo_duration_months') {
             configMap.promo_duration_months = item.value as { months: number };
+          } else if (item.key === 'maintenance_mode') {
+            configMap.maintenance_mode = item.value as { enabled: boolean };
+          } else if (item.key === 'maintenance_message') {
+            configMap.maintenance_message = item.value as { message: string };
           }
         });
         
