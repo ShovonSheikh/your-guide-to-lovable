@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect, useCallback } from 'react';
+import { useSupabaseWithAuth } from '@/hooks/useSupabaseWithAuth';
 import type { Json } from '@/integrations/supabase/types';
 
 interface PlatformConfig {
@@ -25,15 +25,12 @@ const DEFAULT_CONFIG: PlatformConfig = {
 };
 
 export function usePlatformConfig() {
+  const supabase = useSupabaseWithAuth();
   const [config, setConfig] = useState<PlatformConfig>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchConfig();
-  }, []);
-
-  const fetchConfig = async () => {
+  const fetchConfig = useCallback(async () => {
     try {
       const { data, error: fetchError } = await supabase
         .from('platform_config')
@@ -75,9 +72,13 @@ export function usePlatformConfig() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase]);
 
-  const updateConfig = async (key: string, value: Json): Promise<{ success: boolean; error?: string }> => {
+  useEffect(() => {
+    fetchConfig();
+  }, [fetchConfig]);
+
+  const updateConfig = useCallback(async (key: string, value: Json): Promise<{ success: boolean; error?: string }> => {
     try {
       const { error: updateError } = await supabase
         .from('platform_config')
@@ -96,7 +97,7 @@ export function usePlatformConfig() {
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }
-  };
+  }, [supabase, fetchConfig]);
 
   return { config, loading, error, updateConfig, refetch: fetchConfig };
 }
