@@ -9,26 +9,70 @@ const corsHeaders = {
 
 const RUPANTOR_API_URL = "https://payment.rupantorpay.com/api";
 
-// Simple in-memory rate limiting (per IP, 10 requests per minute)
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+// Rate limiting configuration
 const RATE_LIMIT = 10;
-const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
 
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const record = rateLimitMap.get(ip);
+// Database-backed rate limiting to persist across function restarts
+async function checkAndUpdateRateLimit(
+  supabase: any,
+  identifier: string,
+  action: string
+): Promise<{ allowed: boolean; remaining: number }> {
+  const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
+  
+  try {
+    // Check existing rate limit record within the current window
+    const { data: existingRecord, error: selectError } = await supabase
+      .from('rate_limits')
+      .select('id, count, window_start')
+      .eq('action', action)
+      .eq('identifier', identifier)
+      .gte('window_start', windowStart)
+      .order('window_start', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  if (!record || now > record.resetTime) {
-    rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
-    return false;
+    if (selectError) {
+      console.error("Rate limit check error:", selectError);
+      // Allow request on error to prevent blocking legitimate users
+      return { allowed: true, remaining: RATE_LIMIT };
+    }
+
+    if (existingRecord) {
+      // Record exists within window
+      if (existingRecord.count >= RATE_LIMIT) {
+        return { allowed: false, remaining: 0 };
+      }
+      
+      // Increment count
+      await supabase
+        .from('rate_limits')
+        .update({ 
+          count: existingRecord.count + 1,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingRecord.id);
+      
+      return { allowed: true, remaining: RATE_LIMIT - existingRecord.count - 1 };
+    }
+    
+    // No record exists, create a new one
+    await supabase
+      .from('rate_limits')
+      .insert({
+        action,
+        identifier,
+        count: 1,
+        window_start: new Date().toISOString()
+      });
+    
+    return { allowed: true, remaining: RATE_LIMIT - 1 };
+  } catch (error) {
+    console.error("Rate limit error:", error);
+    // Allow request on error to prevent blocking legitimate users
+    return { allowed: true, remaining: RATE_LIMIT };
   }
-
-  if (record.count >= RATE_LIMIT) {
-    return true;
-  }
-
-  record.count++;
-  return false;
 }
 
 serve(async (req) => {
@@ -38,9 +82,24 @@ serve(async (req) => {
   }
 
   try {
-    // Rate limiting
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("Missing Supabase configuration");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Database-backed rate limiting
     const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
-    if (isRateLimited(clientIP)) {
+    const rateLimit = await checkAndUpdateRateLimit(supabase, clientIP, 'create_tip');
+    
+    if (!rateLimit.allowed) {
       return new Response(
         JSON.stringify({ error: "Too many requests. Please try again later." }),
         { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -121,18 +180,6 @@ serve(async (req) => {
 
     const apiKey = Deno.env.get('RUPANTOR_API_KEY');
     const clientHost = Deno.env.get('RUPANTOR_CLIENT_HOST');
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error("Missing Supabase configuration");
-      return new Response(
-        JSON.stringify({ error: "Server configuration error" }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Check if tip already exists for this transaction (prevent duplicates)
     const { data: existingTip } = await supabase

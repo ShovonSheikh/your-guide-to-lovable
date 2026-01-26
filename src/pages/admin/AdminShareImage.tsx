@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
+import DOMPurify from 'dompurify';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -394,7 +395,7 @@ export default function AdminShareImage() {
     setHasChanges(jsxChanged || cssChanged);
   }, [jsxCode, cssCode, savedJsx, savedCss]);
 
-  // Replace variables in template for preview
+  // Replace variables in template for preview (with XSS sanitization)
   const renderedHtml = useMemo(() => {
     let html = jsxCode;
     
@@ -413,7 +414,11 @@ export default function AdminShareImage() {
     // Remove JSX comments
     html = html.replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
     
-    return html;
+    // Sanitize to prevent XSS from malicious template modifications
+    return DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: ['div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'br', 'img', 'svg', 'path', 'circle', 'rect', 'line', 'polyline', 'polygon', 'a', 'strong', 'em', 'ul', 'ol', 'li'],
+      ALLOWED_ATTR: ['class', 'style', 'src', 'alt', 'width', 'height', 'd', 'fill', 'stroke', 'stroke-width', 'viewBox', 'xmlns', 'cx', 'cy', 'r', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'points', 'href', 'target'],
+    });
   }, [jsxCode, previewValues]);
 
   const handleSave = async () => {
