@@ -1,164 +1,165 @@
-# TipKoro Waiting List Landing Page
+# TipKoro
 
-A responsive, mobile-first landing page for TipKoro — a Bangladeshi-focused creator support platform similar to Ko-fi/BuyMeACoffee.
+A creator support platform built for Bangladesh, allowing fans to tip their favorite creators using local payment methods (bKash, Nagad, Rocket). Think "Buy Me a Coffee" but designed specifically for the Bangladeshi market.
 
-[Go To Project in "Shovon" Profile](https://lovable.dev/projects/5ece1490-d039-4aa8-8ed2-a44e9b3b8e78)
+🌐 **Website:** [tipkoro.com](https://tipkoro.com)
 
-## Features
+---
 
-- **Hero Section**: Promo badge, headline, CTA with payment methods
-- **Billing Timeline**: Visual representation of the Early Creator Offer
-- **Two-Step Signup Flow**: Payment → Details form
-- **Success State**: Confirmation card with confetti animation
-- **Why TipKoro**: Feature cards highlighting platform benefits
-- **Creator Highlights**: Testimonials from creators
+## ✨ Features
 
-## Early Creator Offer — Promo Credit Logic
+### For Creators
 
-### How It Works
+- **Personalized Profile Page** – Get your own public tipping page at `tipkoro.com/your-username`
+- **Dashboard** – Track earnings, view recent tips, and manage your account
+- **Funding Goals** – Create goals with milestone tracking to engage your supporters
+- **Withdrawal System** – Request payouts via bKash, Nagad, Rocket, or bank transfer
+- **Verification Badge** – Get verified to build trust with your audience
+- **Share Tools** – QR codes, embed widgets, and bio link tools for promotion
 
-1. **Month 1 (Paid)**: Creator pays ৳150 to activate their account
-2. **Month 2 (Free)**: Complimentary — no charge
-3. **Month 3 (Free)**: Complimentary — no charge  
-4. **Month 4+ (Recurring)**: Automatic billing starts at ৳150/month
+### For Supporters
 
-### Backend Metadata Structure
+- **Easy Tipping** – Support your favorite creators with a few clicks
+- **Local Payments** – Pay with bKash, Nagad, or Rocket
+- **Donation History** – Track your past donations when logged in
+- **Anonymous Tips** – Option to tip anonymously
 
-When a user signs up, store the following metadata:
+---
 
-```typescript
-interface CreatorPromoMetadata {
-  promo: boolean;              // true for Early Creator Offer signups
-  signup_date: Date;           // Date of initial payment
-  active_until: Date;          // signup_date + 3 months
-  billing_start: Date;         // signup_date + 3 months (when billing resumes)
-  payment_id: string;          // Transaction ID from Rupantor Pay
-  first_month_paid: boolean;   // true after successful payment
-}
+## 🛠 Tech Stack
+
+| Category | Technology |
+|----------|------------|
+| Frontend | React 19, TypeScript, Vite |
+| Styling | Tailwind CSS, shadcn/ui |
+| Auth | Clerk |
+| Database | Supabase (PostgreSQL) |
+| Payments | RupantorPay |
+| Email | Resend |
+| State | TanStack Query |
+
+---
+
+## 📁 Project Structure
+
+```
+tipkoro/
+├── src/
+│   ├── components/           # Reusable UI components
+│   │   ├── ui/              # shadcn/ui primitives
+│   │   ├── admin/           # Admin-specific components
+│   │   └── icons/           # Custom icons
+│   ├── pages/               # Route pages
+│   │   ├── admin/           # Admin panel
+│   │   └── payments/        # Payment result pages
+│   ├── hooks/               # Custom React hooks
+│   ├── integrations/        # Third-party integrations
+│   └── lib/                 # Utility functions
+├── supabase/
+│   ├── functions/           # Edge Functions (Deno runtime)
+│   └── migrations/          # Database schema changes
+├── public/                  # Static assets
+└── docs/                    # Documentation site
 ```
 
-### Clerk User Profile Fields
+---
 
-```typescript
-interface CreatorProfile {
-  username: string;            // Unique creator handle
-  firstName: string;
-  lastName: string;
-  email: string;
-  bio: string;                 // Max 200 characters
-  category: string;            // Creator category
-  socialLinks: {
-    twitter?: string;
-    instagram?: string;
-    youtube?: string;
-    other?: string;
-  };
-  payoutMethod: 'bkash' | 'nagad' | 'rocket' | 'card' | 'crypto';
-  phone?: string;
-}
-```
+## 🚀 Getting Started
 
-## Payment Integration
+### Prerequisites
 
-### Rupantor Pay API
+- Node.js 20+
+- npm or bun
+- Supabase CLI (optional, for local DB)
 
-**Base URL**: `https://payment.rupantorpay.com/api`
-
-#### Create Checkout Session
+### Installation
 
 ```bash
-POST /payment/checkout
-Headers:
-  Content-Type: application/json
-  X-API-KEY: <YOUR_API_KEY>
-  X-CLIENT: <YOUR_HOST>
+# Clone repository
+git clone <repo-url>
+cd tipkoro
 
-Body:
-{
-  "fullname": "John Doe",
-  "email": "john@example.com",
-  "amount": 150,
-  "success_url": "https://tipkoro.com/join?step=details",
-  "cancel_url": "https://tipkoro.com/join?step=payment&cancelled=true",
-  "webhook_url": "https://api.tipkoro.com/webhooks/rupantor",
-  "meta_data": {
-    "signup_type": "early_creator_offer",
-    "promo_months": 2
-  }
-}
-```
-
-#### Verify Payment
-
-```bash
-POST /payment/verify-payment
-Body: { "transaction_id": "OVKPXW165414" }
-```
-
-## Webhook Payload (Admin Notification)
-
-When a new creator signs up, send webhook to admin:
-
-```typescript
-interface SignupWebhookPayload {
-  event: 'creator.signup.completed';
-  timestamp: string;
-  creator: {
-    username: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-    category: string;
-    bio: string;
-    payoutMethod: string;
-  };
-  payment: {
-    transaction_id: string;
-    amount: number;
-    currency: 'BDT';
-    method: string;
-    status: 'COMPLETED';
-  };
-  promo: {
-    type: 'early_creator_offer';
-    free_months: 2;
-    billing_starts: string; // ISO date
-  };
-  clerk_user_id: string;
-}
-```
-
-## Tech Stack
-
-- React 19 + TypeScript
-- Tailwind CSS (custom beige theme)
-- Vite
-- shadcn/ui components
-
-## Design System
-
-The app uses a warm beige theme with:
-- **Background**: `hsl(40, 33%, 96%)`
-- **Accent (Gold)**: `hsl(45, 92%, 62%)`
-- **Primary (Dark)**: `hsl(30, 10%, 12%)`
-- **Success (Green)**: `hsl(142, 52%, 45%)`
-
-Fonts:
-- Display: Bricolage Grotesque
-- Body: DM Sans
-
-## Local Development
-
-```bash
+# Install dependencies
 npm install
+
+# Copy environment variables
+cp .env.example .env
+# Fill in your API keys
+
+# Start dev server
 npm run dev
 ```
 
-## Environment Variables (for production)
+### Environment Variables
+
+Create a `.env` file with the following variables:
 
 ```env
-RUPANTOR_API_KEY=<your_api_key>
-RUPANTOR_CLIENT_HOST=tipkoro.com
-CLERK_SECRET_KEY=<clerk_secret>
-ADMIN_WEBHOOK_URL=<admin_webhook_endpoint>
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
 ```
+
+---
+
+## 💳 Payment Flow
+
+TipKoro uses RupantorPay for processing payments through local Bangladeshi payment methods:
+
+1. Supporter fills out the tip form on a creator's profile
+2. Payment session is created via RupantorPay
+3. Supporter completes payment on RupantorPay's secure page
+4. Webhook confirms payment and creates the tip record
+5. Both creator and supporter receive confirmation emails
+
+---
+
+## 🔒 Security Features
+
+- **Two-Factor Withdrawals** – PIN + OTP verification for all payout requests
+- **Clerk Authentication** – Secure user authentication and session management
+- **Row Level Security** – Database-level access controls via Supabase RLS
+
+---
+
+## 📧 Email Notifications
+
+TipKoro sends transactional emails for:
+
+- Welcome messages (new users and creators)
+- Tip received/sent confirmations
+- Withdrawal status updates
+- Goal milestone achievements (50%, 75%, 100%)
+- Weekly creator summaries
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## 📚 Resources
+
+- [Supabase Docs](https://supabase.com/docs)
+- [Clerk Docs](https://clerk.com/docs)
+- [Resend Docs](https://resend.com/docs)
+- [shadcn/ui Components](https://ui.shadcn.com)
+- [Tailwind CSS](https://tailwindcss.com/docs)
+
+---
+
+## 📄 License
+
+This project is proprietary. All rights reserved.
+
+---
+
+<p align="center">
+  Made with ❤️ in Bangladesh
+</p>
