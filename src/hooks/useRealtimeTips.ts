@@ -21,13 +21,12 @@ export function useRealtimeTips(options: UseRealtimeTipsOptions = {}) {
   const [tips, setTips] = useState<RealtimeTip[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch initial tips
+  // Fetch initial tips using public_tips view to avoid exposing supporter emails
   const fetchInitialTips = useCallback(async () => {
     try {
       let query = supabase
-        .from('tips')
-        .select('id, supporter_name, amount, message, is_anonymous, created_at, creator_id')
-        .eq('payment_status', 'completed')
+        .from('public_tips')
+        .select('id, supporter_display_name, amount, message, is_anonymous, created_at, creator_id')
         .order('created_at', { ascending: false })
         .limit(limit);
 
@@ -44,7 +43,7 @@ export function useRealtimeTips(options: UseRealtimeTipsOptions = {}) {
 
       setTips((data || []).map(t => ({
         id: t.id,
-        supporter_name: t.is_anonymous ? 'Anonymous' : t.supporter_name,
+        supporter_name: t.supporter_display_name || 'Anonymous',
         amount: Number(t.amount),
         message: t.message,
         is_anonymous: t.is_anonymous || false,

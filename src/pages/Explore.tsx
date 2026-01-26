@@ -32,8 +32,9 @@ export default function Explore() {
 
   const fetchCreators = async () => {
     try {
+      // Use public_profiles view to avoid exposing sensitive data like email/pin hashes
       const { data, error } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('id, username, first_name, last_name, bio, avatar_url, is_verified, total_supporters')
         .eq('account_type', 'creator')
         .eq('onboarding_status', 'completed')

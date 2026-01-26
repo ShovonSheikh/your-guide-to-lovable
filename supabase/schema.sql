@@ -166,10 +166,15 @@ ALTER TABLE public.creator_signups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.creator_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.withdrawal_requests ENABLE ROW LEVEL SECURITY;
 
--- Profiles policies
-CREATE POLICY "Public profiles are viewable by everyone"
+-- Profiles policies (SECURED)
+-- NOTE: The old "Public profiles are viewable by everyone" with USING (true) was REMOVED
+-- It exposed email, withdrawal_pin_hash, is_admin. Now using restricted policy + public_profiles view.
+CREATE POLICY "Public can view basic creator profiles"
   ON public.profiles FOR SELECT
-  USING (true);
+  USING (
+    account_type = 'creator' 
+    AND onboarding_status = 'completed'
+  );
 
 CREATE POLICY "Users can insert their own profile"
   ON public.profiles FOR INSERT
@@ -179,7 +184,17 @@ CREATE POLICY "Users can update their own profile"
   ON public.profiles FOR UPDATE
   USING (user_id = ((current_setting('request.headers'::text, true))::json ->> 'x-clerk-user-id'::text));
 
--- Tips policies
+CREATE POLICY "Users can view their own full profile"
+  ON public.profiles FOR SELECT
+  USING (user_id = ((current_setting('request.headers'::text, true))::json ->> 'x-clerk-user-id'::text));
+
+CREATE POLICY "Admins can view all profiles"
+  ON public.profiles FOR SELECT
+  USING (is_admin());
+
+-- Tips policies (SECURED)
+-- NOTE: The old "Anyone can view completed tips for public display" was REMOVED
+-- It exposed supporter_email to scrapers. Now using public_tips view for public access.
 CREATE POLICY "Anyone can insert tips"
   ON public.tips FOR INSERT
   WITH CHECK (true);
@@ -190,6 +205,10 @@ CREATE POLICY "Creators can view tips they received"
     SELECT profiles.id FROM profiles
     WHERE profiles.user_id = ((current_setting('request.headers'::text, true))::json ->> 'x-clerk-user-id'::text)
   ));
+
+CREATE POLICY "Admins can view all tips"
+  ON public.tips FOR SELECT
+  USING (is_admin());
 
 -- Creator signups policies
 CREATE POLICY "Allow public inserts"
