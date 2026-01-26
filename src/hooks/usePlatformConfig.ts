@@ -66,7 +66,7 @@ export function usePlatformConfig() {
             configMap.maintenance_message = item.value as { message: string };
           }
         });
-        
+
         setConfig({ ...DEFAULT_CONFIG, ...configMap });
       }
     } catch (err) {
@@ -81,8 +81,10 @@ export function usePlatformConfig() {
     try {
       const { error: updateError } = await supabase
         .from('platform_config')
-        .update({ value, updated_at: new Date().toISOString() })
-        .eq('key', key);
+        .upsert(
+          { key, value, updated_at: new Date().toISOString() },
+          { onConflict: 'key' }
+        );
 
       if (updateError) {
         return { success: false, error: updateError.message };
