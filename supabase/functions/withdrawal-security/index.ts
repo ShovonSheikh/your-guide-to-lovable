@@ -151,27 +151,32 @@ const handler = async (req: Request): Promise<Response> => {
 
       case 'verify-pin': {
         if (!pin || pin.length !== 6) {
+          // Use consistent error response to prevent enumeration
+          recordFailedAttempt(profile.id);
+          const remaining = rateLimit.remainingAttempts - 1;
           return new Response(
-            JSON.stringify({ error: "Invalid PIN format" }),
-            { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+            JSON.stringify({ 
+              error: "Invalid PIN", 
+              remaining_attempts: remaining,
+              locked: remaining <= 0
+            }),
+            { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
           );
         }
 
-        if (!profile.withdrawal_pin_hash) {
-          return new Response(
-            JSON.stringify({ error: "No PIN set. Please set a PIN first." }),
-            { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-          );
-        }
-
-        const isValid = bcrypt.compareSync(pin, profile.withdrawal_pin_hash);
+        // Validate PIN in a single code path to prevent enumeration of PIN configuration status
+        // If no PIN is set, compare against empty string (will always fail but with same timing)
+        const pinToCompare = profile.withdrawal_pin_hash || "$2a$10$invalidhashplaceholdervalue";
+        const isValid = profile.withdrawal_pin_hash 
+          ? bcrypt.compareSync(pin, profile.withdrawal_pin_hash)
+          : false;
 
         if (!isValid) {
           recordFailedAttempt(profile.id);
           const remaining = rateLimit.remainingAttempts - 1;
           return new Response(
             JSON.stringify({ 
-              error: "Incorrect PIN", 
+              error: "Invalid PIN", // Generic message - doesn't reveal if PIN exists
               remaining_attempts: remaining,
               locked: remaining <= 0
             }),

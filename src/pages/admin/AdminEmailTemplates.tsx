@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
+import DOMPurify from 'dompurify';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -527,7 +528,12 @@ export default function AdminEmailTemplates() {
             return testValues[varName] ? content : '';
         });
 
-        return rendered;
+        // Sanitize to prevent XSS from malicious template modifications
+        // Allow most HTML tags and styles needed for email templates
+        return DOMPurify.sanitize(rendered, {
+            ALLOWED_TAGS: ['div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'br', 'img', 'a', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'td', 'th', 'hr', 'center'],
+            ALLOWED_ATTR: ['class', 'style', 'src', 'alt', 'width', 'height', 'href', 'target', 'cellpadding', 'cellspacing', 'border', 'align', 'valign', 'bgcolor'],
+        });
     }, [htmlCode, testValues]);
 
     const renderedSubject = useMemo(() => {
