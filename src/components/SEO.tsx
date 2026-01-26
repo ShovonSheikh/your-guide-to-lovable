@@ -12,10 +12,10 @@ interface SEOProps {
 }
 
 const SEO = ({
-  title = "TipKoro - Support Bangladeshi Creators",
-  description = "TipKoro is Bangladesh's Ko-fi alternative. Send tips to your favorite Bangladeshi creators via bKash, Nagad, Rocket. Free for supporters, only ৳150/month for creators.",
+  title = "TipKoro - Bangladesh's Ko-fi Alternative | Support Creators in your way",
+  description = "TipKoro is Bangladesh's Ko-fi alternative. Send tips to your favorite Bangladeshi creators. Free for supporters, only ৳150/month for creators.",
   keywords = "TipKoro, support Bangladeshi creators, bKash tips, Nagad payments, Rocket tips, creator support Bangladesh, buy me a coffee Bangladesh, ko-fi alternative Bangladesh",
-  image = "https://storage.googleapis.com/gpt-engineer-file-uploads/DiyZvTsBMKZzBIrNCfpQP7nQfMe2/social-images/social-1768828728149-og-image (1).png",
+  image = "https://openpaste.vercel.app/i/d829d730",
   url = "https://tipkoro.com",
   type = "website",
   creatorName,
@@ -30,7 +30,7 @@ const SEO = ({
       <meta name="title" content={fullTitle} />
       <meta name="description" content={description} />
       <meta name="keywords" content={keywords} />
-      
+
       {/* Robots */}
       {noIndex ? (
         <meta name="robots" content="noindex, nofollow" />
