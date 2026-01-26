@@ -1,4 +1,5 @@
 import React, { forwardRef, useState, useEffect, useMemo } from 'react';
+import DOMPurify from 'dompurify';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -88,16 +89,26 @@ const DynamicShareCard = forwardRef<HTMLDivElement, DynamicShareCardProps>(
         .filter((line) => !line.trim().startsWith('//'))
         .join('\n');
 
-      // Replace all dynamic variables
+      // Sanitize user-controlled variables before substitution to prevent XSS
+      const sanitizeText = (text: string): string => {
+        return text
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      };
+
+      // Replace all dynamic variables with sanitized values
       const variables: Record<string, string> = {
-        creatorName,
-        tipAmount,
-        userMessage: userMessage || 'Thanks for being awesome!',
-        timestamp,
-        trxId,
+        creatorName: sanitizeText(creatorName),
+        tipAmount: sanitizeText(tipAmount),
+        userMessage: sanitizeText(userMessage || 'Thanks for being awesome!'),
+        timestamp: sanitizeText(timestamp),
+        trxId: sanitizeText(trxId),
         verified: verified ? 'true' : 'false',
-        supporterName,
-        currency,
+        supporterName: sanitizeText(supporterName),
+        currency: sanitizeText(currency),
       };
 
       Object.entries(variables).forEach(([key, value]) => {
@@ -111,7 +122,11 @@ const DynamicShareCard = forwardRef<HTMLDivElement, DynamicShareCardProps>(
       // Remove JSX-style comments {/* */}
       html = html.replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
 
-      return html;
+      // Sanitize the final HTML to prevent XSS from malicious template modifications
+      return DOMPurify.sanitize(html, {
+        ALLOWED_TAGS: ['div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'br', 'img', 'svg', 'path', 'circle', 'rect', 'line', 'polyline', 'polygon'],
+        ALLOWED_ATTR: ['class', 'style', 'src', 'alt', 'width', 'height', 'd', 'fill', 'stroke', 'stroke-width', 'viewBox', 'xmlns', 'cx', 'cy', 'r', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'points'],
+      });
     }, [
       template,
       creatorName,

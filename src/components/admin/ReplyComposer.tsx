@@ -1,4 +1,5 @@
 import { useState } from "react";
+import DOMPurify from "dompurify";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -50,17 +51,27 @@ export function ReplyComposer({ email, mailboxAddress, onClose, onSent }: ReplyC
 
     setSending(true);
     try {
-      // Build HTML body with reply formatting
+      // Sanitize the reply body to prevent XSS
+      const sanitizedBody = DOMPurify.sanitize(body.replace(/\n/g, "<br>"));
+      
+      // Sanitize the original email content before quoting
+      const sanitizedOriginalContent = DOMPurify.sanitize(
+        email.html_body || email.text_body?.replace(/\n/g, "<br>") || ""
+      );
+      
+      const sanitizedFromName = DOMPurify.sanitize(email.from_name || email.from_address);
+      
+      // Build HTML body with reply formatting using sanitized content
       const htmlBody = `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-          <div style="white-space: pre-wrap;">${body.replace(/\n/g, "<br>")}</div>
+          <div style="white-space: pre-wrap;">${sanitizedBody}</div>
           <br><br>
           <div style="border-left: 2px solid #ccc; padding-left: 12px; margin-top: 20px; color: #666;">
             <p style="margin: 0 0 8px 0; font-size: 12px;">
-              On ${new Date(email.received_at || Date.now()).toLocaleString()}, ${email.from_name || email.from_address} wrote:
+              On ${new Date(email.received_at || Date.now()).toLocaleString()}, ${sanitizedFromName} wrote:
             </p>
             <div style="font-size: 13px;">
-              ${email.html_body || email.text_body?.replace(/\n/g, "<br>") || ""}
+              ${sanitizedOriginalContent}
             </div>
           </div>
         </div>
