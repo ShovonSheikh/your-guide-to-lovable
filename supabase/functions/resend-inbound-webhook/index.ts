@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Webhook } from "https://esm.sh/svix@1.15.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -50,6 +51,7 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
+    const webhookSecret = Deno.env.get('RESEND_WEBHOOK_SECRET');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     if (!resendApiKey) {
@@ -60,8 +62,45 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // ============================
+    // WEBHOOK SIGNATURE VERIFICATION
+    // ============================
     const rawPayload = await req.text();
-    console.log("[Inbound Email] Raw payload:", rawPayload);
+    
+    if (webhookSecret) {
+      const svixId = req.headers.get('svix-id');
+      const svixTimestamp = req.headers.get('svix-timestamp');
+      const svixSignature = req.headers.get('svix-signature');
+
+      if (!svixId || !svixTimestamp || !svixSignature) {
+        console.error("[Inbound Email] Missing Svix signature headers");
+        return new Response(
+          JSON.stringify({ error: "Missing signature headers" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      try {
+        const wh = new Webhook(webhookSecret);
+        wh.verify(rawPayload, {
+          'svix-id': svixId,
+          'svix-timestamp': svixTimestamp,
+          'svix-signature': svixSignature,
+        });
+        console.log("[Inbound Email] Webhook signature verified successfully");
+      } catch (err) {
+        console.error("[Inbound Email] Webhook signature verification failed:", err);
+        return new Response(
+          JSON.stringify({ error: "Invalid webhook signature" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else {
+      console.warn("[Inbound Email] RESEND_WEBHOOK_SECRET not configured - signature verification skipped");
+    }
+    // ============================
+
+    console.log("[Inbound Email] Raw payload received");
 
     const event: ResendWebhookEvent = JSON.parse(rawPayload);
 
