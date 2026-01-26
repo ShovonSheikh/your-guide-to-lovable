@@ -185,26 +185,53 @@ Deno.serve(async (req: Request) => {
     // user.deleted — delete profile by user_id
     if (payload.type === 'user.deleted') {
       const userId = payload.data.id;
+      console.info('Processing user.deleted for user_id:', userId);
 
-      // Attempt delete
-      const { data: deletedRows, error: deleteError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('user_id', userId)
-        .select();
+      // 1. Call RPC to delete DB records and get file URLs
+      const { data: fileUrls, error: rpcError } = await supabase.rpc('delete_user_data', {
+        target_user_id: userId
+      });
 
-      if (deleteError) {
-        console.error('Error deleting profile:', deleteError);
-        return new Response(JSON.stringify({ error: deleteError.message }), { status: 500, headers: corsHeaders });
+      if (rpcError) {
+        console.error('Error deleting user data via RPC:', rpcError);
+        return new Response(JSON.stringify({ error: rpcError.message }), { status: 500, headers: corsHeaders });
       }
 
-      if (!deletedRows || deletedRows.length === 0) {
-        console.warn('No profile found to delete for user_id:', userId);
-        return new Response(JSON.stringify({ success: false, message: 'Profile not found', user_id: userId }), { status: 404, headers: corsHeaders });
+      console.info('Database records deleted. Files to clean up:', fileUrls?.length || 0);
+
+      // 2. Delete files from storage
+      if (fileUrls && fileUrls.length > 0) {
+        const filesToDelete: string[] = [];
+        
+        fileUrls.forEach((row: any) => {
+          [row.id_front_url, row.id_back_url, row.selfie_url].forEach((url: string | null) => {
+            if (url) {
+              // Extract path from URL
+              // Format: .../verification-documents/folder/file.ext
+              const parts = url.split('/verification-documents/');
+              if (parts.length === 2) {
+                filesToDelete.push(parts[1]);
+              }
+            }
+          });
+        });
+
+        if (filesToDelete.length > 0) {
+          const { error: storageError } = await supabase.storage
+            .from('verification-documents')
+            .remove(filesToDelete);
+
+          if (storageError) {
+            console.error('Error deleting files from storage:', storageError);
+            // We don't return 500 here as DB deletion succeeded. 
+            // Logging is sufficient for manual cleanup if needed.
+          } else {
+            console.info(`Successfully deleted ${filesToDelete.length} files from storage.`);
+          }
+        }
       }
 
-      console.info('Profile deleted for user_id:', userId);
-      return new Response(JSON.stringify({ success: true, deleted: true, rowsDeleted: deletedRows.length, deletedProfile: deletedRows[0] }), { status: 200, headers: corsHeaders });
+      return new Response(JSON.stringify({ success: true, deleted: true }), { status: 200, headers: corsHeaders });
     }
 
     // Unhandled event
