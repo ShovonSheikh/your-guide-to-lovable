@@ -31,7 +31,10 @@ BEGIN
   RETURN QUERY 
   DELETE FROM public.verification_requests 
   WHERE profile_id = target_profile_id 
-  RETURNING id_front_url, id_back_url, selfie_url;
+  RETURNING 
+    verification_requests.id_front_url, 
+    verification_requests.id_back_url, 
+    verification_requests.selfie_url;
 
   -- 3. Delete dependent data
   DELETE FROM public.admin_activity_logs WHERE admin_id = target_profile_id;
