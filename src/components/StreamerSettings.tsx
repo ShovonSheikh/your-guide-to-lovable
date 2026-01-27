@@ -1,0 +1,359 @@
+import { useState } from "react";
+import { useStreamerSettings } from "@/hooks/useStreamerSettings";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/hooks/use-toast";
+import { 
+  Video, 
+  Copy, 
+  Check, 
+  RefreshCw, 
+  Play, 
+  Volume2, 
+  VolumeX,
+  Eye,
+  Clock,
+  MessageSquare,
+  Coins,
+  Sparkles,
+  AlertCircle,
+  ExternalLink
+} from "lucide-react";
+import { AlertPreview } from "@/components/AlertPreview";
+
+export function StreamerSettings() {
+  const { 
+    settings, 
+    loading, 
+    saving,
+    enableStreamerMode, 
+    disableStreamerMode, 
+    updateSettings,
+    regenerateToken,
+    getAlertUrl 
+  } = useStreamerSettings();
+  
+  const [copied, setCopied] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  type AnimationType = 'slide' | 'bounce' | 'fade' | 'pop';
+  
+  const [localSettings, setLocalSettings] = useState<{
+    alert_duration: number;
+    alert_animation: AnimationType;
+    min_amount_for_alert: number;
+    show_message: boolean;
+    sound_enabled: boolean;
+    custom_css: string;
+  }>({
+    alert_duration: settings?.alert_duration ?? 5,
+    alert_animation: (settings?.alert_animation as AnimationType) ?? 'slide',
+    min_amount_for_alert: settings?.min_amount_for_alert ?? 0,
+    show_message: settings?.show_message ?? true,
+    sound_enabled: settings?.sound_enabled ?? true,
+    custom_css: settings?.custom_css ?? '',
+  });
+
+  if (loading) {
+    return (
+      <div className="tipkoro-card animate-pulse">
+        <div className="h-6 bg-secondary rounded w-1/3 mb-4" />
+        <div className="h-24 bg-secondary rounded" />
+      </div>
+    );
+  }
+
+  const alertUrl = getAlertUrl();
+
+  const copyUrl = () => {
+    if (alertUrl) {
+      navigator.clipboard.writeText(alertUrl);
+      setCopied(true);
+      toast({ title: "Copied!", description: "Alert URL copied to clipboard" });
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    await updateSettings(localSettings);
+  };
+
+  const openInNewTab = () => {
+    if (alertUrl) {
+      window.open(alertUrl, '_blank');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Main Toggle Card */}
+      <div className="tipkoro-card">
+        <div className="flex items-start justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-accent/10">
+              <Video className="w-6 h-6 text-accent" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold">Streamer Mode</h2>
+              <p className="text-sm text-muted-foreground">
+                Show animated tip alerts on your stream
+              </p>
+            </div>
+          </div>
+          
+          <Switch
+            checked={settings?.is_enabled || false}
+            onCheckedChange={(checked) => {
+              if (checked) {
+                enableStreamerMode();
+              } else {
+                disableStreamerMode();
+              }
+            }}
+            disabled={saving}
+          />
+        </div>
+
+        {/* Setup Instructions */}
+        {!settings?.is_enabled && (
+          <div className="p-4 bg-secondary/50 rounded-xl">
+            <h3 className="font-medium mb-2 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-accent" />
+              How it works
+            </h3>
+            <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+              <li>Enable Streamer Mode to get a unique alert URL</li>
+              <li>Add it as a Browser Source in OBS (400x200 recommended)</li>
+              <li>When you receive tips, animated alerts appear on stream!</li>
+            </ol>
+          </div>
+        )}
+
+        {/* Alert URL Section */}
+        {settings?.is_enabled && alertUrl && (
+          <div className="space-y-4">
+            <div className="p-4 bg-accent/10 border border-accent/20 rounded-xl">
+              <Label className="text-sm font-medium mb-2 block">Your Alert URL</Label>
+              <div className="flex gap-2">
+                <Input 
+                  value={alertUrl} 
+                  readOnly 
+                  className="font-mono text-sm bg-background"
+                />
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={copyUrl}
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={openInNewTab}
+                  title="Open in new tab"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Add this URL as a Browser Source in OBS/Streamlabs
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setPreviewOpen(true)}
+                className="gap-2"
+              >
+                <Play className="w-4 h-4" />
+                Preview Alert
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={regenerateToken}
+                disabled={saving}
+                className="gap-2 text-muted-foreground"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Regenerate URL
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Settings Card - Only show when enabled */}
+      {settings?.is_enabled && (
+        <div className="tipkoro-card">
+          <h3 className="text-lg font-semibold mb-6">Alert Settings</h3>
+
+          <div className="space-y-6">
+            {/* Animation Style */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Eye className="w-4 h-4 text-muted-foreground" />
+                Animation Style
+              </Label>
+              <Select 
+                value={localSettings.alert_animation}
+                onValueChange={(value: 'slide' | 'bounce' | 'fade' | 'pop') => 
+                  setLocalSettings(s => ({ ...s, alert_animation: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="slide">Slide In</SelectItem>
+                  <SelectItem value="bounce">Bounce</SelectItem>
+                  <SelectItem value="fade">Fade In</SelectItem>
+                  <SelectItem value="pop">Pop</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Duration */}
+            <div className="space-y-3">
+              <Label className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                  Alert Duration
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {localSettings.alert_duration}s
+                </span>
+              </Label>
+              <Slider
+                value={[localSettings.alert_duration]}
+                onValueChange={([value]) => 
+                  setLocalSettings(s => ({ ...s, alert_duration: value }))
+                }
+                min={3}
+                max={15}
+                step={1}
+              />
+            </div>
+
+            {/* Minimum Amount */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Coins className="w-4 h-4 text-muted-foreground" />
+                Minimum Amount for Alert
+              </Label>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">৳</span>
+                <Input 
+                  type="number"
+                  value={localSettings.min_amount_for_alert}
+                  onChange={(e) => 
+                    setLocalSettings(s => ({ ...s, min_amount_for_alert: Number(e.target.value) }))
+                  }
+                  min={0}
+                  className="w-32"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Set to 0 to show all tips
+              </p>
+            </div>
+
+            {/* Toggles */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                  Show Message
+                </Label>
+                <Switch
+                  checked={localSettings.show_message}
+                  onCheckedChange={(checked) => 
+                    setLocalSettings(s => ({ ...s, show_message: checked }))
+                  }
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-2">
+                  {localSettings.sound_enabled ? (
+                    <Volume2 className="w-4 h-4 text-muted-foreground" />
+                  ) : (
+                    <VolumeX className="w-4 h-4 text-muted-foreground" />
+                  )}
+                  Sound Enabled
+                </Label>
+                <Switch
+                  checked={localSettings.sound_enabled}
+                  onCheckedChange={(checked) => 
+                    setLocalSettings(s => ({ ...s, sound_enabled: checked }))
+                  }
+                />
+              </div>
+            </div>
+
+            {/* Custom CSS - Advanced */}
+            <details className="group">
+              <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Advanced: Custom CSS
+              </summary>
+              <div className="mt-3">
+                <Textarea
+                  value={localSettings.custom_css}
+                  onChange={(e) => 
+                    setLocalSettings(s => ({ ...s, custom_css: e.target.value }))
+                  }
+                  placeholder=".alert-container { background: rgba(0,0,0,0.8); }"
+                  className="font-mono text-xs h-24"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Override default styles with your own CSS
+                </p>
+              </div>
+            </details>
+
+            <Button 
+              onClick={handleSaveSettings} 
+              disabled={saving}
+              className="w-full"
+            >
+              {saving ? "Saving..." : "Save Settings"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* OBS Setup Guide */}
+      {settings?.is_enabled && (
+        <div className="tipkoro-card">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-accent" />
+            OBS Setup Guide
+          </h3>
+          <ol className="text-sm text-muted-foreground space-y-3 list-decimal list-inside">
+            <li>In OBS, click <span className="text-foreground font-medium">+</span> under Sources and select <span className="text-foreground font-medium">Browser</span></li>
+            <li>Paste your Alert URL in the URL field</li>
+            <li>Set width to <span className="text-foreground font-medium">400</span> and height to <span className="text-foreground font-medium">200</span> (or larger)</li>
+            <li>Check "Shutdown source when not visible" for better performance</li>
+            <li>Position the overlay where you want alerts to appear</li>
+          </ol>
+        </div>
+      )}
+
+      {/* Preview Dialog */}
+      <AlertPreview 
+        open={previewOpen} 
+        onOpenChange={setPreviewOpen}
+        animation={localSettings.alert_animation}
+        duration={localSettings.alert_duration}
+        showMessage={localSettings.show_message}
+      />
+    </div>
+  );
+}

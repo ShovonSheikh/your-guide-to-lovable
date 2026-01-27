@@ -22,6 +22,7 @@ import CookiePolicy from "./pages/CookiePolicy";
 import CompleteProfile from "./pages/CompleteProfile";
 import DonationImage from "./pages/DonationImage";
 import Embed from "./pages/Embed";
+import StreamerAlert from "./pages/StreamerAlert";
 // Payment pages - separate flows for creator fee and tips
 import CreatorPaymentSuccess from "./pages/payments/CreatorPaymentSuccess";
 import CreatorPaymentFailed from "./pages/payments/CreatorPaymentFailed";
@@ -90,6 +91,7 @@ const App = () => (
               <Route path="admins" element={<AdminAdmins />} />
             </Route>
             <Route path="/embed/:username" element={<Embed />} />
+            <Route path="/alerts/:token" element={<StreamerAlert />} />
             <Route path="/:username" element={<CreatorProfile />} />
             <Route path="/components" element={<Components />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

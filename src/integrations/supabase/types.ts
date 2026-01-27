@@ -808,6 +808,69 @@ export type Database = {
         }
         Relationships: []
       }
+      streamer_settings: {
+        Row: {
+          alert_animation: string
+          alert_duration: number
+          alert_sound: string | null
+          alert_token: string | null
+          created_at: string
+          custom_css: string | null
+          id: string
+          is_enabled: boolean
+          min_amount_for_alert: number
+          profile_id: string
+          show_message: boolean
+          sound_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          alert_animation?: string
+          alert_duration?: number
+          alert_sound?: string | null
+          alert_token?: string | null
+          created_at?: string
+          custom_css?: string | null
+          id?: string
+          is_enabled?: boolean
+          min_amount_for_alert?: number
+          profile_id: string
+          show_message?: boolean
+          sound_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          alert_animation?: string
+          alert_duration?: number
+          alert_sound?: string | null
+          alert_token?: string | null
+          created_at?: string
+          custom_css?: string | null
+          id?: string
+          is_enabled?: boolean
+          min_amount_for_alert?: number
+          profile_id?: string
+          show_message?: boolean
+          sound_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "streamer_settings_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "streamer_settings_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tips: {
         Row: {
           amount: number
@@ -1178,6 +1241,14 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_otps: { Args: never; Returns: undefined }
+      delete_user_data: {
+        Args: { target_user_id: string }
+        Returns: {
+          id_back_url: string
+          id_front_url: string
+          selfie_url: string
+        }[]
+      }
       get_creator_current_month_stats: {
         Args: { creator_profile_id: string }
         Returns: {
@@ -1197,6 +1268,10 @@ export type Database = {
         }[]
       }
       get_current_profile_id: { Args: never; Returns: string }
+      get_profile_id_from_alert_token: {
+        Args: { token: string }
+        Returns: string
+      }
       get_supporter_donations: {
         Args: { supporter_profile_id: string }
         Returns: {

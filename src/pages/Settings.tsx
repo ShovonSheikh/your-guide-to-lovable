@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { User, Link as LinkIcon, Shield, CreditCard, ArrowLeft, Info, Calendar, CheckCircle, Clock, BadgeCheck, Lock, ShieldCheck, Bell } from "lucide-react";
+import { User, Link as LinkIcon, Shield, CreditCard, ArrowLeft, Info, Calendar, CheckCircle, Clock, BadgeCheck, Lock, ShieldCheck, Bell, Video } from "lucide-react";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -17,11 +17,13 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { VerificationForm } from "@/components/VerificationForm";
 import { WithdrawalPinSetup } from "@/components/WithdrawalPinSetup";
 import { ChangePinDialog } from "@/components/ChangePinDialog";
+import { StreamerSettings } from "@/components/StreamerSettings";
 
 const tabs = [
   { id: 'profile', label: 'Profile', icon: User },
   { id: 'links', label: 'Social Links', icon: LinkIcon },
   { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'streamer', label: 'Streamer Mode', icon: Video, creatorOnly: true },
   { id: 'verification', label: 'Verification', icon: BadgeCheck, creatorOnly: true },
   { id: 'security', label: 'Security', icon: Shield },
   { id: 'billing', label: 'Billing', icon: CreditCard },
@@ -561,6 +563,10 @@ export default function Settings() {
 
             {currentTab === 'notifications' && (
               <NotificationsTab profile={profile} />
+            )}
+
+            {currentTab === 'streamer' && profile?.account_type === 'creator' && (
+              <StreamerSettings />
             )}
 
             {currentTab === 'security' && (

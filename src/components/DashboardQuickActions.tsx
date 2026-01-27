@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Copy, Check, ExternalLink, Share2, QrCode, Code2, Link2, Target, MoreHorizontal } from "lucide-react";
+import { Copy, Check, ExternalLink, Share2, QrCode, Code2, Link2, Target, MoreHorizontal, Video } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { QRCodeDialog } from "@/components/QRCodeDialog";
 import { BioLinkDialog } from "@/components/BioLinkDialog";
@@ -107,6 +108,12 @@ export function DashboardQuickActions({ username, profileId, displayName }: Dash
                   Funding Goals
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem asChild className="gap-2 cursor-pointer">
+                <Link to="/settings?tab=streamer">
+                  <Video className="w-4 h-4" />
+                  Streamer Mode
+                </Link>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
