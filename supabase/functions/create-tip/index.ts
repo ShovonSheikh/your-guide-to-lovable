@@ -292,26 +292,6 @@ serve(async (req) => {
       .eq('id', creator_id)
       .single();
 
-    // Send email notification to creator
-    try {
-      await supabase.functions.invoke('send-email-notification', {
-        body: {
-          profile_id: creator_id,
-          type: 'tip_received',
-          data: {
-            amount: parsedAmount,
-            supporter_name: is_anonymous ? 'Anonymous' : supporter_name,
-            message: message || null,
-            tip_id: tip.id,
-          },
-        },
-      });
-      console.log("Email notification sent to creator");
-    } catch (notifError) {
-      // Don't fail the tip creation if notification fails
-      console.log("Creator email notification failed (non-critical):", notifError);
-    }
-
     // Helper to update goal progress and send milestone notifications
     const updateGoalProgress = async (creatorId: string, tipAmount: number, supporterName: string, creatorName: string, creatorEmail: string) => {
       try {
@@ -406,34 +386,65 @@ serve(async (req) => {
       }
     };
 
-    // Send confirmation email to supporter
-    try {
-      await supabase.functions.invoke('send-email-notification', {
-        body: {
-          email: supporter_email, // Direct email for non-registered supporters
-          type: 'tip_sent',
-          data: {
-            amount: parsedAmount,
-            creator_name: creator_profile?.first_name || creator_profile?.username || 'a creator',
-            message: message || null,
+    // Define background tasks
+    const processPostTipActions = async () => {
+      // 1. Send email notification to creator
+      try {
+        await supabase.functions.invoke('send-email-notification', {
+          body: {
+            profile_id: creator_id,
+            type: 'tip_received',
+            data: {
+              amount: parsedAmount,
+              supporter_name: is_anonymous ? 'Anonymous' : supporter_name,
+              message: message || null,
+              tip_id: tip.id,
+            },
           },
-        },
-      });
-      console.log("Confirmation email sent to supporter");
-    } catch (notifError) {
-      console.log("Supporter email notification failed (non-critical):", notifError);
-    }
+        });
+        console.log("Email notification sent to creator");
+      } catch (notifError) {
+        console.log("Creator email notification failed (non-critical):", notifError);
+      }
 
-    // Process goal updates asynchronously
-    if (creator_profile) {
-      // Don't await this to keep response fast
-      updateGoalProgress(
-        creator_id,
-        parsedAmount,
-        supporter_name,
-        creator_profile.first_name || creator_profile.username || 'Creator',
-        creator.email
-      );
+      // 2. Send confirmation email to supporter
+      try {
+        await supabase.functions.invoke('send-email-notification', {
+          body: {
+            email: supporter_email, // Direct email for non-registered supporters
+            type: 'tip_sent',
+            data: {
+              amount: parsedAmount,
+              creator_name: creator_profile?.first_name || creator_profile?.username || 'a creator',
+              message: message || null,
+            },
+          },
+        });
+        console.log("Confirmation email sent to supporter");
+      } catch (notifError) {
+        console.log("Supporter email notification failed (non-critical):", notifError);
+      }
+
+      // 3. Update goal progress
+      if (creator_profile) {
+        await updateGoalProgress(
+          creator_id,
+          parsedAmount,
+          supporter_name,
+          creator_profile.first_name || creator_profile.username || 'Creator',
+          creator.email
+        );
+      }
+    };
+
+    // Execute background tasks using EdgeRuntime.waitUntil if available
+    // This allows the response to be returned immediately while tasks run in background
+    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+      EdgeRuntime.waitUntil(processPostTipActions());
+    } else {
+      // Fallback for local dev or environments without EdgeRuntime
+      // Note: This might still delay response if runtime awaits open promises
+      processPostTipActions().catch(e => console.error("Background task error:", e));
     }
 
     return new Response(

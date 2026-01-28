@@ -87,7 +87,7 @@ export default function StreamerAlert() {
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*',
           schema: 'public',
           table: 'tips',
           filter: `creator_id=eq.${settings.profile_id}`,

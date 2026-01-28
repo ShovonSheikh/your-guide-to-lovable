@@ -1,68 +1,45 @@
-# Context: Fix PostgreSQL net.http_post Error
+# Session Context: User Deletion, CORS Fixes, and Streamer Alerts
 
-## Issue
+This document summarizes the changes and technical decisions made during the recent development session.
 
-When a supporter tips a creator, the application throws the following PostgreSQL error:
+## 1. User Deletion Handling (`user.deleted`)
 
-```json
-{
-  "code": "42883",
-  "message": "function net.http_post(url => text, headers => jsonb, body => text) does not exist",
-  "hint": "No function matches the given name and argument types."
-}
-```
+We implemented a robust system to handle the `user.deleted` webhook event from Clerk, ensuring complete cleanup of user data and files.
 
-## Root Cause
+### Key Changes:
+*   **Database Migration**: Created `supabase/migrations/20260127120000_delete_user_function.sql`.
+    *   Defines a secure RPC function `delete_user_data(target_user_id)`.
+    *   Performs atomic deletion of user records from 11+ tables in the correct dependency order.
+    *   Returns the URLs of verification documents (`id_front_url`, `selfie_url`, etc.) *before* deleting the records, enabling storage cleanup.
+*   **Edge Function**: Updated `supabase/functions/clerk-webhook/index.ts`.
+    *   Calls the `delete_user_data` RPC function when a `user.deleted` event is received.
+    *   Uses the returned file paths to clean up the `verification-documents` storage bucket.
+*   **Testing**: Created `supabase/simulate_user_deletion.sql` to manually simulate the process and verify file return values.
 
-Two database triggers were created that use `net.http_post` from the `pg_net` extension:
+## 2. Tip Payment CORS Error Fix
 
-1. **Goal Milestone Email Trigger** (`20260124035607_ece0ce9d-7c51-46b7-b4fe-e3545cdb0b8d.sql`)
-   - Function: `send_goal_milestone_email()`
-   - Trigger: `send_goal_milestone_email_trigger` on `notifications` table
+We resolved a "CORS error" (likely a timeout/network drop) that occurred after a successful tip payment.
 
-2. **Weekly Summary Cron Job** (`20260119093401_77459f81-bb8d-41d2-b13a-c86a2361aabb.sql`)
-   - Cron job: `weekly-creator-summary`
+### Root Cause:
+The `create-tip` edge function was performing heavy synchronous tasks (sending multiple emails, calculating funding goal progress) *before* returning the HTTP response. This caused the request to hang and occasionally time out, which the browser reported as a CORS/Network error.
 
-The `pg_net` extension is **not available on hosted Supabase instances** - it requires a self-hosted setup with specific configuration.
+### Fix Implementation:
+*   **Refactoring**: Updated `supabase/functions/create-tip/index.ts`.
+*   **Background Processing**: Moved email notifications and goal updates into a background task using `EdgeRuntime.waitUntil()`.
+*   **Outcome**: The function now returns a `200 OK` response immediately after the tip is inserted into the database, improving performance and reliability.
 
-## Solution
+## 3. Streamer Mode / Overlay Fix
 
-Created a migration to remove the pg_net-dependent components:
+We diagnosed and fixed an issue where the OBS overlay was not triggering alerts for new tips.
 
-### Migration File
-`supabase/migrations/20260126161000_remove_pgnet_triggers.sql`
+### System Overview:
+*   The "Streamer Mode" overlay is a web page (`/alerts/:token`) intended to be used as a Browser Source in OBS.
+*   It connects to Supabase Realtime to listen for changes in the `tips` table.
 
-This migration:
-- Drops the `send_goal_milestone_email_trigger` trigger
-- Drops the `send_goal_milestone_email()` function
-- Unschedules the `weekly-creator-summary` cron job
+### The Bug:
+*   The client-side subscription in `src/pages/StreamerAlert.tsx` was configured to listen only for `UPDATE` events.
+*   Standard tips are created via `INSERT` with a status of `completed`, so the alert system was ignoring them.
 
-### Alternative Approach
-
-Email notifications are already handled correctly through:
-1. **Edge Functions** called from the frontend/backend directly
-2. **send-email-notification Edge Function** handles all email sending via Resend API
-
-No functionality is lost - the database triggers were redundant.
-
-## Files Changed
-
-| File | Change |
-|------|--------|
-| `supabase/migrations/20260126161000_remove_pgnet_triggers.sql` | **NEW** - Migration to remove pg_net triggers |
-| `context.md` | **NEW** - This documentation file |
-
-## Migration Instructions
-
-**IMPORTANT:** Do **NOT** run `supabase db push` or similar commands.
-
-Run the migration SQL manually in the Supabase SQL Editor:
-1. Go to Supabase Dashboard → SQL Editor
-2. Paste the contents of `20260126161000_remove_pgnet_triggers.sql`
-3. Execute
-
-## Current State
-
-- Branch: `fix/pg-net-http-post-error`
-- Migration file created but NOT applied
-- Ready for manual migration execution and merge to main
+### The Fix:
+*   Updated `src/pages/StreamerAlert.tsx` to listen for **ALL (`*`)** events.
+*   This ensures that both newly inserted tips and tips that are updated (e.g., via webhook) trigger the alert animation and sound.
