@@ -55,6 +55,9 @@ export function StreamerSettings() {
   const [localSettings, setLocalSettings] = useState<{
     alert_duration: number;
     alert_animation: AnimationType;
+    alert_media_type: 'emoji' | 'gif' | 'none';
+    alert_emoji: string;
+    alert_gif_url: string;
     min_amount_for_alert: number;
     show_message: boolean;
     sound_enabled: boolean;
@@ -66,6 +69,9 @@ export function StreamerSettings() {
   }>({
     alert_duration: settings?.alert_duration ?? 5,
     alert_animation: (settings?.alert_animation as AnimationType) ?? 'slide',
+    alert_media_type: (settings?.alert_media_type as any) ?? 'emoji',
+    alert_emoji: settings?.alert_emoji ?? '🎉',
+    alert_gif_url: settings?.alert_gif_url ?? '',
     min_amount_for_alert: settings?.min_amount_for_alert ?? 0,
     show_message: settings?.show_message ?? true,
     sound_enabled: settings?.sound_enabled ?? true,
@@ -78,16 +84,24 @@ export function StreamerSettings() {
 
   // Load TTS voices
   useEffect(() => {
+    if (!('speechSynthesis' in window)) return;
+
     const loadVoices = () => {
-      const availableVoices = speechSynthesis.getVoices();
-      setVoices(availableVoices);
+      try {
+        const availableVoices = window.speechSynthesis.getVoices();
+        setVoices(availableVoices);
+      } catch {
+        setVoices([]);
+      }
     };
 
     loadVoices();
-    speechSynthesis.addEventListener('voiceschanged', loadVoices);
+    window.speechSynthesis.onvoiceschanged = loadVoices;
     
     return () => {
-      speechSynthesis.removeEventListener('voiceschanged', loadVoices);
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
     };
   }, []);
 
@@ -97,6 +111,9 @@ export function StreamerSettings() {
       setLocalSettings({
         alert_duration: settings.alert_duration ?? 5,
         alert_animation: (settings.alert_animation as AnimationType) ?? 'slide',
+        alert_media_type: (settings.alert_media_type as any) ?? 'emoji',
+        alert_emoji: settings.alert_emoji ?? '🎉',
+        alert_gif_url: settings.alert_gif_url ?? '',
         min_amount_for_alert: settings.min_amount_for_alert ?? 0,
         show_message: settings.show_message ?? true,
         sound_enabled: settings.sound_enabled ?? true,
@@ -335,6 +352,68 @@ export function StreamerSettings() {
                 max={15}
                 step={1}
               />
+            </div>
+
+            {/* Alert Media */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-muted-foreground" />
+                Alert Media
+              </Label>
+              <Select
+                value={localSettings.alert_media_type}
+                onValueChange={(value: 'emoji' | 'gif' | 'none') =>
+                  setLocalSettings(s => ({ ...s, alert_media_type: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="emoji">Emoji</SelectItem>
+                  <SelectItem value="gif">GIF</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {localSettings.alert_media_type === 'emoji' && (
+                <div className="space-y-2">
+                  <Label className="text-sm">Emoji</Label>
+                  <Input
+                    value={localSettings.alert_emoji}
+                    onChange={(e) => setLocalSettings(s => ({ ...s, alert_emoji: e.target.value }))}
+                    placeholder="🎉"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Tip: you can paste any emoji here.
+                  </p>
+                </div>
+              )}
+
+              {localSettings.alert_media_type === 'gif' && (
+                <div className="space-y-2">
+                  <Label className="text-sm">GIF URL</Label>
+                  <Input
+                    value={localSettings.alert_gif_url}
+                    onChange={(e) => setLocalSettings(s => ({ ...s, alert_gif_url: e.target.value }))}
+                    placeholder="https://.../alert.gif"
+                  />
+                  {localSettings.alert_gif_url?.startsWith('http') && (
+                    <div className="flex items-center justify-center p-3 bg-background rounded-xl border border-border">
+                      <img
+                        src={localSettings.alert_gif_url}
+                        alt="GIF preview"
+                        className="w-16 h-16 object-contain"
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Use an HTTPS URL for best compatibility with OBS.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Minimum Amount */}
@@ -615,6 +694,9 @@ export function StreamerSettings() {
         onOpenChange={setPreviewOpen}
         animation={localSettings.alert_animation}
         duration={localSettings.alert_duration}
+        mediaType={localSettings.alert_media_type}
+        emoji={localSettings.alert_emoji}
+        gifUrl={localSettings.alert_gif_url}
         showMessage={localSettings.show_message}
         soundEnabled={localSettings.sound_enabled}
         soundUrl={settings?.alert_sound || defaultSoundUrl}

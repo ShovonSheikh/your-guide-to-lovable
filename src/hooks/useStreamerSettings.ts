@@ -11,6 +11,9 @@ export interface StreamerSettings {
   alert_token: string | null;
   alert_duration: number;
   alert_sound: string | null;
+  alert_media_type?: 'emoji' | 'gif' | 'none' | null;
+  alert_emoji?: string | null;
+  alert_gif_url?: string | null;
   alert_animation: 'slide' | 'bounce' | 'fade' | 'pop';
   min_amount_for_alert: number;
   show_message: boolean;
@@ -70,6 +73,9 @@ export function useStreamerSettings() {
         alert_token: newToken,
         alert_duration: 5,
         alert_animation: 'slide',
+        alert_media_type: 'emoji',
+        alert_emoji: '🎉',
+        alert_gif_url: null,
         min_amount_for_alert: 0,
         show_message: true,
         sound_enabled: true,

@@ -8,6 +8,9 @@ interface AlertPreviewProps {
   onOpenChange: (open: boolean) => void;
   animation: 'slide' | 'bounce' | 'fade' | 'pop';
   duration: number;
+  mediaType?: 'emoji' | 'gif' | 'none';
+  emoji?: string;
+  gifUrl?: string;
   showMessage: boolean;
   soundEnabled?: boolean;
   soundUrl?: string;
@@ -22,6 +25,9 @@ export function AlertPreview({
   onOpenChange, 
   animation, 
   duration, 
+  mediaType = 'emoji',
+  emoji = '🎉',
+  gifUrl = '',
   showMessage,
   soundEnabled = true,
   soundUrl = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3',
@@ -37,18 +43,45 @@ export function AlertPreview({
 
   // Load TTS voices
   useEffect(() => {
+    if (!('speechSynthesis' in window)) return;
+
     const loadVoices = () => {
-      const availableVoices = speechSynthesis.getVoices();
-      setVoices(availableVoices);
+      try {
+        const availableVoices = window.speechSynthesis.getVoices();
+        setVoices(availableVoices);
+      } catch {
+        setVoices([]);
+      }
     };
 
     loadVoices();
-    speechSynthesis.addEventListener('voiceschanged', loadVoices);
+    window.speechSynthesis.onvoiceschanged = loadVoices;
     
     return () => {
-      speechSynthesis.removeEventListener('voiceschanged', loadVoices);
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
     };
   }, []);
+
+  const getMediaNode = () => {
+    if (mediaType === 'none') return null;
+    if (mediaType === 'gif') {
+      const isValid = typeof gifUrl === 'string' && /^https:\/\//i.test(gifUrl);
+      if (!isValid) return <div className="text-3xl mb-2">🎉</div>;
+      return (
+        <img
+          src={gifUrl}
+          alt="Alert"
+          className="w-14 h-14 object-contain mx-auto mb-2"
+          loading="eager"
+          referrerPolicy="no-referrer"
+        />
+      );
+    }
+    const value = (emoji ?? '🎉').trim();
+    return <div className="text-3xl mb-2">{value || '🎉'}</div>;
+  };
 
   const playAnimation = () => {
     setIsPlaying(true);
@@ -63,7 +96,11 @@ export function AlertPreview({
     // Play TTS after a short delay
     if (ttsEnabled && 'speechSynthesis' in window) {
       setTimeout(() => {
-        speechSynthesis.cancel();
+        try {
+          window.speechSynthesis.cancel();
+        } catch {
+          return;
+        }
         const utterance = new SpeechSynthesisUtterance("Omar Ali tipped 500 taka. Love your content, keep going!");
         
         if (ttsVoice && ttsVoice !== 'default') {
@@ -74,7 +111,10 @@ export function AlertPreview({
         utterance.rate = ttsRate;
         utterance.pitch = ttsPitch;
         
-        speechSynthesis.speak(utterance);
+        try {
+          window.speechSynthesis.speak(utterance);
+        } catch {
+        }
       }, 500);
     }
 
@@ -87,7 +127,12 @@ export function AlertPreview({
       setTimeout(playAnimation, 300);
     } else {
       // Cancel TTS when closing
-      speechSynthesis.cancel();
+      if ('speechSynthesis' in window) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch {
+        }
+      }
     }
   }, [open]);
 
@@ -138,7 +183,7 @@ export function AlertPreview({
             >
               <div className="bg-gradient-to-br from-accent to-accent/80 rounded-2xl p-6 text-white shadow-2xl min-w-[300px]">
                 <div className="text-center">
-                  <div className="text-3xl mb-2">🎉</div>
+                  {getMediaNode()}
                   <div className="text-lg font-bold mb-1">NEW TIP!</div>
                   <div className="flex items-center justify-center gap-2 mb-2">
                     <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm">
