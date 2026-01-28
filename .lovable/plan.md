@@ -1,210 +1,235 @@
 
+# Implementation Plan: Streamer Mode Enhancements & Explore Page Fix
 
-# Project Status & Streamer Mode Implementation Plan
-
-## Part 1: Current Status Summary
-
-After a comprehensive review of the TipKoro codebase, here's the current state:
-
-### Completed Features
-All core features are implemented and working:
-- User authentication (Clerk) with Supabase sync
-- Creator onboarding with payment integration
-- Tip payment flow (RupantorPay)
-- Dashboard with real earnings stats
-- Real-time tips feed with Supabase Realtime
-- Withdrawal system with PIN + OTP verification
-- Full Admin Panel with CRUD operations
-- Email notification system with templates
-- Funding goals with milestone tracking
-- Maintenance Mode with whitelist
-- Identity verification flow
-- Security hardening (RLS policies, storage policies)
-
-### Outstanding Items
-
-| Priority | Item | Description |
-|----------|------|-------------|
-| **High** | Subscription Renewal | `active_until` is set during signup but there's no automated billing renewal when subscriptions expire |
-| **Medium** | Duplicate Supabase Clients | Console shows "Multiple GoTrueClient instances" warning - should consolidate to single client |
-| **Low** | Update PROJECT_STATUS.md | Document is outdated - many features marked as "missing" are now implemented |
-| **Pre-launch** | Production Keys | Switch Clerk from development to production keys |
-
-The automated monthly billing requires external infrastructure (payment gateway recurring API or scheduled jobs) that may be outside current scope.
+This plan addresses three issues:
+1. Custom sound upload for Streamer Mode alerts
+2. Text-to-Speech (TTS) support for tip messages
+3. Fix the Explore page showing no creators
 
 ---
 
-## Part 2: Streamer Mode Feature
+## Issue Analysis
 
-A "Streamer Mode" will allow creators to display animated tip notifications on their screen during livestreams - similar to Twitch alerts.
+### Issue 3 (Critical): Explore Page Not Showing Creators
 
-### Feature Overview
+**Root Cause**: The security migration (`20260126050427`) dropped the RLS policy "Public can view basic creator profiles" to prevent exposure of sensitive columns (email, withdrawal_pin_hash). However, the `public_profiles` view uses `security_invoker = true`, which means queries run with the caller's permissions. Anonymous users now have NO SELECT access to the underlying `profiles` table.
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                      STREAMER MODE                              │
-├─────────────────────────────────────────────────────────────────┤
-│  Creator enables "Streamer Mode" in Settings/Dashboard         │
-│  │                                                              │
-│  ▼                                                              │
-│  Gets a unique "Alert URL" (e.g., /alerts/abc123)              │
-│  │                                                              │
-│  ▼                                                              │
-│  Opens URL in OBS Browser Source (transparent overlay)          │
-│  │                                                              │
-│  ▼                                                              │
-│  When tip received → Real-time notification appears             │
-│  │                                                              │
-│  ▼                                                              │
-│  Shows: Animation + Sound + Supporter Name + Amount + Message   │
-└─────────────────────────────────────────────────────────────────┘
+**Evidence**: Direct database query returns creators:
+```sql
+SELECT * FROM public_profiles WHERE account_type = 'creator' 
+AND onboarding_status = 'completed' LIMIT 10
+-- Returns: shovon, shirin (2 creators)
 ```
 
-### Database Changes
+But the frontend query returns empty array because RLS blocks anonymous access.
 
-**New Table: `streamer_settings`**
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | uuid | Primary key |
-| `profile_id` | uuid | FK to profiles |
-| `is_enabled` | boolean | Toggle streamer mode on/off |
-| `alert_token` | text | Unique token for alert URL |
-| `alert_duration` | integer | Duration in seconds (default: 5) |
-| `alert_sound` | text | Sound effect URL (null = default) |
-| `alert_animation` | text | Animation type (slide, bounce, fade, pop) |
-| `min_amount_for_alert` | numeric | Minimum tip amount to trigger alert |
-| `show_message` | boolean | Whether to show tip messages |
-| `custom_css` | text | Optional custom CSS for advanced users |
-| `created_at` | timestamp | - |
-| `updated_at` | timestamp | - |
-
-**RLS Policies:**
-- Users can SELECT/UPDATE their own settings
-- Public can SELECT with valid `alert_token` (for alert page)
-
-### Frontend Components
-
-**1. Streamer Settings Panel (Settings Page)**
-- Toggle to enable/disable streamer mode
-- Copy alert URL button
-- Preview button to test alerts
-- Configuration options:
-  - Alert duration (3s, 5s, 7s, 10s)
-  - Animation style dropdown
-  - Minimum tip amount for alerts
-  - Show/hide message toggle
-  - Sound on/off toggle
-
-**2. Alert Overlay Page (`/alerts/:token`)**
-- Transparent background page (for OBS Browser Source)
-- Connects to Supabase Realtime
-- Listens for new tips for the associated creator
-- Displays animated alert when tip arrives:
-  ```text
-  ┌────────────────────────────────────────┐
-  │    🎉  NEW TIP!  🎉                    │
-  │                                        │
-  │    [Avatar] Omar Ali                   │
-  │    tipped ৳500!                        │
-  │                                        │
-  │    "Love your content, keep going!"   │
-  └────────────────────────────────────────┘
-  ```
-- Animations: fade-in, slide from top/bottom, bounce, pop
-- Auto-dismisses after configured duration
-
-**3. Dashboard Quick Action (Optional)**
-- Add "Streamer Mode" button to DashboardQuickActions
-- Quick access to copy alert URL
-
-### Technical Implementation Details
-
-**Alert Token Generation:**
-- Generate unique token on first enable (e.g., `nanoid(12)`)
-- Token is used in URL: `/alerts/abc123xyz456`
-- Can regenerate token if compromised
-
-**Real-time Connection:**
-- Alert page subscribes to tips table with filter: `creator_id=eq.{profile_id}`
-- Only triggers for `payment_status = 'completed'`
-- Respects `min_amount_for_alert` setting
-
-**Animation & Styling:**
-- CSS animations using Tailwind/Framer Motion
-- Pre-built animation presets
-- Custom CSS field for advanced creators
-- Sound effects using Web Audio API
-
-### Files to Create/Modify
-
-**New Files:**
-1. `src/pages/StreamerAlert.tsx` - Alert overlay page
-2. `src/components/StreamerSettings.tsx` - Settings component
-3. `src/components/AlertPreview.tsx` - Preview component
-4. `src/hooks/useStreamerSettings.ts` - Settings hook
-5. `src/hooks/useAlertSubscription.ts` - Realtime subscription hook
-
-**Modified Files:**
-1. `src/App.tsx` - Add `/alerts/:token` route
-2. `src/pages/Settings.tsx` - Add Streamer Mode tab (creators only)
-3. `src/components/DashboardQuickActions.tsx` - Add streamer mode button
-4. Database migration for `streamer_settings` table
-
-### User Flow
-
-1. **Enable Streamer Mode:**
-   - Creator goes to Settings → Streamer Mode tab
-   - Clicks "Enable Streamer Mode"
-   - System generates unique alert token
-   - Shows alert URL and "Copy" button
-
-2. **Configure Alerts:**
-   - Choose animation style
-   - Set alert duration
-   - Set minimum tip amount for alerts
-   - Toggle message display
-   - Preview alerts with "Test Alert" button
-
-3. **Use in OBS:**
-   - Copy alert URL
-   - In OBS: Add Browser Source
-   - Paste URL, set dimensions (e.g., 400x200)
-   - Position overlay on stream
-
-4. **Live Streaming:**
-   - When a tip comes in, alert automatically appears
-   - Animation plays, sound plays (optional)
-   - Auto-dismisses after duration
-
-### Security Considerations
-
-- Alert token should be regenerable if leaked
-- Rate limit alert page to prevent abuse
-- No sensitive data exposed (just supporter name, amount, message)
-- Token-based access instead of authentication (for OBS compatibility)
-
-### Implementation Order
-
-1. Database: Create `streamer_settings` table with RLS
-2. Backend: Alert token generation logic
-3. Frontend: Settings component with enable/disable toggle
-4. Frontend: Alert overlay page with realtime subscription
-5. Frontend: Animations and styling
-6. Integration: Add to Settings page and Dashboard
-7. Polish: Sound effects, preview functionality, copy URL button
+**Solution**: Create a new RLS policy on `profiles` that grants SELECT access ONLY through the view by checking if the query is accessing specific safe columns AND filtering for completed creators.
 
 ---
 
-## Recommended Next Steps
+## Implementation Tasks
 
-### Immediate (This Session)
-1. **Implement Streamer Mode** - The new feature you proposed
+### Task 1: Fix Explore Page (Priority: Critical)
 
-### Future Considerations
-1. **Subscription Renewal** - Requires scheduled job + payment gateway recurring API
-2. **Consolidate Supabase Clients** - Fix the duplicate client warning
-3. **Update Documentation** - Refresh PROJECT_STATUS.md with current state
+**Database Changes**:
+Add a new RLS policy on `profiles` table that allows public read access only for completed creator profiles with non-null usernames:
 
-Would you like me to proceed with implementing the Streamer Mode feature?
+```sql
+CREATE POLICY "Public can view completed creator profiles via view"
+  ON public.profiles FOR SELECT
+  USING (
+    account_type = 'creator' 
+    AND onboarding_status = 'completed'
+    AND username IS NOT NULL
+  );
+```
 
+This is safe because:
+- The `public_profiles` view already excludes sensitive columns (email, withdrawal_pin_hash, is_admin, user_id)
+- The policy only allows SELECT on completed creators
+- Row-level access is restricted, not column-level (sensitive columns exist but are hidden by the view)
+
+**Files Changed**:
+- New migration file: `supabase/migrations/[timestamp]_fix_public_profiles_access.sql`
+
+---
+
+### Task 2: Custom Sound Upload for Streamer Mode
+
+**Overview**: Allow creators to upload custom MP3/WAV files for their tip alerts.
+
+**Database Changes**:
+1. Create a new storage bucket `alert-sounds` for audio files
+2. Add `alert_sound_url` column to `streamer_settings` table (already has `alert_sound` but it's not implemented)
+
+**Storage Setup**:
+```sql
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('alert-sounds', 'alert-sounds', true, 5242880, ARRAY['audio/mpeg', 'audio/wav', 'audio/ogg']);
+
+-- RLS: Users can upload to their own folder
+CREATE POLICY "Users can upload their own alert sounds"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'alert-sounds' AND
+  (storage.foldername(name))[1] = (
+    SELECT id::text FROM profiles 
+    WHERE user_id = (current_setting('request.headers')::json->>'x-clerk-user-id')
+  )
+);
+
+-- RLS: Public can read all alert sounds (needed for OBS)
+CREATE POLICY "Anyone can read alert sounds"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'alert-sounds');
+
+-- RLS: Users can delete their own sounds
+CREATE POLICY "Users can delete their own alert sounds"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'alert-sounds' AND
+  (storage.foldername(name))[1] = (
+    SELECT id::text FROM profiles 
+    WHERE user_id = (current_setting('request.headers')::json->>'x-clerk-user-id')
+  )
+);
+```
+
+**Frontend Changes**:
+1. **StreamerSettings.tsx**: Add file upload UI for custom sound
+   - Add "Upload Custom Sound" section with file input
+   - Accept audio/mpeg, audio/wav, audio/ogg
+   - Max file size: 5MB
+   - Preview button to test uploaded sound
+   - Delete button to revert to default
+   
+2. **useStreamerSettings.ts**: Add upload/delete functions
+   - `uploadAlertSound(file: File)`: Uploads to `alert-sounds/{profile_id}/{filename}`
+   - `deleteAlertSound()`: Removes custom sound, reverts to default
+
+3. **StreamerAlert.tsx**: Use custom sound URL if available
+   - Check `settings.alert_sound` for custom URL
+   - Fallback to default Mixkit sound if null
+
+**Files Changed**:
+- New migration file: `supabase/migrations/[timestamp]_add_alert_sounds_bucket.sql`
+- Modified: `src/components/StreamerSettings.tsx`
+- Modified: `src/hooks/useStreamerSettings.ts`
+- Modified: `src/pages/StreamerAlert.tsx`
+
+---
+
+### Task 3: Text-to-Speech Support for Streamer Mode
+
+**Overview**: Use the browser's built-in Web Speech API to read tip messages aloud. This is free and requires no external API.
+
+**Database Changes**:
+Add new columns to `streamer_settings`:
+```sql
+ALTER TABLE public.streamer_settings
+ADD COLUMN tts_enabled BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN tts_voice TEXT DEFAULT 'default',
+ADD COLUMN tts_rate NUMERIC DEFAULT 1.0,
+ADD COLUMN tts_pitch NUMERIC DEFAULT 1.0;
+```
+
+**Frontend Changes**:
+1. **StreamerSettings.tsx**: Add TTS configuration section
+   - Toggle to enable/disable TTS
+   - Voice selector dropdown (populated from available browser voices)
+   - Rate slider (0.5 to 2.0)
+   - Pitch slider (0.5 to 2.0)
+   - "Test TTS" button to preview voice
+
+2. **useStreamerSettings.ts**: Update types and local state for TTS settings
+
+3. **StreamerAlert.tsx**: Implement TTS playback
+   - Use `window.speechSynthesis` API
+   - Template: "[Supporter name] tipped [amount] taka. [Message]"
+   - Play TTS after alert sound (or instead of sound if sound is disabled)
+   - Handle TTS after user gesture requirement (auto-play policy)
+
+**Implementation Notes**:
+- Web Speech API is supported in all modern browsers
+- No API key needed (browser-native)
+- Voice selection uses `speechSynthesis.getVoices()`
+- TTS plays sequentially after notification sound
+
+**Files Changed**:
+- New migration file: `supabase/migrations/[timestamp]_add_streamer_tts_settings.sql`
+- Modified: `src/components/StreamerSettings.tsx`
+- Modified: `src/hooks/useStreamerSettings.ts`
+- Modified: `src/pages/StreamerAlert.tsx`
+- Modified: `src/components/AlertPreview.tsx` (add TTS preview)
+
+---
+
+## Implementation Order
+
+1. **Fix Explore Page (Task 1)** - Critical, blocking issue
+2. **Custom Sound Upload (Task 2)** - Adds value, requires storage bucket
+3. **TTS Support (Task 3)** - Adds value, no external dependencies
+
+---
+
+## Technical Details
+
+### Web Speech API Usage (Task 3)
+```typescript
+const speakTip = (tip: TipData) => {
+  if (!settings?.tts_enabled) return;
+  
+  const utterance = new SpeechSynthesisUtterance(
+    `${tip.supporter_name} tipped ${tip.amount} taka. ${tip.message || ''}`
+  );
+  
+  // Set voice
+  const voices = speechSynthesis.getVoices();
+  const selectedVoice = voices.find(v => v.name === settings.tts_voice);
+  if (selectedVoice) utterance.voice = selectedVoice;
+  
+  utterance.rate = settings.tts_rate || 1;
+  utterance.pitch = settings.tts_pitch || 1;
+  
+  speechSynthesis.speak(utterance);
+};
+```
+
+### Sound Upload Component (Task 2)
+```typescript
+// In StreamerSettings.tsx
+<div className="space-y-2">
+  <Label>Custom Alert Sound</Label>
+  {settings?.alert_sound ? (
+    <div className="flex items-center gap-2">
+      <audio src={settings.alert_sound} controls className="h-8" />
+      <Button variant="ghost" size="sm" onClick={deleteAlertSound}>
+        <Trash className="w-4 h-4" />
+      </Button>
+    </div>
+  ) : (
+    <div>
+      <Input 
+        type="file" 
+        accept="audio/mpeg,audio/wav,audio/ogg"
+        onChange={(e) => handleSoundUpload(e.target.files?.[0])}
+      />
+      <p className="text-xs text-muted-foreground mt-1">
+        Max 5MB. MP3, WAV, or OGG format.
+      </p>
+    </div>
+  )}
+</div>
+```
+
+---
+
+## Summary
+
+| Task | Type | Priority | Complexity |
+|------|------|----------|------------|
+| Fix Explore Page | Database RLS | Critical | Low |
+| Custom Sound Upload | Storage + Frontend | Medium | Medium |
+| TTS Support | Frontend + DB | Low | Low |
+
+All three tasks can be implemented in a single session. The Explore page fix is the most critical and should be done first.
