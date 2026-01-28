@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useStreamerSettings } from "@/hooks/useStreamerSettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,11 @@ import {
   Coins,
   Sparkles,
   AlertCircle,
-  ExternalLink
+  ExternalLink,
+  Upload,
+  Trash,
+  Mic,
+  Music
 } from "lucide-react";
 import { AlertPreview } from "@/components/AlertPreview";
 
@@ -31,15 +35,21 @@ export function StreamerSettings() {
     settings, 
     loading, 
     saving,
+    uploadingSound,
     enableStreamerMode, 
     disableStreamerMode, 
     updateSettings,
     regenerateToken,
+    uploadAlertSound,
+    deleteAlertSound,
     getAlertUrl 
   } = useStreamerSettings();
   
   const [copied, setCopied] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioPreviewRef = useRef<HTMLAudioElement>(null);
   type AnimationType = 'slide' | 'bounce' | 'fade' | 'pop';
   
   const [localSettings, setLocalSettings] = useState<{
@@ -49,6 +59,10 @@ export function StreamerSettings() {
     show_message: boolean;
     sound_enabled: boolean;
     custom_css: string;
+    tts_enabled: boolean;
+    tts_voice: string;
+    tts_rate: number;
+    tts_pitch: number;
   }>({
     alert_duration: settings?.alert_duration ?? 5,
     alert_animation: (settings?.alert_animation as AnimationType) ?? 'slide',
@@ -56,7 +70,44 @@ export function StreamerSettings() {
     show_message: settings?.show_message ?? true,
     sound_enabled: settings?.sound_enabled ?? true,
     custom_css: settings?.custom_css ?? '',
+    tts_enabled: settings?.tts_enabled ?? false,
+    tts_voice: settings?.tts_voice ?? 'default',
+    tts_rate: settings?.tts_rate ?? 1.0,
+    tts_pitch: settings?.tts_pitch ?? 1.0,
   });
+
+  // Load TTS voices
+  useEffect(() => {
+    const loadVoices = () => {
+      const availableVoices = speechSynthesis.getVoices();
+      setVoices(availableVoices);
+    };
+
+    loadVoices();
+    speechSynthesis.addEventListener('voiceschanged', loadVoices);
+    
+    return () => {
+      speechSynthesis.removeEventListener('voiceschanged', loadVoices);
+    };
+  }, []);
+
+  // Update local settings when server settings change
+  useEffect(() => {
+    if (settings) {
+      setLocalSettings({
+        alert_duration: settings.alert_duration ?? 5,
+        alert_animation: (settings.alert_animation as AnimationType) ?? 'slide',
+        min_amount_for_alert: settings.min_amount_for_alert ?? 0,
+        show_message: settings.show_message ?? true,
+        sound_enabled: settings.sound_enabled ?? true,
+        custom_css: settings.custom_css ?? '',
+        tts_enabled: settings.tts_enabled ?? false,
+        tts_voice: settings.tts_voice ?? 'default',
+        tts_rate: settings.tts_rate ?? 1.0,
+        tts_pitch: settings.tts_pitch ?? 1.0,
+      });
+    }
+  }, [settings]);
 
   if (loading) {
     return (
@@ -87,6 +138,50 @@ export function StreamerSettings() {
       window.open(alertUrl, '_blank');
     }
   };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await uploadAlertSound(file);
+    }
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const playPreviewSound = () => {
+    if (audioPreviewRef.current) {
+      audioPreviewRef.current.currentTime = 0;
+      audioPreviewRef.current.play().catch(() => {});
+    }
+  };
+
+  const testTTS = () => {
+    if (!('speechSynthesis' in window)) {
+      toast({
+        title: "TTS Not Supported",
+        description: "Your browser doesn't support Text-to-Speech",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance("Omar Ali tipped 500 taka. Love your content, keep going!");
+    
+    if (localSettings.tts_voice && localSettings.tts_voice !== 'default') {
+      const selectedVoice = voices.find(v => v.name === localSettings.tts_voice);
+      if (selectedVoice) utterance.voice = selectedVoice;
+    }
+    
+    utterance.rate = localSettings.tts_rate;
+    utterance.pitch = localSettings.tts_pitch;
+    
+    speechSynthesis.speak(utterance);
+  };
+
+  const defaultSoundUrl = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
 
   return (
     <div className="space-y-6">
@@ -298,6 +393,174 @@ export function StreamerSettings() {
               </div>
             </div>
 
+            {/* Custom Sound Upload */}
+            <div className="space-y-3 p-4 bg-secondary/30 rounded-xl">
+              <Label className="flex items-center gap-2">
+                <Music className="w-4 h-4 text-muted-foreground" />
+                Custom Alert Sound
+              </Label>
+              
+              {settings?.alert_sound ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <audio 
+                      ref={audioPreviewRef}
+                      src={settings.alert_sound} 
+                      preload="auto"
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={playPreviewSound}
+                      className="gap-2"
+                    >
+                      <Play className="w-4 h-4" />
+                      Play
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={deleteAlertSound}
+                      disabled={saving}
+                      className="gap-2 text-destructive hover:text-destructive"
+                    >
+                      <Trash className="w-4 h-4" />
+                      Remove
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Using custom sound
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <audio 
+                      ref={audioPreviewRef}
+                      src={defaultSoundUrl} 
+                      preload="auto"
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={playPreviewSound}
+                      className="gap-2"
+                    >
+                      <Play className="w-4 h-4" />
+                      Preview Default
+                    </Button>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="audio/mpeg,audio/wav,audio/ogg"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingSound}
+                    className="gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    {uploadingSound ? "Uploading..." : "Upload Custom Sound"}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Max 5MB. MP3, WAV, or OGG format.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* TTS Settings */}
+            <div className="space-y-4 p-4 bg-secondary/30 rounded-xl">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-2">
+                  <Mic className="w-4 h-4 text-muted-foreground" />
+                  Text-to-Speech (TTS)
+                </Label>
+                <Switch
+                  checked={localSettings.tts_enabled}
+                  onCheckedChange={(checked) => 
+                    setLocalSettings(s => ({ ...s, tts_enabled: checked }))
+                  }
+                />
+              </div>
+              
+              {localSettings.tts_enabled && (
+                <div className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <Label className="text-sm">Voice</Label>
+                    <Select 
+                      value={localSettings.tts_voice}
+                      onValueChange={(value) => 
+                        setLocalSettings(s => ({ ...s, tts_voice: value }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select voice" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="default">Default</SelectItem>
+                        {voices.map((voice) => (
+                          <SelectItem key={voice.name} value={voice.name}>
+                            {voice.name} ({voice.lang})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center justify-between text-sm">
+                      <span>Speed</span>
+                      <span className="text-muted-foreground">{localSettings.tts_rate.toFixed(1)}x</span>
+                    </Label>
+                    <Slider
+                      value={[localSettings.tts_rate]}
+                      onValueChange={([value]) => 
+                        setLocalSettings(s => ({ ...s, tts_rate: value }))
+                      }
+                      min={0.5}
+                      max={2}
+                      step={0.1}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center justify-between text-sm">
+                      <span>Pitch</span>
+                      <span className="text-muted-foreground">{localSettings.tts_pitch.toFixed(1)}</span>
+                    </Label>
+                    <Slider
+                      value={[localSettings.tts_pitch]}
+                      onValueChange={([value]) => 
+                        setLocalSettings(s => ({ ...s, tts_pitch: value }))
+                      }
+                      min={0.5}
+                      max={2}
+                      step={0.1}
+                    />
+                  </div>
+
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={testTTS}
+                    className="gap-2"
+                  >
+                    <Play className="w-4 h-4" />
+                    Test TTS
+                  </Button>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Read tip messages aloud using browser Text-to-Speech
+              </p>
+            </div>
+
             {/* Custom CSS - Advanced */}
             <details className="group">
               <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -353,6 +616,12 @@ export function StreamerSettings() {
         animation={localSettings.alert_animation}
         duration={localSettings.alert_duration}
         showMessage={localSettings.show_message}
+        soundEnabled={localSettings.sound_enabled}
+        soundUrl={settings?.alert_sound || defaultSoundUrl}
+        ttsEnabled={localSettings.tts_enabled}
+        ttsVoice={localSettings.tts_voice}
+        ttsRate={localSettings.tts_rate}
+        ttsPitch={localSettings.tts_pitch}
       />
     </div>
   );

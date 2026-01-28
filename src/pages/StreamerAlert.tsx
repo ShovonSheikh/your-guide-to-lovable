@@ -14,11 +14,18 @@ interface StreamerSettings {
   profile_id: string;
   alert_duration: number;
   alert_animation: 'slide' | 'bounce' | 'fade' | 'pop';
+  alert_sound: string | null;
   min_amount_for_alert: number;
   show_message: boolean;
   sound_enabled: boolean;
   custom_css: string | null;
+  tts_enabled: boolean;
+  tts_voice: string;
+  tts_rate: number;
+  tts_pitch: number;
 }
+
+const DEFAULT_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
 
 export default function StreamerAlert() {
   const { token } = useParams<{ token: string }>();
@@ -28,6 +35,22 @@ export default function StreamerAlert() {
   const [error, setError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+
+  // Load available TTS voices
+  useEffect(() => {
+    const loadVoices = () => {
+      const availableVoices = speechSynthesis.getVoices();
+      setVoices(availableVoices);
+    };
+
+    loadVoices();
+    speechSynthesis.addEventListener('voiceschanged', loadVoices);
+    
+    return () => {
+      speechSynthesis.removeEventListener('voiceschanged', loadVoices);
+    };
+  }, []);
 
   // Fetch settings and subscribe to tips
   useEffect(() => {
@@ -39,7 +62,7 @@ export default function StreamerAlert() {
     const fetchSettings = async () => {
       const { data, error } = await supabase
         .from('streamer_settings')
-        .select('profile_id, alert_duration, alert_animation, min_amount_for_alert, show_message, sound_enabled, custom_css')
+        .select('profile_id, alert_duration, alert_animation, alert_sound, min_amount_for_alert, show_message, sound_enabled, custom_css, tts_enabled, tts_voice, tts_rate, tts_pitch')
         .eq('alert_token', token)
         .eq('is_enabled', true)
         .single();
@@ -95,6 +118,30 @@ export default function StreamerAlert() {
     };
   }, [settings]);
 
+  const speakTip = (tip: TipData) => {
+    if (!settings?.tts_enabled || !('speechSynthesis' in window)) return;
+
+    // Cancel any ongoing speech
+    speechSynthesis.cancel();
+
+    const text = tip.message 
+      ? `${tip.supporter_name} tipped ${tip.amount} taka. ${tip.message}`
+      : `${tip.supporter_name} tipped ${tip.amount} taka.`;
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    // Set voice
+    if (settings.tts_voice && settings.tts_voice !== 'default') {
+      const selectedVoice = voices.find(v => v.name === settings.tts_voice);
+      if (selectedVoice) utterance.voice = selectedVoice;
+    }
+    
+    utterance.rate = settings.tts_rate || 1;
+    utterance.pitch = settings.tts_pitch || 1;
+    
+    speechSynthesis.speak(utterance);
+  };
+
   const showAlert = (tip: TipData) => {
     // Clear any existing timeout
     if (timeoutRef.current) {
@@ -108,6 +155,11 @@ export default function StreamerAlert() {
     if (settings?.sound_enabled && audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch(() => {});
+    }
+
+    // Speak tip after a short delay (let sound play first)
+    if (settings?.tts_enabled) {
+      setTimeout(() => speakTip(tip), 500);
     }
 
     // Hide after duration
@@ -134,6 +186,9 @@ export default function StreamerAlert() {
     }
   };
 
+  // Get sound URL (custom or default)
+  const soundUrl = settings?.alert_sound || DEFAULT_SOUND_URL;
+
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-transparent">
@@ -153,9 +208,7 @@ export default function StreamerAlert() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-transparent overflow-hidden">
       {/* Audio for notification sound */}
-      <audio ref={audioRef} preload="auto">
-        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg" />
-      </audio>
+      <audio ref={audioRef} preload="auto" src={soundUrl} />
 
       {/* Alert Container */}
       {currentTip && (

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Play, RotateCcw } from "lucide-react";
@@ -9,6 +9,12 @@ interface AlertPreviewProps {
   animation: 'slide' | 'bounce' | 'fade' | 'pop';
   duration: number;
   showMessage: boolean;
+  soundEnabled?: boolean;
+  soundUrl?: string;
+  ttsEnabled?: boolean;
+  ttsVoice?: string;
+  ttsRate?: number;
+  ttsPitch?: number;
 }
 
 export function AlertPreview({ 
@@ -16,14 +22,62 @@ export function AlertPreview({
   onOpenChange, 
   animation, 
   duration, 
-  showMessage 
+  showMessage,
+  soundEnabled = true,
+  soundUrl = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3',
+  ttsEnabled = false,
+  ttsVoice = 'default',
+  ttsRate = 1,
+  ttsPitch = 1,
 }: AlertPreviewProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [key, setKey] = useState(0);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Load TTS voices
+  useEffect(() => {
+    const loadVoices = () => {
+      const availableVoices = speechSynthesis.getVoices();
+      setVoices(availableVoices);
+    };
+
+    loadVoices();
+    speechSynthesis.addEventListener('voiceschanged', loadVoices);
+    
+    return () => {
+      speechSynthesis.removeEventListener('voiceschanged', loadVoices);
+    };
+  }, []);
 
   const playAnimation = () => {
     setIsPlaying(true);
     setKey(k => k + 1);
+
+    // Play sound
+    if (soundEnabled && audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(() => {});
+    }
+
+    // Play TTS after a short delay
+    if (ttsEnabled && 'speechSynthesis' in window) {
+      setTimeout(() => {
+        speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance("Omar Ali tipped 500 taka. Love your content, keep going!");
+        
+        if (ttsVoice && ttsVoice !== 'default') {
+          const selectedVoice = voices.find(v => v.name === ttsVoice);
+          if (selectedVoice) utterance.voice = selectedVoice;
+        }
+        
+        utterance.rate = ttsRate;
+        utterance.pitch = ttsPitch;
+        
+        speechSynthesis.speak(utterance);
+      }, 500);
+    }
+
     setTimeout(() => setIsPlaying(false), duration * 1000);
   };
 
@@ -31,6 +85,9 @@ export function AlertPreview({
     if (open) {
       // Auto-play on open
       setTimeout(playAnimation, 300);
+    } else {
+      // Cancel TTS when closing
+      speechSynthesis.cancel();
     }
   }, [open]);
 
@@ -55,6 +112,9 @@ export function AlertPreview({
         <DialogHeader>
           <DialogTitle>Alert Preview</DialogTitle>
         </DialogHeader>
+
+        {/* Audio for preview */}
+        <audio ref={audioRef} src={soundUrl} preload="auto" />
 
         {/* Preview Container */}
         <div className="relative bg-[#1a1a2e] rounded-xl overflow-hidden h-64 flex items-center justify-center">
@@ -112,7 +172,7 @@ export function AlertPreview({
             <Play className="w-4 h-4" />
             Play Alert
           </Button>
-          <Button variant="outline" onClick={() => setKey(k => k + 1)} className="gap-2">
+          <Button variant="outline" onClick={() => { speechSynthesis.cancel(); setKey(k => k + 1); }} className="gap-2">
             <RotateCcw className="w-4 h-4" />
             Reset
           </Button>
@@ -120,6 +180,7 @@ export function AlertPreview({
 
         <p className="text-xs text-center text-muted-foreground">
           Duration: {duration}s • Animation: {animation}
+          {soundEnabled && " • Sound"}{ttsEnabled && " • TTS"}
         </p>
 
         {/* Animation Styles */}
