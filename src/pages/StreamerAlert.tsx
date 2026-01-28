@@ -93,13 +93,29 @@ export default function StreamerAlert() {
           filter: `creator_id=eq.${settings.profile_id}`,
         },
         (payload) => {
+          console.log('StreamerAlert: Realtime event received', payload);
           const tip = payload.new as any;
           
+          if (!tip) {
+             console.log('StreamerAlert: No tip data in payload');
+             return;
+          }
+
+          console.log('StreamerAlert: Tip status:', tip.payment_status, 'Amount:', tip.amount, 'Min:', settings.min_amount_for_alert);
+
           // Only show for completed payments
-          if (tip.payment_status !== 'completed') return;
+          if (tip.payment_status !== 'completed') {
+            console.log('StreamerAlert: Tip ignored (not completed)');
+            return;
+          }
           
           // Check minimum amount
-          if (tip.amount < settings.min_amount_for_alert) return;
+          if (tip.amount < settings.min_amount_for_alert) {
+             console.log('StreamerAlert: Tip ignored (below min amount)');
+             return;
+          }
+
+          console.log('StreamerAlert: Triggering alert!');
 
           // Show the alert
           showAlert({
@@ -111,7 +127,9 @@ export default function StreamerAlert() {
           });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('StreamerAlert: Subscription status:', status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
