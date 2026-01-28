@@ -822,6 +822,10 @@ export type Database = {
           profile_id: string
           show_message: boolean
           sound_enabled: boolean
+          tts_enabled: boolean
+          tts_pitch: number | null
+          tts_rate: number | null
+          tts_voice: string | null
           updated_at: string
         }
         Insert: {
@@ -837,6 +841,10 @@ export type Database = {
           profile_id: string
           show_message?: boolean
           sound_enabled?: boolean
+          tts_enabled?: boolean
+          tts_pitch?: number | null
+          tts_rate?: number | null
+          tts_voice?: string | null
           updated_at?: string
         }
         Update: {
@@ -852,6 +860,10 @@ export type Database = {
           profile_id?: string
           show_message?: boolean
           sound_enabled?: boolean
+          tts_enabled?: boolean
+          tts_pitch?: number | null
+          tts_rate?: number | null
+          tts_voice?: string | null
           updated_at?: string
         }
         Relationships: [
