@@ -437,15 +437,9 @@ serve(async (req) => {
       }
     };
 
-    // Execute background tasks using EdgeRuntime.waitUntil if available
+    // Execute background tasks without awaiting (fire-and-forget)
     // This allows the response to be returned immediately while tasks run in background
-    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
-      EdgeRuntime.waitUntil(processPostTipActions());
-    } else {
-      // Fallback for local dev or environments without EdgeRuntime
-      // Note: This might still delay response if runtime awaits open promises
-      processPostTipActions().catch(e => console.error("Background task error:", e));
-    }
+    processPostTipActions().catch(e => console.error("Background task error:", e));
 
     return new Response(
       JSON.stringify({ success: true, tip_id: tip.id }),

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useStreamerSettings } from "@/hooks/useStreamerSettings";
+import { useStreamerSettings, APPROVED_SOUNDS } from "@/hooks/useStreamerSettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,13 +26,19 @@ import {
   Upload,
   Trash,
   Mic,
-  Music
+  Music,
+  AlertTriangle,
+  Image,
+  Plus,
+  X
 } from "lucide-react";
 import { AlertPreview } from "@/components/AlertPreview";
 
 export function StreamerSettings() {
   const { 
     settings, 
+    tipSounds,
+    approvedGifs,
     loading, 
     saving,
     uploadingSound,
@@ -40,6 +46,9 @@ export function StreamerSettings() {
     disableStreamerMode, 
     updateSettings,
     regenerateToken,
+    toggleEmergencyMute,
+    addTipSound,
+    removeTipSound,
     uploadAlertSound,
     deleteAlertSound,
     getAlertUrl 
@@ -50,6 +59,12 @@ export function StreamerSettings() {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioPreviewRef = useRef<HTMLAudioElement>(null);
+  const [playingSoundUrl, setPlayingSoundUrl] = useState<string | null>(null);
+  
+  // State for adding new tip sound
+  const [newSoundAmount, setNewSoundAmount] = useState<number>(50);
+  const [newSoundSelection, setNewSoundSelection] = useState<string>('');
+  
   type AnimationType = 'slide' | 'bounce' | 'fade' | 'pop';
   
   const [localSettings, setLocalSettings] = useState<{
@@ -66,6 +81,11 @@ export function StreamerSettings() {
     tts_voice: string;
     tts_rate: number;
     tts_pitch: number;
+    sounds_paused: boolean;
+    gifs_paused: boolean;
+    gif_enabled: boolean;
+    gif_id: string | null;
+    gif_position: string;
   }>({
     alert_duration: settings?.alert_duration ?? 5,
     alert_animation: (settings?.alert_animation as AnimationType) ?? 'slide',
@@ -80,6 +100,11 @@ export function StreamerSettings() {
     tts_voice: settings?.tts_voice ?? 'default',
     tts_rate: settings?.tts_rate ?? 1.0,
     tts_pitch: settings?.tts_pitch ?? 1.0,
+    sounds_paused: settings?.sounds_paused ?? false,
+    gifs_paused: settings?.gifs_paused ?? false,
+    gif_enabled: settings?.gif_enabled ?? false,
+    gif_id: settings?.gif_id ?? null,
+    gif_position: settings?.gif_position ?? 'center',
   });
 
   // Load TTS voices
@@ -122,6 +147,11 @@ export function StreamerSettings() {
         tts_voice: settings.tts_voice ?? 'default',
         tts_rate: settings.tts_rate ?? 1.0,
         tts_pitch: settings.tts_pitch ?? 1.0,
+        sounds_paused: settings.sounds_paused ?? false,
+        gifs_paused: settings.gifs_paused ?? false,
+        gif_enabled: settings.gif_enabled ?? false,
+        gif_id: settings.gif_id ?? null,
+        gif_position: settings.gif_position ?? 'center',
       });
     }
   }, [settings]);
@@ -167,10 +197,13 @@ export function StreamerSettings() {
     }
   };
 
-  const playPreviewSound = () => {
+  const playPreviewSound = (url: string) => {
     if (audioPreviewRef.current) {
+      audioPreviewRef.current.src = url;
       audioPreviewRef.current.currentTime = 0;
+      setPlayingSoundUrl(url);
       audioPreviewRef.current.play().catch(() => {});
+      audioPreviewRef.current.onended = () => setPlayingSoundUrl(null);
     }
   };
 
@@ -198,10 +231,53 @@ export function StreamerSettings() {
     speechSynthesis.speak(utterance);
   };
 
+  const handleAddTipSound = async () => {
+    if (!newSoundSelection) {
+      toast({ title: "Select a sound", variant: "destructive" });
+      return;
+    }
+    const sound = APPROVED_SOUNDS.find(s => s.url === newSoundSelection);
+    if (!sound) return;
+    
+    await addTipSound(newSoundAmount, sound.url, sound.name, 10);
+    setNewSoundAmount(50);
+    setNewSoundSelection('');
+  };
+
   const defaultSoundUrl = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
+  const selectedGif = approvedGifs.find(g => g.id === localSettings.gif_id);
 
   return (
     <div className="space-y-6">
+      {/* Hidden audio element for previews */}
+      <audio ref={audioPreviewRef} preload="auto" />
+
+      {/* Emergency Controls - Always visible when enabled */}
+      {settings?.is_enabled && (
+        <div className={`tipkoro-card ${settings.emergency_mute ? 'border-destructive bg-destructive/10' : ''}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-xl ${settings.emergency_mute ? 'bg-destructive/20' : 'bg-amber-500/10'}`}>
+                <AlertTriangle className={`w-6 h-6 ${settings.emergency_mute ? 'text-destructive' : 'text-amber-500'}`} />
+              </div>
+              <div>
+                <h3 className="font-semibold">Emergency Mute</h3>
+                <p className="text-sm text-muted-foreground">
+                  {settings.emergency_mute ? 'All alerts are silenced!' : 'Instantly silence all alerts'}
+                </p>
+              </div>
+            </div>
+            <Button 
+              variant={settings.emergency_mute ? "destructive" : "outline"}
+              onClick={toggleEmergencyMute}
+              disabled={saving}
+            >
+              {settings.emergency_mute ? 'Unmute' : 'Mute All'}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Main Toggle Card */}
       <div className="tipkoro-card">
         <div className="flex items-start justify-between mb-6">
@@ -302,6 +378,165 @@ export function StreamerSettings() {
         )}
       </div>
 
+      {/* Amount-Based Sounds (Tip to Play) */}
+      {settings?.is_enabled && (
+        <div className="tipkoro-card">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-xl bg-purple-500/10">
+              <Coins className="w-5 h-5 text-purple-500" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold">Tip to Play Sounds</h3>
+              <p className="text-sm text-muted-foreground">Set specific sounds for different tip amounts</p>
+            </div>
+          </div>
+
+          {/* Existing Tip Sounds */}
+          {tipSounds.length > 0 && (
+            <div className="space-y-2 mb-4">
+              {tipSounds.map((sound) => (
+                <div key={sound.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <span className="font-medium">৳{sound.trigger_amount}+</span>
+                    <span className="text-muted-foreground">{sound.display_name}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => playPreviewSound(sound.sound_url)}
+                      disabled={playingSoundUrl === sound.sound_url}
+                    >
+                      <Play className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeTipSound(sound.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add New Tip Sound */}
+          <div className="p-4 bg-secondary/30 rounded-xl space-y-3">
+            <Label className="text-sm font-medium">Add Amount-Based Sound</Label>
+            <div className="flex gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">৳</span>
+                <Input
+                  type="number"
+                  value={newSoundAmount}
+                  onChange={(e) => setNewSoundAmount(Number(e.target.value))}
+                  className="w-24"
+                  min={1}
+                />
+              </div>
+              <Select value={newSoundSelection} onValueChange={setNewSoundSelection}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Select sound" />
+                </SelectTrigger>
+                <SelectContent>
+                  {APPROVED_SOUNDS.map((sound) => (
+                    <SelectItem key={sound.url} value={sound.url}>
+                      {sound.name} ({sound.duration}s)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {newSoundSelection && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => playPreviewSound(newSoundSelection)}
+                >
+                  <Play className="w-4 h-4" />
+                </Button>
+              )}
+              <Button onClick={handleAddTipSound} disabled={saving || !newSoundSelection}>
+                <Plus className="w-4 h-4 mr-1" /> Add
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Higher amounts take priority. 10 second cooldown prevents spam.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* GIF Settings */}
+      {settings?.is_enabled && (
+        <div className="tipkoro-card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-pink-500/10">
+                <Image className="w-5 h-5 text-pink-500" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">GIF Alerts</h3>
+                <p className="text-sm text-muted-foreground">Show animated GIFs with tips</p>
+              </div>
+            </div>
+            <Switch
+              checked={localSettings.gif_enabled}
+              onCheckedChange={(checked) => 
+                setLocalSettings(s => ({ ...s, gif_enabled: checked }))
+              }
+            />
+          </div>
+
+          {localSettings.gif_enabled && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-sm">Select GIF</Label>
+                <Select 
+                  value={localSettings.gif_id || ''} 
+                  onValueChange={(value) => setLocalSettings(s => ({ ...s, gif_id: value || null }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a GIF" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {approvedGifs.map((gif) => (
+                      <SelectItem key={gif.id} value={gif.id}>
+                        {gif.name} ({gif.category})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {selectedGif && (
+                <div className="flex items-center justify-center p-4 bg-secondary/50 rounded-xl">
+                  <img
+                    src={selectedGif.url}
+                    alt={selectedGif.name}
+                    className="w-20 h-20 object-contain"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              )}
+
+              <div className="flex items-center justify-between">
+                <Label className="text-sm text-muted-foreground">Pause GIFs</Label>
+                <Switch
+                  checked={localSettings.gifs_paused}
+                  onCheckedChange={(checked) => 
+                    setLocalSettings(s => ({ ...s, gifs_paused: checked }))
+                  }
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Settings Card - Only show when enabled */}
       {settings?.is_enabled && (
         <div className="tipkoro-card">
@@ -354,11 +589,11 @@ export function StreamerSettings() {
               />
             </div>
 
-            {/* Alert Media */}
+            {/* Alert Media (fallback) */}
             <div className="space-y-3">
               <Label className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-muted-foreground" />
-                Alert Media
+                Default Alert Media
               </Label>
               <Select
                 value={localSettings.alert_media_type}
@@ -371,7 +606,7 @@ export function StreamerSettings() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="emoji">Emoji</SelectItem>
-                  <SelectItem value="gif">GIF</SelectItem>
+                  <SelectItem value="gif">Custom GIF URL</SelectItem>
                   <SelectItem value="none">None</SelectItem>
                 </SelectContent>
               </Select>
@@ -384,9 +619,6 @@ export function StreamerSettings() {
                     onChange={(e) => setLocalSettings(s => ({ ...s, alert_emoji: e.target.value }))}
                     placeholder="🎉"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Tip: you can paste any emoji here.
-                  </p>
                 </div>
               )}
 
@@ -409,9 +641,6 @@ export function StreamerSettings() {
                       />
                     </div>
                   )}
-                  <p className="text-xs text-muted-foreground">
-                    Use an HTTPS URL for best compatibility with OBS.
-                  </p>
                 </div>
               )}
             </div>
@@ -470,27 +699,35 @@ export function StreamerSettings() {
                   }
                 />
               </div>
+
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-2 text-muted-foreground">
+                  <VolumeX className="w-4 h-4" />
+                  Pause Sounds
+                </Label>
+                <Switch
+                  checked={localSettings.sounds_paused}
+                  onCheckedChange={(checked) => 
+                    setLocalSettings(s => ({ ...s, sounds_paused: checked }))
+                  }
+                />
+              </div>
             </div>
 
             {/* Custom Sound Upload */}
             <div className="space-y-3 p-4 bg-secondary/30 rounded-xl">
               <Label className="flex items-center gap-2">
                 <Music className="w-4 h-4 text-muted-foreground" />
-                Custom Alert Sound
+                Default Alert Sound
               </Label>
               
               {settings?.alert_sound ? (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <audio 
-                      ref={audioPreviewRef}
-                      src={settings.alert_sound} 
-                      preload="auto"
-                    />
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      onClick={playPreviewSound}
+                      onClick={() => playPreviewSound(settings.alert_sound!)}
                       className="gap-2"
                     >
                       <Play className="w-4 h-4" />
@@ -514,15 +751,10 @@ export function StreamerSettings() {
               ) : (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <audio 
-                      ref={audioPreviewRef}
-                      src={defaultSoundUrl} 
-                      preload="auto"
-                    />
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      onClick={playPreviewSound}
+                      onClick={() => playPreviewSound(defaultSoundUrl)}
                       className="gap-2"
                     >
                       <Play className="w-4 h-4" />

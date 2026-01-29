@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Facebook, Instagram, Youtube, Twitter } from "lucide-react";
+
 
 export function MainFooter() {
   const location = useLocation();
@@ -24,20 +24,6 @@ export function MainFooter() {
             <p className="text-sm text-background/70 leading-relaxed">
               Support your favorite Bangladeshi creators with tips through bKash, Nagad & Rocket.
             </p>
-            <div className="flex gap-4">
-              <a href="#" className="text-background/70 hover:text-tipkoro-gold transition-colors">
-                <Facebook className="w-5 h-5" />
-              </a>
-              <a href="#" className="text-background/70 hover:text-tipkoro-gold transition-colors">
-                <Instagram className="w-5 h-5" />
-              </a>
-              <a href="#" className="text-background/70 hover:text-tipkoro-gold transition-colors">
-                <Youtube className="w-5 h-5" />
-              </a>
-              <a href="#" className="text-background/70 hover:text-tipkoro-gold transition-colors">
-                <Twitter className="w-5 h-5" />
-              </a>
-            </div>
           </div>
 
           {/* Product */}
@@ -59,12 +45,6 @@ export function MainFooter() {
               <Link to="/explore" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
                 Explore Creators
               </Link>
-              <button
-                onClick={() => scrollToSection("creators")}
-                className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors text-left"
-              >
-                For Creators
-              </button>
             </div>
           </div>
 
@@ -75,12 +55,6 @@ export function MainFooter() {
               <Link to="/about" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
                 About
               </Link>
-              <a href="#" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
-                Blog
-              </a>
-              <a href="#" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
-                Careers
-              </a>
               <Link to="/contact" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
                 Contact
               </Link>
@@ -91,18 +65,15 @@ export function MainFooter() {
           <div className="flex flex-col gap-4">
             <span className="font-bold text-background font-display">Resources</span>
             <div className="flex flex-col gap-2">
-              <a href="#" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
-                Help Center
-              </a>
-              <a href="#" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
+              <button
+                onClick={() => scrollToSection("faq")}
+                className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors text-left"
+              >
                 FAQs
-              </a>
-              <a href="#" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
-                Community
-              </a>
-              <Link to="https://status.tipkoro.com" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
+              </button>
+              <a href="https://status.tipkoro.com" target="_blank" rel="noopener noreferrer" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
                 Status
-              </Link>
+              </a>
             </div>
           </div>
 
@@ -119,9 +90,6 @@ export function MainFooter() {
               <Link to="/cookie-policy" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
                 Cookie Policy
               </Link>
-              <a href="#" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
-                Licenses
-              </a>
             </div>
           </div>
         </div>
