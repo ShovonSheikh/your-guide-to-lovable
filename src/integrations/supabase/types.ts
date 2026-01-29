@@ -115,6 +115,36 @@ export type Database = {
           },
         ]
       }
+      approved_gifs: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          duration_seconds: number | null
+          id: string
+          name: string
+          thumbnail_url: string | null
+          url: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          name: string
+          thumbnail_url?: string | null
+          url: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          name?: string
+          thumbnail_url?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
       billing_records: {
         Row: {
           amount: number
@@ -812,16 +842,25 @@ export type Database = {
         Row: {
           alert_animation: string
           alert_duration: number
+          alert_emoji: string | null
+          alert_gif_url: string | null
+          alert_media_type: string
           alert_sound: string | null
           alert_token: string | null
           created_at: string
           custom_css: string | null
+          emergency_mute: boolean | null
+          gif_enabled: boolean | null
+          gif_id: string | null
+          gif_position: string | null
+          gifs_paused: boolean | null
           id: string
           is_enabled: boolean
           min_amount_for_alert: number
           profile_id: string
           show_message: boolean
           sound_enabled: boolean
+          sounds_paused: boolean | null
           tts_enabled: boolean
           tts_pitch: number | null
           tts_rate: number | null
@@ -831,16 +870,25 @@ export type Database = {
         Insert: {
           alert_animation?: string
           alert_duration?: number
+          alert_emoji?: string | null
+          alert_gif_url?: string | null
+          alert_media_type?: string
           alert_sound?: string | null
           alert_token?: string | null
           created_at?: string
           custom_css?: string | null
+          emergency_mute?: boolean | null
+          gif_enabled?: boolean | null
+          gif_id?: string | null
+          gif_position?: string | null
+          gifs_paused?: boolean | null
           id?: string
           is_enabled?: boolean
           min_amount_for_alert?: number
           profile_id: string
           show_message?: boolean
           sound_enabled?: boolean
+          sounds_paused?: boolean | null
           tts_enabled?: boolean
           tts_pitch?: number | null
           tts_rate?: number | null
@@ -850,16 +898,25 @@ export type Database = {
         Update: {
           alert_animation?: string
           alert_duration?: number
+          alert_emoji?: string | null
+          alert_gif_url?: string | null
+          alert_media_type?: string
           alert_sound?: string | null
           alert_token?: string | null
           created_at?: string
           custom_css?: string | null
+          emergency_mute?: boolean | null
+          gif_enabled?: boolean | null
+          gif_id?: string | null
+          gif_position?: string | null
+          gifs_paused?: boolean | null
           id?: string
           is_enabled?: boolean
           min_amount_for_alert?: number
           profile_id?: string
           show_message?: boolean
           sound_enabled?: boolean
+          sounds_paused?: boolean | null
           tts_enabled?: boolean
           tts_pitch?: number | null
           tts_rate?: number | null
@@ -867,6 +924,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "streamer_settings_gif_id_fkey"
+            columns: ["gif_id"]
+            isOneToOne: false
+            referencedRelation: "approved_gifs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "streamer_settings_profile_id_fkey"
             columns: ["profile_id"]
@@ -878,6 +942,54 @@ export type Database = {
             foreignKeyName: "streamer_settings_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: true
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tip_sounds: {
+        Row: {
+          cooldown_seconds: number | null
+          created_at: string | null
+          display_name: string
+          id: string
+          is_enabled: boolean | null
+          profile_id: string
+          sound_url: string
+          trigger_amount: number
+        }
+        Insert: {
+          cooldown_seconds?: number | null
+          created_at?: string | null
+          display_name: string
+          id?: string
+          is_enabled?: boolean | null
+          profile_id: string
+          sound_url: string
+          trigger_amount: number
+        }
+        Update: {
+          cooldown_seconds?: number | null
+          created_at?: string | null
+          display_name?: string
+          id?: string
+          is_enabled?: boolean | null
+          profile_id?: string
+          sound_url?: string
+          trigger_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tip_sounds_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tip_sounds_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },

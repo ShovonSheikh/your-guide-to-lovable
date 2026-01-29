@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -8,6 +8,24 @@ interface TipData {
   amount: number;
   message: string | null;
   is_anonymous: boolean;
+}
+
+interface TipSound {
+  id: string;
+  trigger_amount: number;
+  sound_url: string;
+  display_name: string;
+  cooldown_seconds: number;
+  is_enabled: boolean;
+}
+
+interface ApprovedGif {
+  id: string;
+  name: string;
+  url: string;
+  thumbnail_url: string | null;
+  category: string | null;
+  duration_seconds: number;
 }
 
 interface StreamerSettings {
@@ -26,19 +44,49 @@ interface StreamerSettings {
   tts_voice: string;
   tts_rate: number;
   tts_pitch: number;
+  // New safety controls
+  emergency_mute: boolean;
+  sounds_paused: boolean;
+  gifs_paused: boolean;
+  // GIF settings
+  gif_enabled: boolean;
+  gif_id: string | null;
+  gif_position: string;
 }
+
+// Tier thresholds for smart combination logic
+const TIERS = [
+  { min: 500, name: 'epic', scale: 1.5, glow: true, border: true, tts: true },
+  { min: 200, name: 'hype', scale: 1.3, glow: true, border: true, tts: true },
+  { min: 100, name: 'medium', scale: 1.15, glow: true, border: false, tts: false },
+  { min: 50, name: 'small', scale: 1.0, glow: false, border: false, tts: false },
+  { min: 0, name: 'tiny', scale: 0.9, glow: false, border: false, tts: false },
+];
+
+const getTierForAmount = (amount: number) => {
+  return TIERS.find(t => amount >= t.min) || TIERS[TIERS.length - 1];
+};
 
 const DEFAULT_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
 
 export default function StreamerAlert() {
   const { token } = useParams<{ token: string }>();
   const [settings, setSettings] = useState<StreamerSettings | null>(null);
+  const [tipSounds, setTipSounds] = useState<TipSound[]>([]);
+  const [approvedGif, setApprovedGif] = useState<ApprovedGif | null>(null);
   const [currentTip, setCurrentTip] = useState<TipData | null>(null);
+  const [currentTier, setCurrentTier] = useState<typeof TIERS[0] | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  
+  // Queue system refs
+  const alertQueue = useRef<TipData[]>([]);
+  const isProcessing = useRef(false);
+  
+  // Cooldown tracking for tip sounds
+  const soundCooldowns = useRef<Map<string, number>>(new Map());
 
   const isSpeechSupported = typeof window !== 'undefined' && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
   const isDebug = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug');
@@ -76,7 +124,7 @@ export default function StreamerAlert() {
     const fetchSettings = async () => {
       const { data, error } = await supabase
         .from('streamer_settings')
-        .select('profile_id, alert_duration, alert_animation, alert_sound, alert_media_type, alert_emoji, alert_gif_url, min_amount_for_alert, show_message, sound_enabled, custom_css, tts_enabled, tts_voice, tts_rate, tts_pitch')
+        .select('profile_id, alert_duration, alert_animation, alert_sound, alert_media_type, alert_emoji, alert_gif_url, min_amount_for_alert, show_message, sound_enabled, custom_css, tts_enabled, tts_voice, tts_rate, tts_pitch, emergency_mute, sounds_paused, gifs_paused, gif_enabled, gif_id, gif_position')
         .eq('alert_token', token)
         .eq('is_enabled', true)
         .single();
@@ -96,15 +144,163 @@ export default function StreamerAlert() {
         alert_media_type: ((data as any).alert_media_type ?? 'emoji') as any,
         alert_emoji: (data as any).alert_emoji ?? '🎉',
         alert_gif_url: (data as any).alert_gif_url ?? null,
+        emergency_mute: Boolean((data as any).emergency_mute),
+        sounds_paused: Boolean((data as any).sounds_paused),
+        gifs_paused: Boolean((data as any).gifs_paused),
+        gif_enabled: Boolean((data as any).gif_enabled),
+        gif_id: (data as any).gif_id ?? null,
+        gif_position: (data as any).gif_position ?? 'center',
       };
 
       setSettings(normalized);
+
+      // Fetch tip sounds for this creator
+      const { data: sounds } = await supabase
+        .from('tip_sounds')
+        .select('*')
+        .eq('profile_id', normalized.profile_id)
+        .eq('is_enabled', true)
+        .order('trigger_amount', { ascending: false });
+
+      if (sounds) {
+        setTipSounds(sounds as TipSound[]);
+      }
+
+      // Fetch approved GIF if gif_id is set
+      if (normalized.gif_id) {
+        const { data: gif } = await supabase
+          .from('approved_gifs')
+          .select('*')
+          .eq('id', normalized.gif_id)
+          .single();
+
+        if (gif) {
+          setApprovedGif(gif as ApprovedGif);
+        }
+      }
     };
 
     fetchSettings();
     const intervalId = setInterval(fetchSettings, 10_000);
     return () => clearInterval(intervalId);
   }, [token]);
+
+  const speakTip = useCallback((tip: TipData, tier: typeof TIERS[0]) => {
+    if (!settings?.tts_enabled) return;
+    // Check if TTS should play based on tier or explicit enable
+    if (!tier.tts && !settings.tts_enabled) return;
+    if (settings.emergency_mute) return;
+    if (!isSpeechSupported) {
+      if (isDebug) console.log('StreamerAlert: speechSynthesis not supported');
+      return;
+    }
+
+    try {
+      window.speechSynthesis.cancel();
+    } catch {
+      return;
+    }
+
+    const text = tip.message 
+      ? `${tip.supporter_name} tipped ${tip.amount} taka. ${tip.message}`
+      : `${tip.supporter_name} tipped ${tip.amount} taka.`;
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    // Set voice
+    if (settings.tts_voice && settings.tts_voice !== 'default') {
+      const selectedVoice = voices.find(v => v.name === settings.tts_voice);
+      if (selectedVoice) utterance.voice = selectedVoice;
+    }
+    
+    utterance.rate = settings.tts_rate || 1;
+    utterance.pitch = settings.tts_pitch || 1;
+    
+    try {
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      if (isDebug) console.log('StreamerAlert: speak failed', e);
+    }
+  }, [settings, voices, isSpeechSupported, isDebug]);
+
+  // Get the appropriate sound URL based on tip amount
+  const getSoundForAmount = useCallback((amount: number): string | null => {
+    // Find matching tip sound (first match since sorted by amount desc)
+    for (const sound of tipSounds) {
+      if (amount >= sound.trigger_amount) {
+        // Check cooldown
+        const lastPlayed = soundCooldowns.current.get(sound.id) || 0;
+        const now = Date.now();
+        if (now - lastPlayed < sound.cooldown_seconds * 1000) {
+          if (isDebug) console.log(`StreamerAlert: Sound ${sound.display_name} on cooldown`);
+          continue;
+        }
+        // Update cooldown
+        soundCooldowns.current.set(sound.id, now);
+        return sound.sound_url;
+      }
+    }
+    return null;
+  }, [tipSounds, isDebug]);
+
+  const showAlert = useCallback(async (tip: TipData) => {
+    const tier = getTierForAmount(tip.amount);
+    setCurrentTier(tier);
+    setCurrentTip(tip);
+    setIsVisible(true);
+
+    // Get sound URL (amount-based or custom or default)
+    const amountSound = getSoundForAmount(tip.amount);
+    const soundUrl = amountSound || settings?.alert_sound || DEFAULT_SOUND_URL;
+
+    // Play sound if not muted
+    if (settings?.sound_enabled && !settings?.sounds_paused && !settings?.emergency_mute && audioRef.current) {
+      audioRef.current.src = soundUrl;
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(() => {});
+    }
+
+    // Speak tip after a short delay (let sound play first)
+    if (settings?.tts_enabled && !settings?.emergency_mute) {
+      setTimeout(() => speakTip(tip, tier), 500);
+    }
+
+    // Wait for alert duration + exit animation
+    const duration = (settings?.alert_duration || 5) * 1000;
+    await new Promise<void>((resolve) => {
+      setTimeout(() => {
+        setIsVisible(false);
+        setTimeout(() => {
+          setCurrentTip(null);
+          setCurrentTier(null);
+          resolve();
+        }, 500); // Wait for exit animation
+      }, duration);
+    });
+  }, [settings, getSoundForAmount, speakTip]);
+
+  // Process alert queue
+  const processQueue = useCallback(async () => {
+    if (isProcessing.current || alertQueue.current.length === 0) return;
+    
+    isProcessing.current = true;
+    
+    while (alertQueue.current.length > 0) {
+      const tip = alertQueue.current.shift();
+      if (tip) {
+        await showAlert(tip);
+        // Small buffer between alerts
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+    
+    isProcessing.current = false;
+  }, [showAlert]);
+
+  const addToQueue = useCallback((tip: TipData) => {
+    alertQueue.current.push(tip);
+    processQueue();
+  }, [processQueue]);
 
   // Subscribe to real-time tips
   useEffect(() => {
@@ -148,10 +344,16 @@ export default function StreamerAlert() {
              return;
           }
 
-          if (isDebug) console.log('StreamerAlert: Triggering alert!');
+          // Check emergency mute
+          if (settings.emergency_mute) {
+            if (isDebug) console.log('StreamerAlert: Emergency mute active, skipping alert');
+            return;
+          }
 
-          // Show the alert
-          showAlert({
+          if (isDebug) console.log('StreamerAlert: Adding to queue!');
+
+          // Add to queue instead of showing directly
+          addToQueue({
             id: tip.id,
             supporter_name: tip.is_anonymous ? 'Anonymous' : tip.supporter_name,
             amount,
@@ -167,69 +369,7 @@ export default function StreamerAlert() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [settings]);
-
-  const speakTip = (tip: TipData) => {
-    if (!settings?.tts_enabled) return;
-    if (!isSpeechSupported) {
-      if (isDebug) console.log('StreamerAlert: speechSynthesis not supported');
-      return;
-    }
-
-    try {
-      window.speechSynthesis.cancel();
-    } catch {
-      return;
-    }
-
-    const text = tip.message 
-      ? `${tip.supporter_name} tipped ${tip.amount} taka. ${tip.message}`
-      : `${tip.supporter_name} tipped ${tip.amount} taka.`;
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    
-    // Set voice
-    if (settings.tts_voice && settings.tts_voice !== 'default') {
-      const selectedVoice = voices.find(v => v.name === settings.tts_voice);
-      if (selectedVoice) utterance.voice = selectedVoice;
-    }
-    
-    utterance.rate = settings.tts_rate || 1;
-    utterance.pitch = settings.tts_pitch || 1;
-    
-    try {
-      window.speechSynthesis.speak(utterance);
-    } catch (e) {
-      if (isDebug) console.log('StreamerAlert: speak failed', e);
-    }
-  };
-
-  const showAlert = (tip: TipData) => {
-    // Clear any existing timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    setCurrentTip(tip);
-    setIsVisible(true);
-
-    // Play sound
-    if (settings?.sound_enabled && audioRef.current) {
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(() => {});
-    }
-
-    // Speak tip after a short delay (let sound play first)
-    if (settings?.tts_enabled) {
-      setTimeout(() => speakTip(tip), 500);
-    }
-
-    // Hide after duration
-    timeoutRef.current = setTimeout(() => {
-      setIsVisible(false);
-      setTimeout(() => setCurrentTip(null), 500); // Wait for exit animation
-    }, (settings?.alert_duration || 5) * 1000);
-  };
+  }, [settings, addToQueue, isDebug]);
 
   const getAnimationClass = () => {
     if (!isVisible) return 'animate-fade-out-alert';
@@ -248,13 +388,41 @@ export default function StreamerAlert() {
     }
   };
 
-  // Get sound URL (custom or default)
-  const soundUrl = settings?.alert_sound || DEFAULT_SOUND_URL;
+  // Get tier-based CSS classes
+  const getTierClasses = () => {
+    if (!currentTier) return '';
+    const classes: string[] = [];
+    if (currentTier.glow) classes.push('shadow-glow');
+    if (currentTier.border) classes.push('ring-2 ring-yellow-400/50');
+    return classes.join(' ');
+  };
+
+  const getTierScale = () => {
+    return currentTier?.scale || 1;
+  };
 
   const getMediaNode = () => {
+    // If GIF is enabled and not paused, show approved GIF
+    if (settings?.gif_enabled && !settings?.gifs_paused && approvedGif) {
+      const tier = currentTier || TIERS[TIERS.length - 1];
+      const scale = tier.scale;
+      const size = 64 * scale;
+      
+      return (
+        <img
+          src={approvedGif.url}
+          alt={approvedGif.name}
+          className="object-contain mx-auto mb-2"
+          style={{ width: size, height: size }}
+          loading="eager"
+          referrerPolicy="no-referrer"
+        />
+      );
+    }
+
     const mediaType = settings?.alert_media_type ?? 'emoji';
     if (mediaType === 'none') return null;
-    if (mediaType === 'gif') {
+    if (mediaType === 'gif' && !settings?.gifs_paused) {
       const url = settings?.alert_gif_url;
       const isValid = typeof url === 'string' && /^https:\/\//i.test(url);
       if (!isValid) return <div className="text-4xl mb-2">🎉</div>;
@@ -291,15 +459,19 @@ export default function StreamerAlert() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-transparent overflow-hidden">
       {/* Audio for notification sound */}
-      <audio ref={audioRef} preload="auto" src={soundUrl} />
+      <audio ref={audioRef} preload="auto" />
 
       {/* Alert Container */}
       {currentTip && (
         <div 
           className={`${getAnimationClass()}`}
-          style={{ animationDuration: '0.5s', animationFillMode: 'forwards' }}
+          style={{ 
+            animationDuration: '0.5s', 
+            animationFillMode: 'forwards',
+            transform: `scale(${getTierScale()})`,
+          }}
         >
-          <div className="bg-gradient-to-br from-[#8B5CF6] to-[#6366F1] rounded-2xl p-6 text-white shadow-2xl min-w-[300px] max-w-[400px]">
+          <div className={`bg-gradient-to-br from-[#8B5CF6] to-[#6366F1] rounded-2xl p-6 text-white shadow-2xl min-w-[300px] max-w-[400px] ${getTierClasses()}`}>
             <div className="text-center">
               {getMediaNode()}
               <div className="text-lg font-bold mb-2 tracking-wide">NEW TIP!</div>
@@ -334,6 +506,10 @@ export default function StreamerAlert() {
       <style>{`
         body {
           background: transparent !important;
+        }
+        
+        .shadow-glow {
+          box-shadow: 0 0 30px rgba(251, 191, 36, 0.4), 0 0 60px rgba(251, 191, 36, 0.2);
         }
         
         @keyframes slide-in-alert {

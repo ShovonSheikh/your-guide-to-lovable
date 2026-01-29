@@ -23,14 +23,53 @@ export interface StreamerSettings {
   tts_voice: string;
   tts_rate: number;
   tts_pitch: number;
+  // Safety controls
+  emergency_mute: boolean;
+  sounds_paused: boolean;
+  gifs_paused: boolean;
+  // GIF settings
+  gif_enabled: boolean;
+  gif_id: string | null;
+  gif_position: string;
   created_at: string;
   updated_at: string;
 }
+
+export interface TipSound {
+  id: string;
+  profile_id: string;
+  trigger_amount: number;
+  sound_url: string;
+  display_name: string;
+  cooldown_seconds: number;
+  is_enabled: boolean;
+  created_at: string;
+}
+
+export interface ApprovedGif {
+  id: string;
+  name: string;
+  url: string;
+  thumbnail_url: string | null;
+  category: string | null;
+  duration_seconds: number;
+}
+
+// Pre-approved sound options (royalty-free)
+export const APPROVED_SOUNDS = [
+  { amount: 20, name: 'Pop', url: 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3', duration: 2 },
+  { amount: 50, name: 'Meme Horn', url: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3', duration: 3 },
+  { amount: 100, name: 'Dramatic', url: 'https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3', duration: 4 },
+  { amount: 200, name: 'Hype Crowd', url: 'https://assets.mixkit.co/active_storage/sfx/584/584-preview.mp3', duration: 4 },
+  { amount: 500, name: 'Epic Victory', url: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3', duration: 5 },
+];
 
 export function useStreamerSettings() {
   const supabase = useSupabaseWithAuth();
   const { profile } = useProfile();
   const [settings, setSettings] = useState<StreamerSettings | null>(null);
+  const [tipSounds, setTipSounds] = useState<TipSound[]>([]);
+  const [approvedGifs, setApprovedGifs] = useState<ApprovedGif[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingSound, setUploadingSound] = useState(false);
@@ -39,17 +78,32 @@ export function useStreamerSettings() {
     if (!profile?.id) return;
     
     setLoading(true);
-    const { data, error } = await supabase
-      .from('streamer_settings')
-      .select('*')
-      .eq('profile_id', profile.id)
-      .maybeSingle();
+    
+    // Fetch settings, tip sounds, and approved GIFs in parallel
+    const [settingsRes, soundsRes, gifsRes] = await Promise.all([
+      supabase
+        .from('streamer_settings')
+        .select('*')
+        .eq('profile_id', profile.id)
+        .maybeSingle(),
+      supabase
+        .from('tip_sounds')
+        .select('*')
+        .eq('profile_id', profile.id)
+        .order('trigger_amount', { ascending: false }),
+      supabase
+        .from('approved_gifs')
+        .select('*')
+        .order('name'),
+    ]);
 
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error fetching streamer settings:', error);
+    if (settingsRes.error && settingsRes.error.code !== 'PGRST116') {
+      console.error('Error fetching streamer settings:', settingsRes.error);
     }
     
-    setSettings(data as StreamerSettings | null);
+    setSettings(settingsRes.data as StreamerSettings | null);
+    setTipSounds((soundsRes.data || []) as TipSound[]);
+    setApprovedGifs((gifsRes.data || []) as ApprovedGif[]);
     setLoading(false);
   }, [profile?.id, supabase]);
 
@@ -83,6 +137,12 @@ export function useStreamerSettings() {
         tts_voice: 'default',
         tts_rate: 1.0,
         tts_pitch: 1.0,
+        emergency_mute: false,
+        sounds_paused: false,
+        gifs_paused: false,
+        gif_enabled: false,
+        gif_id: null,
+        gif_position: 'center',
       }, { onConflict: 'profile_id' })
       .select()
       .single();
@@ -191,6 +251,135 @@ export function useStreamerSettings() {
     toast({
       title: "Token Regenerated!",
       description: "Update your OBS browser source with the new URL"
+    });
+    setSaving(false);
+    return { data };
+  };
+
+  // Emergency mute toggle
+  const toggleEmergencyMute = async () => {
+    if (!profile?.id || !settings) return { error: 'No settings' };
+
+    const newValue = !settings.emergency_mute;
+    setSaving(true);
+    
+    const { data, error } = await supabase
+      .from('streamer_settings')
+      .update({ emergency_mute: newValue })
+      .eq('profile_id', profile.id)
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to toggle emergency mute",
+        variant: "destructive"
+      });
+      setSaving(false);
+      return { error: error.message };
+    }
+
+    setSettings(data as StreamerSettings);
+    toast({
+      title: newValue ? "Emergency Mute ON" : "Emergency Mute OFF",
+      description: newValue ? "All alerts are silenced" : "Alerts resumed",
+      variant: newValue ? "destructive" : "default"
+    });
+    setSaving(false);
+    return { data };
+  };
+
+  // Tip sound management
+  const addTipSound = async (triggerAmount: number, soundUrl: string, displayName: string, cooldownSeconds: number = 10) => {
+    if (!profile?.id) return { error: 'No profile' };
+
+    setSaving(true);
+    const { data, error } = await supabase
+      .from('tip_sounds')
+      .insert({
+        profile_id: profile.id,
+        trigger_amount: triggerAmount,
+        sound_url: soundUrl,
+        display_name: displayName,
+        cooldown_seconds: cooldownSeconds,
+        is_enabled: true,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add tip sound",
+        variant: "destructive"
+      });
+      setSaving(false);
+      return { error: error.message };
+    }
+
+    setTipSounds([...tipSounds, data as TipSound].sort((a, b) => b.trigger_amount - a.trigger_amount));
+    toast({
+      title: "Tip Sound Added!",
+      description: `৳${triggerAmount} will play "${displayName}"`
+    });
+    setSaving(false);
+    return { data };
+  };
+
+  const removeTipSound = async (soundId: string) => {
+    if (!profile?.id) return { error: 'No profile' };
+
+    setSaving(true);
+    const { error } = await supabase
+      .from('tip_sounds')
+      .delete()
+      .eq('id', soundId)
+      .eq('profile_id', profile.id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to remove tip sound",
+        variant: "destructive"
+      });
+      setSaving(false);
+      return { error: error.message };
+    }
+
+    setTipSounds(tipSounds.filter(s => s.id !== soundId));
+    toast({
+      title: "Tip Sound Removed"
+    });
+    setSaving(false);
+    return { success: true };
+  };
+
+  const updateTipSound = async (soundId: string, updates: Partial<TipSound>) => {
+    if (!profile?.id) return { error: 'No profile' };
+
+    setSaving(true);
+    const { data, error } = await supabase
+      .from('tip_sounds')
+      .update(updates)
+      .eq('id', soundId)
+      .eq('profile_id', profile.id)
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update tip sound",
+        variant: "destructive"
+      });
+      setSaving(false);
+      return { error: error.message };
+    }
+
+    setTipSounds(tipSounds.map(s => s.id === soundId ? (data as TipSound) : s));
+    toast({
+      title: "Tip Sound Updated!"
     });
     setSaving(false);
     return { data };
@@ -326,6 +515,8 @@ export function useStreamerSettings() {
 
   return {
     settings,
+    tipSounds,
+    approvedGifs,
     loading,
     saving,
     uploadingSound,
@@ -333,9 +524,14 @@ export function useStreamerSettings() {
     disableStreamerMode,
     updateSettings,
     regenerateToken,
+    toggleEmergencyMute,
+    addTipSound,
+    removeTipSound,
+    updateTipSound,
     uploadAlertSound,
     deleteAlertSound,
     getAlertUrl,
     refetch: fetchSettings,
+    APPROVED_SOUNDS,
   };
 }
