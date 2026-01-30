@@ -250,7 +250,7 @@ export default function AdminDashboard() {
           <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
             <div className="space-y-3 md:space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-xs md:text-sm text-muted-foreground">Creator Account Fee</span>
+                <span className="text-xs md:text-sm text-muted-foreground">Creator Fee</span>
                 <span className="font-medium text-sm md:text-base">৳150/month</span>
               </div>
               <div className="flex justify-between items-center">

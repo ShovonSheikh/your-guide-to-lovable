@@ -16,7 +16,9 @@ import {
   Menu,
   LogOut,
   Crown,
-  ImageIcon
+  ImageIcon,
+  Bell,
+  FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -42,6 +44,8 @@ const allNavItems = [
   { id: "mailbox", label: "Mailbox", icon: Mail, path: "/admin/mailbox" },
   { id: "share-image", label: "Share Image", icon: ImageIcon, path: "/admin/share-image" },
   { id: "email-templates", label: "Email Templates", icon: Mail, path: "/admin/email-templates" },
+  { id: "notices", label: "Notices", icon: Bell, path: "/admin/notices" },
+  { id: "pages", label: "Pages", icon: FileText, path: "/admin/pages" },
   { id: "settings", label: "Settings", icon: Settings, path: "/admin/settings" },
   { id: "admins", label: "Admins", icon: Crown, path: "/admin/admins" },
 ];

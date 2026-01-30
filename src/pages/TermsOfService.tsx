@@ -53,12 +53,28 @@ export default function TermsOfService() {
           <section>
             <h2 className="text-2xl font-semibold mb-4">4. Payments and Fees</h2>
             <p className="text-foreground/80 mb-4">
-              <strong>For Creators:</strong> A monthly fee of ৳150 is charged for creator accounts, 
-              automatically deducted from your tips. Withdrawals are processed within 3-5 business days.
+              <strong>For Creators:</strong> A fixed Creator Fee of ৳150/month is charged for creator accounts, 
+              automatically deducted from your tips. This is a flat rate — whether you earn ৳1,000 or ৳1,00,000, you pay the same ৳150.
+              Withdrawals are processed within 3-5 business days.
             </p>
             <p className="text-foreground/80">
               <strong>For Supporters:</strong> Using TipKoro to send tips is free. Standard payment 
               processing fees may apply depending on your payment method.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold mb-4">5. Pricing Commitment</h2>
+            <p className="text-foreground/80 mb-4">
+              TipKoro currently charges a fixed Creator Fee of ৳150/month. This is not a percentage of your earnings.
+            </p>
+            <p className="text-foreground/80 mb-4">
+              TipKoro reserves the right to transition to percentage-based pricing in the future. However, 
+              <strong> we commit that this percentage will never exceed 20% of your earnings</strong>.
+            </p>
+            <p className="text-foreground/80">
+              Any changes to our pricing structure will be communicated to creators at least 30 days in advance 
+              via email and dashboard notification.
             </p>
           </section>
 

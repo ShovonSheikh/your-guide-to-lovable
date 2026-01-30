@@ -338,12 +338,12 @@ export function Onboarding() {
 
               <div className="text-center">
                 <h2 className="text-2xl font-display font-bold mb-2">Activate Your Creator Account</h2>
-                <p className="text-muted-foreground">Pay the platform fee to get started</p>
+                <p className="text-muted-foreground">Pay the Creator Fee to get started</p>
               </div>
               
               <div className="bg-secondary/50 rounded-xl p-4 space-y-2">
                 <div className="flex justify-between font-semibold text-lg">
-                  <span>Platform Fee</span>
+                  <span>Creator Fee</span>
                   <span>৳{PLATFORM_FEE}</span>
                 </div>
                 <p className="text-xs text-muted-foreground">

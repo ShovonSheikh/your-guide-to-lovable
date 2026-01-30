@@ -12,6 +12,8 @@ export interface AdminPermissions {
   canManageMailbox: boolean;
   canManageSettings: boolean;
   canManageAdmins: boolean;
+  canManageNotices: boolean;
+  canManagePages: boolean;
   isSuperAdmin: boolean;
 }
 
@@ -25,6 +27,8 @@ const defaultPermissions: AdminPermissions = {
   canManageMailbox: false,
   canManageSettings: false,
   canManageAdmins: false,
+  canManageNotices: false,
+  canManagePages: false,
   isSuperAdmin: false,
 };
 
@@ -63,6 +67,8 @@ export function useAdminPermissions() {
             canManageMailbox: data.can_manage_mailbox,
             canManageSettings: data.can_manage_settings,
             canManageAdmins: data.can_manage_admins,
+            canManageNotices: data.can_manage_notices ?? false,
+            canManagePages: data.can_manage_pages ?? false,
             isSuperAdmin: data.can_manage_admins && 
                           data.can_manage_users && 
                           data.can_manage_creators && 
@@ -93,6 +99,8 @@ export function useAdminPermissions() {
               canManageMailbox: true,
               canManageSettings: true,
               canManageAdmins: true,
+              canManageNotices: true,
+              canManagePages: true,
               isSuperAdmin: true,
             });
           } else {
@@ -124,4 +132,6 @@ export const permissionMap: Record<string, keyof AdminPermissions> = {
   mailbox: 'canManageMailbox',
   settings: 'canManageSettings',
   admins: 'canManageAdmins',
+  notices: 'canManageNotices',
+  pages: 'canManagePages',
 };

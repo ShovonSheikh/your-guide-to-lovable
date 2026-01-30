@@ -13,7 +13,7 @@ interface SEOProps {
 
 const SEO = ({
   title = "TipKoro - Bangladesh's Ko-fi Alternative | Support Creators in your way",
-  description = "TipKoro is Bangladesh's Ko-fi alternative. Send tips to your favorite Bangladeshi creators. Free for supporters, only ৳150/month for creators.",
+  description = "TipKoro is Bangladesh's Ko-fi alternative. Send tips to your favorite Bangladeshi creators. Free for supporters, flat ৳150/month Creator Fee.",
   keywords = "TipKoro, support Bangladeshi creators, bKash tips, Nagad payments, Rocket tips, creator support Bangladesh, buy me a coffee Bangladesh, ko-fi alternative Bangladesh",
   image = "https://openpaste.vercel.app/i/d829d730",
   url = "https://tipkoro.com",

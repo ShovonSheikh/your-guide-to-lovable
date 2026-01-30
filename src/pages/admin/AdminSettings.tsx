@@ -86,14 +86,14 @@ export default function AdminSettings() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="monthlyFee">Creator Account Fee (৳)</Label>
+                <Label htmlFor="monthlyFee">Creator Fee (৳)</Label>
                 <Input 
                   id="monthlyFee" 
                   type="number" 
                   value={creatorFee}
                   onChange={(e) => setCreatorFee(Number(e.target.value))}
                 />
-                <p className="text-xs text-muted-foreground">Monthly fee for creator accounts</p>
+                <p className="text-xs text-muted-foreground">Monthly flat fee for creators</p>
               </div>
               <div className="space-y-2 opacity-50">
                 <Label>Tip Fee</Label>
