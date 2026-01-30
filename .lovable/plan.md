@@ -1,287 +1,436 @@
 
-# Advanced Streamer Alert System, Build Fix & Footer Cleanup
+# Implementation Plan: Pricing Update, Noticeboard, Auth Redirect, Fee Naming, Authenticity Page & Streamer Mode Cleanup
 
-## Part 1: Build Error Fix (Critical)
+## Overview
 
-The `EdgeRuntime` error in `create-tip/index.ts` needs fixing. In Supabase Edge Functions (Deno), `EdgeRuntime` is not a global - it was incorrectly assumed from Vercel's runtime.
+This plan addresses 6 requirements:
+1. Update pricing section with clearer messaging about fixed fee and future commitment
+2. Improve Streamer Mode settings page for clarity
+3. Add admin Noticeboard with CRUD and new RBAC permission
+4. Fix sign-in/sign-up redirect to dashboard
+5. Standardize fee naming across the site
+6. Add admin-editable Authenticity page with new RBAC permission
 
-**Fix**: Replace `EdgeRuntime.waitUntil` with a proper Deno approach - just fire the async function without awaiting it.
+---
 
-```typescript
-// Before (broken):
-if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
-  EdgeRuntime.waitUntil(processPostTipActions());
-}
+## 1. Update Pricing Section with Clear Fee Commitment
 
-// After (working):
-processPostTipActions().catch(e => console.error("Background task error:", e));
+### Current State
+- Pricing is mentioned in multiple places: Home.tsx, About.tsx, Finance.tsx, FAQSection.tsx, TermsOfService.tsx, SEO.tsx
+- Some places say "platform fee", others say "creator account fee", "monthly fee"
+- No mention of the 20% max percentage commitment
+
+### Changes Required
+
+**Files to modify:**
+- `src/pages/Home.tsx` - Update pricing section
+- `src/components/FAQSection.tsx` - Update FAQ answer
+- `src/pages/TermsOfService.tsx` - Add pricing commitment clause
+- `src/pages/Finance.tsx` - Update fee description
+
+**Pricing Section Enhancement (Home.tsx):**
+Add a new info box below the Creator pricing card explaining:
+- "The ৳150/month is a **fixed flat fee** - not a percentage"
+- "Whether you earn ৳1,000 or ৳1,00,000, you pay the same ৳150"
+- Small note: "TipKoro reserves the right to transition to percentage-based pricing in the future. However, we commit that this percentage will **never exceed 20%** of your earnings."
+
+**Terms of Service Update:**
+Add new section "11. Pricing Commitment":
+- Fixed fee guarantee at ৳150/month currently
+- Commitment to maximum 20% cap if percentage model is adopted
+- Advance notice of any pricing changes
+
+---
+
+## 2. Improve Streamer Mode Settings Page Clarity
+
+### Current Issues
+- Too many sections crammed together
+- Not clear what each setting does
+- Emergency controls mixed with regular settings
+
+### Changes Required
+
+**File: `src/components/StreamerSettings.tsx`**
+
+Reorganize into clear sections with better headings and explanations:
+
+1. **Quick Start Section** (when disabled)
+   - Clear 3-step guide with visual indicators
+   - "Enable Streamer Mode" as prominent CTA
+
+2. **Control Panel** (when enabled)
+   - Emergency Mute at the top (already good)
+   - Alert URL section with OBS setup guide link
+
+3. **Organized Settings Tabs:**
+   - **Basic** - Animation, duration, minimum amount
+   - **Sounds** - Enable/disable, tip-to-play sounds, TTS
+   - **Visuals** - GIFs, emoji, media type
+   - **Advanced** - Custom CSS
+
+4. **Better Labels:**
+   - Add tooltips/descriptions for complex settings
+   - Group related settings together
+   - Add visual separators
+
+---
+
+## 3. Add Admin Noticeboard with CRUD
+
+### Database Changes
+
+**New Table: `notices`**
+```sql
+CREATE TABLE public.notices (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'info', -- 'info', 'warning', 'success', 'error'
+  is_active BOOLEAN DEFAULT true,
+  show_on_home BOOLEAN DEFAULT false,
+  show_on_dashboard BOOLEAN DEFAULT false,
+  priority INTEGER DEFAULT 0, -- Higher = more important
+  starts_at TIMESTAMPTZ DEFAULT now(),
+  ends_at TIMESTAMPTZ, -- NULL = no expiry
+  created_by UUID REFERENCES profiles(id),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+**RLS Policies:**
+- Admins with `can_manage_notices` can CRUD
+- Public can SELECT where `is_active = true` and within date range
+
+**Admin Roles Table Update:**
+```sql
+ALTER TABLE public.admin_roles 
+ADD COLUMN can_manage_notices BOOLEAN NOT NULL DEFAULT false;
+```
+
+### Frontend Changes
+
+**New Files:**
+- `src/pages/admin/AdminNotices.tsx` - CRUD interface for notices
+- `src/components/NoticeBar.tsx` - Display component for notices
+- `src/hooks/useNotices.ts` - Hook to fetch active notices
+
+**Modified Files:**
+- `src/pages/admin/AdminLayout.tsx` - Add "Notices" nav item
+- `src/hooks/useAdminPermissions.ts` - Add `canManageNotices` permission
+- `src/pages/Home.tsx` - Display home page notices
+- `src/pages/Dashboard.tsx` - Display dashboard notices
+
+**Admin Interface Features:**
+- List all notices with status indicators
+- Create/Edit form with:
+  - Title, Content (rich text or markdown)
+  - Type selector (info/warning/success/error)
+  - Active toggle
+  - Show on Home/Dashboard toggles
+  - Priority field
+  - Date range (optional end date)
+- Delete confirmation
+
+---
+
+## 4. Fix Sign-in/Sign-up Redirect to Dashboard
+
+### Current State
+```tsx
+// main.tsx
+<ClerkProvider 
+  afterSignInUrl="/complete-profile"
+  afterSignUpUrl="/complete-profile"
+>
+```
+
+The issue: Users are always sent to `/complete-profile` which checks if onboarding is done and redirects. But this causes a flash/delay.
+
+### Solution
+
+Per Clerk documentation for React apps, use the `signInFallbackRedirectUrl` and `signUpFallbackRedirectUrl` props instead of `afterSignInUrl`/`afterSignUpUrl`:
+
+**Option 1: Keep current flow (recommended)**
+The current flow is actually correct:
+- `/complete-profile` checks onboarding status
+- If completed, redirects to `/dashboard`
+- If not completed, shows onboarding
+
+The issue might be that the redirect in `CompleteProfile.tsx` happens client-side after render.
+
+**Improvement: Use `signInForceRedirectUrl` and `signUpForceRedirectUrl`**
+
+```tsx
+// main.tsx
+<ClerkProvider 
+  publishableKey={clerkPublishableKey} 
+  afterSignOutUrl="/"
+  signInForceRedirectUrl="/complete-profile"
+  signUpForceRedirectUrl="/complete-profile"
+>
+```
+
+**Alternative: Use Clerk's routing detection**
+
+The `CompleteProfile` component already handles the logic correctly. The perceived issue might be loading state. Optimize the loading check:
+
+```tsx
+// CompleteProfile.tsx - Ensure faster redirect
+useEffect(() => {
+  if (profile && profile.onboarding_status === 'completed') {
+    window.location.replace('/dashboard'); // Force immediate redirect
+  }
+}, [profile]);
 ```
 
 ---
 
-## Part 2: What Was Done in Recent Commits (Streamer Mode)
+## 5. Standardize Fee Naming Across Site
 
-### Commit 1: Base Streamer Mode
-- Created `streamer_settings` table with core columns (is_enabled, alert_token, animation, duration)
-- Implemented `/alerts/:token` overlay page with Supabase Realtime
-- Added settings UI in the Settings page
+### Current Inconsistencies Found:
+| Location | Current Name |
+|----------|--------------|
+| Home.tsx | "Platform fee" |
+| Finance.tsx | "Creator Account Fee" |
+| FAQSection.tsx | "flat fee" |
+| AdminDashboard.tsx | "Creator Account Fee" |
+| AdminSettings.tsx | "Creator Account Fee" |
+| Onboarding.tsx | "Platform Fee" |
 
-### Commit 2: Custom Sound Upload
-- Created `alert-sounds` storage bucket
-- Added upload/delete functions in `useStreamerSettings.ts`
-- UI for uploading MP3/WAV/OGG files (max 5MB)
+### Standardized Name: **"Creator Fee"**
 
-### Commit 3: TTS Support + Explore Fix
-- Added `tts_enabled`, `tts_voice`, `tts_rate`, `tts_pitch` columns
-- Implemented Web Speech API in `StreamerAlert.tsx`
-- Fixed RLS policy for `public_profiles` view
+Short, clear, and consistent. Alternative: "TipKoro Fee"
+
+**Files to Update:**
+- `src/pages/Home.tsx` - Line 221
+- `src/pages/Finance.tsx` - Lines 143, 328, 414, 486-488
+- `src/components/FAQSection.tsx` - Line 16
+- `src/pages/admin/AdminDashboard.tsx` - Line 254
+- `src/pages/admin/AdminSettings.tsx` - Lines 89, 96
+- `src/components/Onboarding.tsx` - Lines 341, 346
+- `src/pages/TermsOfService.tsx` - Line 56
+- Any other occurrences
 
 ---
 
-## Part 3: Advanced Alert System Implementation
+## 6. Add Admin-Editable Authenticity Page
 
-### 3.1 Amount-Based Sounds (Tip to Play)
+### Database Changes
 
-**Database Changes:**
-Create a `tip_sounds` table for preset sounds that creators can configure:
-
+**New Table: `pages`** (for any future admin-editable pages)
 ```sql
-CREATE TABLE public.tip_sounds (
+CREATE TABLE public.pages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  trigger_amount NUMERIC NOT NULL, -- e.g., 20, 50, 100
-  sound_url TEXT NOT NULL,         -- from approved list
-  display_name TEXT NOT NULL,      -- "Funny Pop", "Hype Horn"
-  cooldown_seconds INTEGER DEFAULT 10,
-  is_enabled BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT now()
+  slug TEXT UNIQUE NOT NULL, -- 'authenticity', 'about', etc.
+  title TEXT NOT NULL,
+  content TEXT NOT NULL, -- Markdown content
+  meta_description TEXT,
+  is_published BOOLEAN DEFAULT true,
+  updated_by UUID REFERENCES profiles(id),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Index for quick lookups
-CREATE INDEX idx_tip_sounds_profile_amount ON tip_sounds(profile_id, trigger_amount);
-```
+-- Seed default authenticity page
+INSERT INTO pages (slug, title, content, meta_description) VALUES (
+  'authenticity',
+  'Our Commitment to Trust & Security',
+  '## Your Money is Safe
 
-**Approved Sounds List (Hardcoded in UI):**
-Pre-approved sounds from royalty-free sources:
-- ৳20 → "Pop" (2s) - Light notification sound
-- ৳50 → "Meme Horn" (3s) - MLG air horn clip
-- ৳100 → "Dramatic" (4s) - Orchestral hit
-- ৳200 → "Hype" (4s) - Crowd cheer
-- ৳500+ → "Epic" (5s) - Victory fanfare
+TipKoro is built on trust. Here''s how we protect your earnings:
 
-**Logic:**
-- When tip arrives, check `tip_sounds` for matching `trigger_amount`
-- If match found and cooldown not active, play the specific sound
-- Track last play time per sound to enforce cooldowns
-- Fallback to default alert sound if no match
+### Secure Payment Processing
+All transactions are processed through RupantorPay, a licensed payment gateway in Bangladesh.
 
-### 3.2 GIF Support (Controlled)
+### Quick Withdrawals
+Request withdrawals anytime. We process them within 3-5 business days.
 
-**Database Changes:**
-Add approved GIF presets (admin-curated):
+### Verified Creators
+We verify creator identities to prevent fraud and protect supporters.
 
-```sql
-CREATE TABLE public.approved_gifs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  url TEXT NOT NULL,
-  thumbnail_url TEXT,
-  category TEXT, -- 'celebration', 'hype', 'funny'
-  duration_seconds INTEGER DEFAULT 3,
-  created_at TIMESTAMPTZ DEFAULT now()
+### Data Protection
+Your personal information is encrypted and never sold to third parties.
+
+### Contact Us
+Questions about security? Email us at security@tipkoro.com',
+  'Learn about TipKoro''s commitment to security, trust, and protecting creator earnings in Bangladesh.'
 );
-
--- Seed with safe GIFs from Giphy CDN
-INSERT INTO approved_gifs (name, url, category, duration_seconds) VALUES
-  ('Party', 'https://media.giphy.com/...', 'celebration', 3),
-  ('Confetti', 'https://media.giphy.com/...', 'celebration', 4),
-  ('Money Rain', 'https://media.giphy.com/...', 'hype', 5);
 ```
 
-**Streamer Settings Extension:**
-Add columns to `streamer_settings`:
+**RLS Policies:**
+- Public can SELECT where `is_published = true`
+- Admins with `can_manage_pages` can CRUD
+
+**Admin Roles Table Update:**
 ```sql
-ALTER TABLE streamer_settings ADD COLUMN gif_enabled BOOLEAN DEFAULT false;
-ALTER TABLE streamer_settings ADD COLUMN gif_position TEXT DEFAULT 'center'; -- 'center', 'top-left', 'top-right'
-ALTER TABLE streamer_settings ADD COLUMN gif_scale NUMERIC DEFAULT 1.0; -- 1.0 = normal, 1.5 = larger for big tips
+ALTER TABLE public.admin_roles 
+ADD COLUMN can_manage_pages BOOLEAN NOT NULL DEFAULT false;
 ```
 
-**Logic:**
-- Creator selects GIF from approved list (dropdown in settings)
-- Position: center (default), corner options for smaller tips
-- Bigger tips → scale up GIF slightly (e.g., 1.2x for ৳100+, 1.5x for ৳500+)
-- Duration respects the GIF's preset (3-5 seconds max)
+### Frontend Changes
 
-### 3.3 Smart Combination Logic
+**New Files:**
+- `src/pages/Authenticity.tsx` - Public page rendering markdown content
+- `src/pages/admin/AdminPages.tsx` - CRUD interface for pages
+- `src/hooks/usePages.ts` - Hook to fetch page content
 
-Create tiers that combine sound + GIF + TTS intelligently:
+**Modified Files:**
+- `src/App.tsx` - Add `/authenticity` route
+- `src/pages/admin/AdminLayout.tsx` - Add "Pages" nav item
+- `src/hooks/useAdminPermissions.ts` - Add `canManagePages` permission
+- `src/components/MainFooter.tsx` - Add link to Authenticity page
 
-| Tip Amount | Sound | GIF | TTS | Visual Effect |
-|------------|-------|-----|-----|---------------|
-| ৳1-49      | Default beep | Small emoji | No | Standard |
-| ৳50-99     | Custom sound | Small GIF | No | Standard |
-| ৳100-199   | Custom sound | Medium GIF | Optional | Slight glow |
-| ৳200-499   | Hype sound | Large GIF | Yes | Glow + border |
-| ৳500+      | Epic sound | XL GIF | Yes | Full effects |
-
-**Implementation:**
-- Add `getTierForAmount(amount)` function in `StreamerAlert.tsx`
-- Apply CSS classes based on tier (glow, scale, border)
-- Queue logic to prevent overlapping alerts
-
-### 3.4 Alert Queue System
-
-**Implementation in StreamerAlert.tsx:**
-```typescript
-const alertQueue = useRef<TipData[]>([]);
-const isProcessing = useRef(false);
-
-const addToQueue = (tip: TipData) => {
-  alertQueue.current.push(tip);
-  processQueue();
-};
-
-const processQueue = async () => {
-  if (isProcessing.current || alertQueue.current.length === 0) return;
-  isProcessing.current = true;
-  
-  const tip = alertQueue.current.shift();
-  await showAlert(tip);
-  
-  // Wait for alert duration + 500ms buffer
-  await new Promise(r => setTimeout(r, (settings.alert_duration * 1000) + 500));
-  
-  isProcessing.current = false;
-  processQueue(); // Process next in queue
-};
-```
-
-### 3.5 Safety Controls
-
-**Database:**
-Add emergency controls to `streamer_settings`:
-```sql
-ALTER TABLE streamer_settings ADD COLUMN emergency_mute BOOLEAN DEFAULT false;
-ALTER TABLE streamer_settings ADD COLUMN sounds_paused BOOLEAN DEFAULT false;
-ALTER TABLE streamer_settings ADD COLUMN gifs_paused BOOLEAN DEFAULT false;
-```
-
-**UI Controls:**
-- "Emergency Mute All" button (red, prominent)
-- Individual toggles for sounds/GIFs/TTS
-- All controls save instantly
-
-### 3.6 Tip Page Preview (UX)
-
-On the creator's tip page (CreatorProfile.tsx), show what happens at each amount:
-
-```text
-Tip ৳50 → Plays "Funny Pop" 🔊
-Tip ৳100 → Plays "Hype Horn" + Shows GIF 🎬
-Tip ৳500 → Plays "Epic" + GIF + TTS 🎤
-```
-
-Small preview button next to each (plays 1 second of sound, muted GIF).
-
----
-
-## Part 4: Footer Cleanup
-
-**Remove (non-existent):**
-- Product → "For Creators" (covered by home page section)
-- Company → "Blog", "Careers"
-- Resources → "Help Center", "Community"
-- Legal → "Licenses"
-- Social icons (no accounts yet)
-
-**Keep:**
-- Product → How it Works, Pricing, Explore Creators
-- Company → About, Contact
-- Resources → FAQs (link to home FAQ section), Status
-- Legal → Terms, Privacy, Cookie Policy
-- Payment methods badges
-
----
-
-## Part 5: Trust & Backers Advice (Non-Technical)
-
-### Building Trust for Your Platform
-
-**1. Display Trust Signals:**
-- Add "Secured by..." badges (payment gateway logos)
-- Show total tips processed counter on homepage
-- Add testimonials from early creators
-- Display "Powered by Supabase" infrastructure badge
-
-**2. Legal Entity:**
-- Register as a business (Trade License in Bangladesh)
-- Display registration number in footer
-- Create a dedicated "Security" or "Trust" page explaining:
-  - How payments are processed (through RupantorPay)
-  - How funds are held and transferred
-  - What happens if something goes wrong
-
-**3. Creator Verification:**
-- Your existing verification system helps
-- Display "Verified Creator" badges prominently
-- Consider adding social proof (linked YouTube/Facebook)
-
-### Finding Backers/Investors
-
-**At your age (18.5), focus on:**
-
-1. **Local Startup Programs:**
-   - Grameenphone Accelerator (GP Accelerator)
-   - Startup Bangladesh (government initiative)
-   - Biniyog Briddhi (angel investor network)
-   - BASIS (software association) startup programs
-
-2. **Online Platforms:**
-   - AngelList (create a profile)
-   - LinkedIn (connect with BD tech investors)
-   - ProductHunt (for visibility)
-
-3. **Build Traction First:**
-   - Get 10-20 active creators using the platform
-   - Track metrics (tips processed, creator growth)
-   - This data speaks louder than pitches
-
-4. **Document Everything:**
-   - Create a pitch deck (Canva has templates)
-   - Record a demo video
-   - Write your story (young founder solving local problem)
-
-**Key Message for Investors:**
-"TipKoro solves the payment barrier that blocks Bangladeshi creators from international platforms like Ko-fi and Patreon by using local payment methods."
+**Admin Interface:**
+- List all editable pages
+- Edit page with:
+  - Title
+  - Content (Markdown editor or textarea)
+  - Meta description for SEO
+  - Published toggle
+- Preview functionality
 
 ---
 
 ## Implementation Order
 
-| Priority | Task | Complexity |
-|----------|------|------------|
-| 1 | Fix EdgeRuntime build error | 5 min |
-| 2 | Footer cleanup | 10 min |
-| 3 | Amount-based sounds (tip_sounds table) | 30 min |
-| 4 | Alert queue system | 20 min |
-| 5 | Safety controls | 15 min |
-| 6 | GIF support with presets | 30 min |
-| 7 | Smart tier combination | 20 min |
-| 8 | Tip page preview | 15 min |
-
-Total estimated time: ~2.5 hours
+| Priority | Task | Complexity | Files |
+|----------|------|------------|-------|
+| 1 | Fix auth redirect | Low | main.tsx |
+| 2 | Standardize fee naming | Low | 8+ files |
+| 3 | Update pricing section | Medium | Home.tsx, FAQSection.tsx, TermsOfService.tsx |
+| 4 | Add Noticeboard | High | New DB table, 3 new files, 4 modified |
+| 5 | Add Authenticity page | High | New DB table, 3 new files, 4 modified |
+| 6 | Improve Streamer Settings | Medium | StreamerSettings.tsx |
 
 ---
 
-## Files to Create/Modify
+## Summary of Database Migrations
 
-**New Files:**
-- Migration: `supabase/migrations/[timestamp]_advanced_alerts.sql`
+```sql
+-- Migration: Add notices and pages tables with RBAC
 
-**Modified Files:**
-- `supabase/functions/create-tip/index.ts` - Remove EdgeRuntime
-- `src/components/MainFooter.tsx` - Remove dead links
-- `src/pages/StreamerAlert.tsx` - Queue, tiers, GIF support
-- `src/components/StreamerSettings.tsx` - Amount-based sound config, emergency controls
-- `src/hooks/useStreamerSettings.ts` - New state management
-- `src/pages/CreatorProfile.tsx` - Tip preview hints
+-- 1. Notices table
+CREATE TABLE public.notices (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'info',
+  is_active BOOLEAN DEFAULT true,
+  show_on_home BOOLEAN DEFAULT false,
+  show_on_dashboard BOOLEAN DEFAULT false,
+  priority INTEGER DEFAULT 0,
+  starts_at TIMESTAMPTZ DEFAULT now(),
+  ends_at TIMESTAMPTZ,
+  created_by UUID REFERENCES profiles(id),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 2. Pages table
+CREATE TABLE public.pages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug TEXT UNIQUE NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  meta_description TEXT,
+  is_published BOOLEAN DEFAULT true,
+  updated_by UUID REFERENCES profiles(id),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 3. Add new permissions
+ALTER TABLE public.admin_roles 
+ADD COLUMN can_manage_notices BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN can_manage_pages BOOLEAN NOT NULL DEFAULT false;
+
+-- 4. RLS for notices
+ALTER TABLE public.notices ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public can view active notices"
+ON public.notices FOR SELECT
+USING (
+  is_active = true 
+  AND starts_at <= now() 
+  AND (ends_at IS NULL OR ends_at > now())
+);
+
+CREATE POLICY "Admins can manage notices"
+ON public.notices FOR ALL
+USING (is_admin());
+
+-- 5. RLS for pages
+ALTER TABLE public.pages ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public can view published pages"
+ON public.pages FOR SELECT
+USING (is_published = true);
+
+CREATE POLICY "Admins can manage pages"
+ON public.pages FOR ALL
+USING (is_admin());
+
+-- 6. Seed default authenticity page
+INSERT INTO public.pages (slug, title, content, meta_description) VALUES (
+  'authenticity',
+  'Our Commitment to Trust & Security',
+  '## Your Money is Safe with TipKoro
+
+TipKoro is built on a foundation of trust. As a creator, your earnings are our top priority. Here is how we ensure your money stays safe:
+
+### Secure Payment Processing
+All transactions are processed through **RupantorPay**, a licensed and regulated payment gateway in Bangladesh. Every payment is encrypted end-to-end.
+
+### Quick & Reliable Withdrawals
+Request a withdrawal anytime through your dashboard. We process all withdrawal requests within **3-5 business days** to your bKash, Nagad, or Rocket wallet.
+
+### Verified Creator Program
+We verify creator identities through our verification system. This protects both creators and supporters from fraud.
+
+### Data Protection
+Your personal information is encrypted and stored securely. We **never sell** your data to third parties.
+
+### 2-Factor Withdrawal Security
+Withdrawals require both your secret PIN and a one-time verification code sent to your email. This ensures only you can access your funds.
+
+### Transparent Pricing
+We charge a simple, fixed **Creator Fee** - currently ৳150/month. No hidden fees, no surprise deductions.
+
+---
+
+Have questions about security? Contact us at **security@tipkoro.com**',
+  'Learn about TipKoro commitment to security, trust, and protecting creator earnings in Bangladesh.'
+);
+```
+
+---
+
+## Files Summary
+
+**New Files to Create:**
+1. `src/pages/admin/AdminNotices.tsx`
+2. `src/pages/admin/AdminPages.tsx`
+3. `src/pages/Authenticity.tsx`
+4. `src/components/NoticeBar.tsx`
+5. `src/hooks/useNotices.ts`
+6. `src/hooks/usePages.ts`
+
+**Files to Modify:**
+1. `src/main.tsx` - Auth redirect props
+2. `src/App.tsx` - Add routes
+3. `src/pages/Home.tsx` - Pricing update, notice display
+4. `src/pages/Dashboard.tsx` - Notice display
+5. `src/pages/Finance.tsx` - Fee naming
+6. `src/pages/TermsOfService.tsx` - Pricing commitment section
+7. `src/components/FAQSection.tsx` - Fee naming
+8. `src/components/MainFooter.tsx` - Authenticity link
+9. `src/components/Onboarding.tsx` - Fee naming
+10. `src/components/StreamerSettings.tsx` - UX improvements
+11. `src/pages/admin/AdminLayout.tsx` - New nav items
+12. `src/pages/admin/AdminSettings.tsx` - Fee naming
+13. `src/pages/admin/AdminDashboard.tsx` - Fee naming
+14. `src/pages/admin/AdminAdmins.tsx` - New permission checkboxes
+15. `src/hooks/useAdminPermissions.ts` - New permissions
+16. `src/components/SEO.tsx` - Fee naming in default description
