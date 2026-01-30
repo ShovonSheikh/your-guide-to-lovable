@@ -23,6 +23,7 @@ import CompleteProfile from "./pages/CompleteProfile";
 import DonationImage from "./pages/DonationImage";
 import Embed from "./pages/Embed";
 import StreamerAlert from "./pages/StreamerAlert";
+import Authenticity from "./pages/Authenticity";
 // Payment pages - separate flows for creator fee and tips
 import CreatorPaymentSuccess from "./pages/payments/CreatorPaymentSuccess";
 import CreatorPaymentFailed from "./pages/payments/CreatorPaymentFailed";
@@ -43,6 +44,8 @@ import AdminShareImage from "./pages/admin/AdminShareImage";
 import AdminEmailTemplates from "./pages/admin/AdminEmailTemplates";
 import AdminTipDetail from "./pages/admin/AdminTipDetail";
 import AdminWithdrawalDetail from "./pages/admin/AdminWithdrawalDetail";
+import AdminNotices from "./pages/admin/AdminNotices";
+import AdminPages from "./pages/admin/AdminPages";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +77,7 @@ const App = () => (
             <Route path="/contact" element={<Contact />} />
             <Route path="/status" element={<Status />} />
             <Route path="/cookie-policy" element={<CookiePolicy />} />
+            <Route path="/authenticity" element={<Authenticity />} />
             {/* Admin routes */}
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
@@ -89,6 +93,8 @@ const App = () => (
               <Route path="email-templates" element={<AdminEmailTemplates />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="admins" element={<AdminAdmins />} />
+              <Route path="notices" element={<AdminNotices />} />
+              <Route path="pages" element={<AdminPages />} />
             </Route>
             <Route path="/embed/:username" element={<Embed />} />
             <Route path="/alerts/:token" element={<StreamerAlert />} />

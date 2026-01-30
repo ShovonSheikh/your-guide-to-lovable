@@ -218,7 +218,7 @@ function Index() {
                       <span className="font-medium">1,000৳</span>
                     </div>
                     <div className="flex justify-between text-destructive">
-                      <span>Platform fee</span>
+                      <span>Creator Fee</span>
                       <span>-150৳</span>
                     </div>
                     <div className="flex justify-between font-bold text-tipkoro-dark pt-2 border-t border-border/50">

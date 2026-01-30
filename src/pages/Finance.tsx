@@ -139,8 +139,8 @@ export default function Finance() {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Creator Account Fee is ৳150/month
-  const creatorAccountFee = 150;
+  // Creator Fee is ৳150/month
+  const creatorFee = 150;
   const totalReceived = stats?.totalReceived || profile?.total_received || 0;
   
   // Calculate pending/processing withdrawals total - prevents multiple withdrawal requests
@@ -149,7 +149,7 @@ export default function Finance() {
     .reduce((sum, w) => sum + w.amount, 0);
   
   // Available balance = Total - Fee - Pending Withdrawals
-  const availableBalance = Math.max(0, totalReceived - creatorAccountFee - pendingWithdrawalsTotal);
+  const availableBalance = Math.max(0, totalReceived - creatorFee - pendingWithdrawalsTotal);
   const canWithdraw = availableBalance > 0;
 
   const initiateWithdraw = () => {
@@ -325,7 +325,7 @@ export default function Finance() {
               <span className="text-sm text-muted-foreground">Available</span>
             </div>
             <p className="text-2xl font-display font-bold">৳{availableBalance}</p>
-            <p className="text-xs text-muted-foreground mt-1">After ৳{creatorAccountFee} Creator Account Fee</p>
+            <p className="text-xs text-muted-foreground mt-1">After ৳{creatorFee} Creator Fee</p>
           </div>
           
           <div className="tipkoro-card">
@@ -411,7 +411,7 @@ export default function Finance() {
                 <Wallet className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
                 <p className="text-muted-foreground">No balance available for withdrawal</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  You need to receive at least ৳{creatorAccountFee} in tips to cover the Creator Account Fee.
+                  You need to receive at least ৳{creatorFee} in tips to cover the Creator Fee.
                 </p>
               </div>
             )}
@@ -483,9 +483,9 @@ export default function Finance() {
               <AlertCircle className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold mb-1">Creator Account Fee</h3>
+              <h3 className="font-semibold mb-1">Creator Fee</h3>
               <p className="text-sm text-muted-foreground">
-                A ৳{creatorAccountFee}/month Creator Account Fee is automatically deducted from your earnings. 
+                A ৳{creatorFee}/month Creator Fee is automatically deducted from your earnings. 
                 This covers payment processing, hosting, and platform maintenance.
               </p>
             </div>

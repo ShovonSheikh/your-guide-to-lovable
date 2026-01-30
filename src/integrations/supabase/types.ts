@@ -64,6 +64,8 @@ export type Database = {
           can_manage_admins: boolean
           can_manage_creators: boolean
           can_manage_mailbox: boolean
+          can_manage_notices: boolean
+          can_manage_pages: boolean
           can_manage_settings: boolean
           can_manage_users: boolean
           can_manage_verifications: boolean
@@ -79,6 +81,8 @@ export type Database = {
           can_manage_admins?: boolean
           can_manage_creators?: boolean
           can_manage_mailbox?: boolean
+          can_manage_notices?: boolean
+          can_manage_pages?: boolean
           can_manage_settings?: boolean
           can_manage_users?: boolean
           can_manage_verifications?: boolean
@@ -94,6 +98,8 @@ export type Database = {
           can_manage_admins?: boolean
           can_manage_creators?: boolean
           can_manage_mailbox?: boolean
+          can_manage_notices?: boolean
+          can_manage_pages?: boolean
           can_manage_settings?: boolean
           can_manage_users?: boolean
           can_manage_verifications?: boolean
@@ -547,6 +553,69 @@ export type Database = {
         }
         Relationships: []
       }
+      notices: {
+        Row: {
+          content: string
+          created_at: string | null
+          created_by: string | null
+          ends_at: string | null
+          id: string
+          is_active: boolean | null
+          priority: number | null
+          show_on_dashboard: boolean | null
+          show_on_home: boolean | null
+          starts_at: string | null
+          title: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          priority?: number | null
+          show_on_dashboard?: boolean | null
+          show_on_home?: boolean | null
+          starts_at?: string | null
+          title: string
+          type?: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          priority?: number | null
+          show_on_dashboard?: boolean | null
+          show_on_home?: boolean | null
+          starts_at?: string | null
+          title?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notices_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notices_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_settings: {
         Row: {
           created_at: string | null
@@ -634,6 +703,57 @@ export type Database = {
           {
             foreignKeyName: "notifications_profile_id_fkey"
             columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          is_published: boolean | null
+          meta_description: string | null
+          slug: string
+          title: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          is_published?: boolean | null
+          meta_description?: string | null
+          slug: string
+          title: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_published?: boolean | null
+          meta_description?: string | null
+          slug?: string
+          title?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pages_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pages_updated_by_fkey"
+            columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["id"]

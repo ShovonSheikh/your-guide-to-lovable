@@ -13,7 +13,7 @@ const faqs = [
   },
   {
     question: "How much does TipKoro cost?",
-    answer: "For supporters, TipKoro is completely free to use. For creators, we charge a flat fee of ৳150/month which is automatically deducted from your tips. There are no hidden fees or percentage cuts from your tips."
+    answer: "For supporters, TipKoro is completely free to use. For creators, we charge a fixed Creator Fee of ৳150/month — this is a flat rate, not a percentage. Whether you earn ৳1,000 or ৳1,00,000, you pay the same ৳150. This is automatically deducted from your tips. TipKoro may transition to percentage-based pricing in the future, but we commit that it will never exceed 20% of your earnings."
   },
   {
     question: "What payment methods are supported?",
