@@ -311,13 +311,13 @@ export function StreamerSettings() {
         const detected = tipGifDurationSeconds === '' ? await detectGifDuration(parsed.toString()) : null;
         const durationSeconds =
           tipGifDurationSeconds === ''
-            ? ((detected as any)?.data?.ceilSeconds ?? null)
+            ? ((detected as any)?.data?.seconds ?? null)
             : tipGifDurationSeconds;
 
         if (tipGifDurationSeconds === '' && (detected as any)?.error) {
           toast({ title: "Couldn't detect GIF duration", description: (detected as any).error, variant: "destructive" });
-        } else if (tipGifDurationSeconds === '' && (detected as any)?.data?.ceilSeconds) {
-          setTipGifDurationSeconds((detected as any).data.ceilSeconds);
+        } else if (tipGifDurationSeconds === '' && (detected as any)?.data?.seconds) {
+          setTipGifDurationSeconds(Number((detected as any).data.seconds.toFixed(2)));
         }
 
         return {
@@ -344,13 +344,13 @@ export function StreamerSettings() {
       const detected = tipGifDurationSeconds === '' ? await detectGifDuration(publicUrl) : null;
       const durationSeconds =
         tipGifDurationSeconds === ''
-          ? ((detected as any)?.data?.ceilSeconds ?? null)
+          ? ((detected as any)?.data?.seconds ?? null)
           : tipGifDurationSeconds;
 
       if (tipGifDurationSeconds === '' && (detected as any)?.error) {
         toast({ title: "Couldn't detect GIF duration", description: (detected as any).error, variant: "destructive" });
-      } else if (tipGifDurationSeconds === '' && (detected as any)?.data?.ceilSeconds) {
-        setTipGifDurationSeconds((detected as any).data.ceilSeconds);
+      } else if (tipGifDurationSeconds === '' && (detected as any)?.data?.seconds) {
+        setTipGifDurationSeconds(Number((detected as any).data.seconds.toFixed(2)));
       }
 
       return {
@@ -1054,6 +1054,7 @@ export function StreamerSettings() {
                           type="number"
                           min={1}
                           max={30}
+                          step={0.01}
                           value={tipGifDurationSeconds}
                           onChange={(e) => setTipGifDurationSeconds(e.target.value ? Number(e.target.value) : '')}
                           placeholder="Duration (s)"
@@ -1085,6 +1086,7 @@ export function StreamerSettings() {
                           type="number"
                           min={1}
                           max={30}
+                          step={0.01}
                           value={tipGifDurationSeconds}
                           onChange={(e) => setTipGifDurationSeconds(e.target.value ? Number(e.target.value) : '')}
                           placeholder="Duration (s)"
@@ -1280,6 +1282,7 @@ export function StreamerSettings() {
                           type="number"
                           min={1}
                           max={30}
+                          step={0.01}
                           value={localSettings.custom_gif_duration_seconds ?? ''}
                           onChange={(e) =>
                             setLocalSettings(s => ({
@@ -1297,9 +1300,10 @@ export function StreamerSettings() {
                           onClick={async () => {
                             const url = localSettings.alert_gif_url.trim();
                             const res = await detectGifDuration(url);
-                            if ((res as any)?.data?.ceilSeconds) {
-                              setLocalSettings(s => ({ ...s, custom_gif_duration_seconds: (res as any).data.ceilSeconds }));
-                              toast({ title: "GIF duration detected", description: `${(res as any).data.ceilSeconds}s` });
+                            if ((res as any)?.data?.seconds) {
+                              const seconds = Number((res as any).data.seconds.toFixed(2));
+                              setLocalSettings(s => ({ ...s, custom_gif_duration_seconds: seconds }));
+                              toast({ title: "GIF duration detected", description: `${seconds}s` });
                             } else {
                               toast({ title: "Couldn't detect GIF duration", description: (res as any)?.error ?? 'Failed', variant: "destructive" });
                             }
