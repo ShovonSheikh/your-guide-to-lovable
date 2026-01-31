@@ -1,436 +1,303 @@
 
-# Implementation Plan: Pricing Update, Noticeboard, Auth Redirect, Fee Naming, Authenticity Page & Streamer Mode Cleanup
+# Implementation Plan: Streamer Mode UX, Notices Display, Payout Storage & Alert URL Persistence
 
-## Overview
+## Issue Summary
 
-This plan addresses 6 requirements:
-1. Update pricing section with clearer messaging about fixed fee and future commitment
-2. Improve Streamer Mode settings page for clarity
-3. Add admin Noticeboard with CRUD and new RBAC permission
-4. Fix sign-in/sign-up redirect to dashboard
-5. Standardize fee naming across the site
-6. Add admin-editable Authenticity page with new RBAC permission
-
----
-
-## 1. Update Pricing Section with Clear Fee Commitment
-
-### Current State
-- Pricing is mentioned in multiple places: Home.tsx, About.tsx, Finance.tsx, FAQSection.tsx, TermsOfService.tsx, SEO.tsx
-- Some places say "platform fee", others say "creator account fee", "monthly fee"
-- No mention of the 20% max percentage commitment
-
-### Changes Required
-
-**Files to modify:**
-- `src/pages/Home.tsx` - Update pricing section
-- `src/components/FAQSection.tsx` - Update FAQ answer
-- `src/pages/TermsOfService.tsx` - Add pricing commitment clause
-- `src/pages/Finance.tsx` - Update fee description
-
-**Pricing Section Enhancement (Home.tsx):**
-Add a new info box below the Creator pricing card explaining:
-- "The ৳150/month is a **fixed flat fee** - not a percentage"
-- "Whether you earn ৳1,000 or ৳1,00,000, you pay the same ৳150"
-- Small note: "TipKoro reserves the right to transition to percentage-based pricing in the future. However, we commit that this percentage will **never exceed 20%** of your earnings."
-
-**Terms of Service Update:**
-Add new section "11. Pricing Commitment":
-- Fixed fee guarantee at ৳150/month currently
-- Commitment to maximum 20% cap if percentage model is adopted
-- Advance notice of any pricing changes
+| # | Issue | Root Cause |
+|---|-------|------------|
+| 1 | Streamer Mode UI is confusing | Settings appear as flat list, too many options visible at once |
+| 2 | Notices not showing anywhere | `NoticeBar` component exists but isn't imported/used in Home or Dashboard |
+| 3 | No saved payout method suggestion | Finance page doesn't use localStorage to remember last withdrawal details |
+| 4 | Streamer Mode URL changes on toggle | `enableStreamerMode` generates new token every time instead of preserving existing |
 
 ---
 
-## 2. Improve Streamer Mode Settings Page Clarity
+## Task 1: Improve Streamer Mode Settings Organization
 
-### Current Issues
-- Too many sections crammed together
-- Not clear what each setting does
-- Emergency controls mixed with regular settings
+The current implementation shows all settings in one long list. This will be reorganized into clear tabs.
 
-### Changes Required
+### Changes to `src/components/StreamerSettings.tsx`:
 
-**File: `src/components/StreamerSettings.tsx`**
+**Current Structure (confusing):**
+- Emergency Mute card
+- Main toggle card
+- Tip-to-Play Sounds card
+- GIF Alerts card
+- Alert Settings card (contains 15+ settings mixed together)
+- OBS Setup Guide card
 
-Reorganize into clear sections with better headings and explanations:
+**New Structure (organized with Tabs):**
 
-1. **Quick Start Section** (when disabled)
-   - Clear 3-step guide with visual indicators
-   - "Enable Streamer Mode" as prominent CTA
+```
+[Emergency Controls Banner - always visible when enabled]
 
-2. **Control Panel** (when enabled)
-   - Emergency Mute at the top (already good)
-   - Alert URL section with OBS setup guide link
+[Main Toggle Card]
+  - Enable/Disable toggle
+  - Alert URL (when enabled)
+  - Preview/Regenerate buttons
 
-3. **Organized Settings Tabs:**
-   - **Basic** - Animation, duration, minimum amount
-   - **Sounds** - Enable/disable, tip-to-play sounds, TTS
-   - **Visuals** - GIFs, emoji, media type
-   - **Advanced** - Custom CSS
+[Tabs: Basic | Sounds | Visuals | Advanced]
 
-4. **Better Labels:**
-   - Add tooltips/descriptions for complex settings
-   - Group related settings together
-   - Add visual separators
+Tab: Basic
+  - Animation Style
+  - Alert Duration slider
+  - Minimum Amount for Alert
+  - Show Message toggle
+
+Tab: Sounds  
+  - Sound Enabled toggle
+  - Default Alert Sound (upload/preview)
+  - Tip-to-Play Sounds section
+  - TTS Settings section
+
+Tab: Visuals
+  - Default Alert Media (emoji/gif/none)
+  - GIF Alerts section
+  - Position settings
+
+Tab: Advanced
+  - Custom CSS
+  - OBS Setup Guide
+```
+
+**Implementation:**
+- Add Tabs component from shadcn/ui
+- Group related settings into each tab
+- Add clear descriptions for each setting
+- Move OBS guide to Advanced tab
 
 ---
 
-## 3. Add Admin Noticeboard with CRUD
+## Task 2: Display Notices on Home and Dashboard
 
-### Database Changes
+The `NoticeBar` component and `useNotices` hook exist but aren't used anywhere.
 
-**New Table: `notices`**
-```sql
-CREATE TABLE public.notices (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  title TEXT NOT NULL,
-  content TEXT NOT NULL,
-  type TEXT NOT NULL DEFAULT 'info', -- 'info', 'warning', 'success', 'error'
-  is_active BOOLEAN DEFAULT true,
-  show_on_home BOOLEAN DEFAULT false,
-  show_on_dashboard BOOLEAN DEFAULT false,
-  priority INTEGER DEFAULT 0, -- Higher = more important
-  starts_at TIMESTAMPTZ DEFAULT now(),
-  ends_at TIMESTAMPTZ, -- NULL = no expiry
-  created_by UUID REFERENCES profiles(id),
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
+### Changes Required:
+
+**1. `src/pages/Home.tsx`:**
+```typescript
+import { NoticeBar } from "@/components/NoticeBar";
+import { useNotices } from "@/hooks/useNotices";
+
+function Index() {
+  const { notices } = useNotices('home');
+  
+  return (
+    <>
+      <TopNavbar />
+      <div className="h-20" />
+      
+      {/* Add notices at top of content */}
+      <div className="container max-w-[1280px] px-6">
+        <NoticeBar notices={notices} />
+      </div>
+      
+      {/* Hero Section */}
+      ...
+    </>
+  );
+}
 ```
 
-**RLS Policies:**
-- Admins with `can_manage_notices` can CRUD
-- Public can SELECT where `is_active = true` and within date range
+**2. `src/pages/Dashboard.tsx`:**
+```typescript
+import { NoticeBar } from "@/components/NoticeBar";
+import { useNotices } from "@/hooks/useNotices";
 
-**Admin Roles Table Update:**
-```sql
-ALTER TABLE public.admin_roles 
-ADD COLUMN can_manage_notices BOOLEAN NOT NULL DEFAULT false;
+// Inside component:
+const { notices } = useNotices('dashboard');
+
+// In render, after header:
+<NoticeBar notices={notices} />
 ```
 
-### Frontend Changes
+**3. Update `src/pages/admin/AdminAdmins.tsx` - Add new permissions:**
 
-**New Files:**
-- `src/pages/admin/AdminNotices.tsx` - CRUD interface for notices
-- `src/components/NoticeBar.tsx` - Display component for notices
-- `src/hooks/useNotices.ts` - Hook to fetch active notices
+The `permissionLabels` array needs to include the two new permissions:
+```typescript
+const permissionLabels = [
+  // ... existing ones ...
+  { key: 'can_manage_notices', label: 'Notices', icon: Bell },
+  { key: 'can_manage_pages', label: 'Pages', icon: FileText },
+];
+```
 
-**Modified Files:**
-- `src/pages/admin/AdminLayout.tsx` - Add "Notices" nav item
-- `src/hooks/useAdminPermissions.ts` - Add `canManageNotices` permission
-- `src/pages/Home.tsx` - Display home page notices
-- `src/pages/Dashboard.tsx` - Display dashboard notices
-
-**Admin Interface Features:**
-- List all notices with status indicators
-- Create/Edit form with:
-  - Title, Content (rich text or markdown)
-  - Type selector (info/warning/success/error)
-  - Active toggle
-  - Show on Home/Dashboard toggles
-  - Priority field
-  - Date range (optional end date)
-- Delete confirmation
+Also update the `AdminRole` interface to include these fields.
 
 ---
 
-## 4. Fix Sign-in/Sign-up Redirect to Dashboard
+## Task 3: Remember Last Payout Method in localStorage
 
-### Current State
-```tsx
-// main.tsx
-<ClerkProvider 
-  afterSignInUrl="/complete-profile"
-  afterSignUpUrl="/complete-profile"
->
-```
+### Changes to `src/pages/Finance.tsx`:
 
-The issue: Users are always sent to `/complete-profile` which checks if onboarding is done and redirects. But this causes a flash/delay.
-
-### Solution
-
-Per Clerk documentation for React apps, use the `signInFallbackRedirectUrl` and `signUpFallbackRedirectUrl` props instead of `afterSignInUrl`/`afterSignUpUrl`:
-
-**Option 1: Keep current flow (recommended)**
-The current flow is actually correct:
-- `/complete-profile` checks onboarding status
-- If completed, redirects to `/dashboard`
-- If not completed, shows onboarding
-
-The issue might be that the redirect in `CompleteProfile.tsx` happens client-side after render.
-
-**Improvement: Use `signInForceRedirectUrl` and `signUpForceRedirectUrl`**
-
-```tsx
-// main.tsx
-<ClerkProvider 
-  publishableKey={clerkPublishableKey} 
-  afterSignOutUrl="/"
-  signInForceRedirectUrl="/complete-profile"
-  signUpForceRedirectUrl="/complete-profile"
->
-```
-
-**Alternative: Use Clerk's routing detection**
-
-The `CompleteProfile` component already handles the logic correctly. The perceived issue might be loading state. Optimize the loading check:
-
-```tsx
-// CompleteProfile.tsx - Ensure faster redirect
+**On mount - load saved payout details:**
+```typescript
 useEffect(() => {
-  if (profile && profile.onboarding_status === 'completed') {
-    window.location.replace('/dashboard'); // Force immediate redirect
+  const savedMethod = localStorage.getItem('lastPayoutMethod');
+  const savedNumber = localStorage.getItem('lastPayoutNumber');
+  
+  if (savedMethod) setPayoutMethod(savedMethod);
+  if (savedNumber) setPayoutDetails(savedNumber);
+}, []);
+```
+
+**On successful withdrawal - save to localStorage:**
+```typescript
+const handleWithdraw = async () => {
+  // ... existing logic ...
+  
+  // After successful withdrawal:
+  localStorage.setItem('lastPayoutMethod', payoutMethod);
+  localStorage.setItem('lastPayoutNumber', payoutDetails);
+  
+  // Clear form as before
+  setWithdrawAmount('');
+  // But DON'T clear payout method and details - keep them for next time
+};
+```
+
+**UI hint for returning users:**
+Add a small badge/hint if using saved method:
+```typescript
+{localStorage.getItem('lastPayoutMethod') && payoutMethod === localStorage.getItem('lastPayoutMethod') && (
+  <p className="text-xs text-muted-foreground flex items-center gap-1">
+    <Check className="w-3 h-3" /> Using your last payout method
+  </p>
+)}
+```
+
+---
+
+## Task 4: Preserve Streamer Mode Alert Token
+
+The current `enableStreamerMode` function in `useStreamerSettings.ts` always generates a new token:
+
+```typescript
+const enableStreamerMode = async () => {
+  const newToken = generateToken(); // Always new!
+  // ...
+};
+```
+
+### Fix in `src/hooks/useStreamerSettings.ts`:
+
+**Change `enableStreamerMode` to preserve existing token:**
+
+```typescript
+const enableStreamerMode = async () => {
+  if (!profile?.id) return { error: 'No profile' };
+
+  setSaving(true);
+  
+  // Check if settings already exist with a token
+  const existingToken = settings?.alert_token;
+  const tokenToUse = existingToken || generateToken();
+  
+  const { data, error } = await supabase
+    .from('streamer_settings')
+    .upsert({
+      profile_id: profile.id,
+      is_enabled: true,
+      alert_token: tokenToUse, // Use existing or new
+      // ... keep other defaults only for new records
+    }, { 
+      onConflict: 'profile_id',
+      // Only update is_enabled if record exists
+    })
+    .select()
+    .single();
+  
+  // ...
+};
+```
+
+**Better approach - separate enable from create:**
+
+```typescript
+const enableStreamerMode = async () => {
+  if (!profile?.id) return { error: 'No profile' };
+
+  setSaving(true);
+  
+  // If settings already exist, just toggle is_enabled
+  if (settings) {
+    const { data, error } = await supabase
+      .from('streamer_settings')
+      .update({ is_enabled: true })
+      .eq('profile_id', profile.id)
+      .select()
+      .single();
+    
+    // Handle response...
+    setSettings(data as StreamerSettings);
+    toast({ title: "Streamer Mode Enabled!" });
+    setSaving(false);
+    return { data };
   }
-}, [profile]);
+  
+  // First time - create new settings with new token
+  const newToken = generateToken();
+  const { data, error } = await supabase
+    .from('streamer_settings')
+    .insert({
+      profile_id: profile.id,
+      is_enabled: true,
+      alert_token: newToken,
+      // ... all default values
+    })
+    .select()
+    .single();
+  
+  // Handle response...
+};
 ```
+
+This ensures:
+- First enable: Creates new settings with a new token
+- Subsequent enables: Just toggles `is_enabled`, keeps same token
+- Token only changes when user clicks "Regenerate URL" explicitly
 
 ---
 
-## 5. Standardize Fee Naming Across Site
+## Files to Modify
 
-### Current Inconsistencies Found:
-| Location | Current Name |
-|----------|--------------|
-| Home.tsx | "Platform fee" |
-| Finance.tsx | "Creator Account Fee" |
-| FAQSection.tsx | "flat fee" |
-| AdminDashboard.tsx | "Creator Account Fee" |
-| AdminSettings.tsx | "Creator Account Fee" |
-| Onboarding.tsx | "Platform Fee" |
-
-### Standardized Name: **"Creator Fee"**
-
-Short, clear, and consistent. Alternative: "TipKoro Fee"
-
-**Files to Update:**
-- `src/pages/Home.tsx` - Line 221
-- `src/pages/Finance.tsx` - Lines 143, 328, 414, 486-488
-- `src/components/FAQSection.tsx` - Line 16
-- `src/pages/admin/AdminDashboard.tsx` - Line 254
-- `src/pages/admin/AdminSettings.tsx` - Lines 89, 96
-- `src/components/Onboarding.tsx` - Lines 341, 346
-- `src/pages/TermsOfService.tsx` - Line 56
-- Any other occurrences
-
----
-
-## 6. Add Admin-Editable Authenticity Page
-
-### Database Changes
-
-**New Table: `pages`** (for any future admin-editable pages)
-```sql
-CREATE TABLE public.pages (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  slug TEXT UNIQUE NOT NULL, -- 'authenticity', 'about', etc.
-  title TEXT NOT NULL,
-  content TEXT NOT NULL, -- Markdown content
-  meta_description TEXT,
-  is_published BOOLEAN DEFAULT true,
-  updated_by UUID REFERENCES profiles(id),
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Seed default authenticity page
-INSERT INTO pages (slug, title, content, meta_description) VALUES (
-  'authenticity',
-  'Our Commitment to Trust & Security',
-  '## Your Money is Safe
-
-TipKoro is built on trust. Here''s how we protect your earnings:
-
-### Secure Payment Processing
-All transactions are processed through RupantorPay, a licensed payment gateway in Bangladesh.
-
-### Quick Withdrawals
-Request withdrawals anytime. We process them within 3-5 business days.
-
-### Verified Creators
-We verify creator identities to prevent fraud and protect supporters.
-
-### Data Protection
-Your personal information is encrypted and never sold to third parties.
-
-### Contact Us
-Questions about security? Email us at security@tipkoro.com',
-  'Learn about TipKoro''s commitment to security, trust, and protecting creator earnings in Bangladesh.'
-);
-```
-
-**RLS Policies:**
-- Public can SELECT where `is_published = true`
-- Admins with `can_manage_pages` can CRUD
-
-**Admin Roles Table Update:**
-```sql
-ALTER TABLE public.admin_roles 
-ADD COLUMN can_manage_pages BOOLEAN NOT NULL DEFAULT false;
-```
-
-### Frontend Changes
-
-**New Files:**
-- `src/pages/Authenticity.tsx` - Public page rendering markdown content
-- `src/pages/admin/AdminPages.tsx` - CRUD interface for pages
-- `src/hooks/usePages.ts` - Hook to fetch page content
-
-**Modified Files:**
-- `src/App.tsx` - Add `/authenticity` route
-- `src/pages/admin/AdminLayout.tsx` - Add "Pages" nav item
-- `src/hooks/useAdminPermissions.ts` - Add `canManagePages` permission
-- `src/components/MainFooter.tsx` - Add link to Authenticity page
-
-**Admin Interface:**
-- List all editable pages
-- Edit page with:
-  - Title
-  - Content (Markdown editor or textarea)
-  - Meta description for SEO
-  - Published toggle
-- Preview functionality
+| File | Changes |
+|------|---------|
+| `src/components/StreamerSettings.tsx` | Reorganize into Tabs (Basic, Sounds, Visuals, Advanced) |
+| `src/pages/Home.tsx` | Import and display `NoticeBar` with `useNotices('home')` |
+| `src/pages/Dashboard.tsx` | Import and display `NoticeBar` with `useNotices('dashboard')` |
+| `src/pages/admin/AdminAdmins.tsx` | Add `can_manage_notices` and `can_manage_pages` to permission toggles |
+| `src/pages/Finance.tsx` | Save/restore payout method from localStorage |
+| `src/hooks/useStreamerSettings.ts` | Preserve existing token when re-enabling streamer mode |
 
 ---
 
 ## Implementation Order
 
-| Priority | Task | Complexity | Files |
-|----------|------|------------|-------|
-| 1 | Fix auth redirect | Low | main.tsx |
-| 2 | Standardize fee naming | Low | 8+ files |
-| 3 | Update pricing section | Medium | Home.tsx, FAQSection.tsx, TermsOfService.tsx |
-| 4 | Add Noticeboard | High | New DB table, 3 new files, 4 modified |
-| 5 | Add Authenticity page | High | New DB table, 3 new files, 4 modified |
-| 6 | Improve Streamer Settings | Medium | StreamerSettings.tsx |
+1. **Fix token persistence** (useStreamerSettings.ts) - Most critical, causes OBS setup issues
+2. **Add notices display** (Home.tsx, Dashboard.tsx) - Quick win
+3. **Add permission toggles** (AdminAdmins.tsx) - Required for complete RBAC
+4. **Save payout method** (Finance.tsx) - UX improvement
+5. **Reorganize Streamer Settings** (StreamerSettings.tsx) - Larger UI refactor
 
 ---
 
-## Summary of Database Migrations
+## Technical Notes
 
-```sql
--- Migration: Add notices and pages tables with RBAC
-
--- 1. Notices table
-CREATE TABLE public.notices (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  title TEXT NOT NULL,
-  content TEXT NOT NULL,
-  type TEXT NOT NULL DEFAULT 'info',
-  is_active BOOLEAN DEFAULT true,
-  show_on_home BOOLEAN DEFAULT false,
-  show_on_dashboard BOOLEAN DEFAULT false,
-  priority INTEGER DEFAULT 0,
-  starts_at TIMESTAMPTZ DEFAULT now(),
-  ends_at TIMESTAMPTZ,
-  created_by UUID REFERENCES profiles(id),
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- 2. Pages table
-CREATE TABLE public.pages (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  slug TEXT UNIQUE NOT NULL,
-  title TEXT NOT NULL,
-  content TEXT NOT NULL,
-  meta_description TEXT,
-  is_published BOOLEAN DEFAULT true,
-  updated_by UUID REFERENCES profiles(id),
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- 3. Add new permissions
-ALTER TABLE public.admin_roles 
-ADD COLUMN can_manage_notices BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN can_manage_pages BOOLEAN NOT NULL DEFAULT false;
-
--- 4. RLS for notices
-ALTER TABLE public.notices ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Public can view active notices"
-ON public.notices FOR SELECT
-USING (
-  is_active = true 
-  AND starts_at <= now() 
-  AND (ends_at IS NULL OR ends_at > now())
-);
-
-CREATE POLICY "Admins can manage notices"
-ON public.notices FOR ALL
-USING (is_admin());
-
--- 5. RLS for pages
-ALTER TABLE public.pages ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Public can view published pages"
-ON public.pages FOR SELECT
-USING (is_published = true);
-
-CREATE POLICY "Admins can manage pages"
-ON public.pages FOR ALL
-USING (is_admin());
-
--- 6. Seed default authenticity page
-INSERT INTO public.pages (slug, title, content, meta_description) VALUES (
-  'authenticity',
-  'Our Commitment to Trust & Security',
-  '## Your Money is Safe with TipKoro
-
-TipKoro is built on a foundation of trust. As a creator, your earnings are our top priority. Here is how we ensure your money stays safe:
-
-### Secure Payment Processing
-All transactions are processed through **RupantorPay**, a licensed and regulated payment gateway in Bangladesh. Every payment is encrypted end-to-end.
-
-### Quick & Reliable Withdrawals
-Request a withdrawal anytime through your dashboard. We process all withdrawal requests within **3-5 business days** to your bKash, Nagad, or Rocket wallet.
-
-### Verified Creator Program
-We verify creator identities through our verification system. This protects both creators and supporters from fraud.
-
-### Data Protection
-Your personal information is encrypted and stored securely. We **never sell** your data to third parties.
-
-### 2-Factor Withdrawal Security
-Withdrawals require both your secret PIN and a one-time verification code sent to your email. This ensures only you can access your funds.
-
-### Transparent Pricing
-We charge a simple, fixed **Creator Fee** - currently ৳150/month. No hidden fees, no surprise deductions.
-
----
-
-Have questions about security? Contact us at **security@tipkoro.com**',
-  'Learn about TipKoro commitment to security, trust, and protecting creator earnings in Bangladesh.'
-);
+### Token Persistence Logic
+```
+First Toggle ON  → Generate new token → Save to DB
+Toggle OFF       → Set is_enabled=false → Keep token
+Toggle ON again  → Set is_enabled=true → Same token  
+Regenerate URL   → Generate new token → Replace in DB
 ```
 
----
+### localStorage Keys for Finance
+- `lastPayoutMethod`: e.g., "bkash-personal"
+- `lastPayoutNumber`: e.g., "01712345678"
 
-## Files Summary
-
-**New Files to Create:**
-1. `src/pages/admin/AdminNotices.tsx`
-2. `src/pages/admin/AdminPages.tsx`
-3. `src/pages/Authenticity.tsx`
-4. `src/components/NoticeBar.tsx`
-5. `src/hooks/useNotices.ts`
-6. `src/hooks/usePages.ts`
-
-**Files to Modify:**
-1. `src/main.tsx` - Auth redirect props
-2. `src/App.tsx` - Add routes
-3. `src/pages/Home.tsx` - Pricing update, notice display
-4. `src/pages/Dashboard.tsx` - Notice display
-5. `src/pages/Finance.tsx` - Fee naming
-6. `src/pages/TermsOfService.tsx` - Pricing commitment section
-7. `src/components/FAQSection.tsx` - Fee naming
-8. `src/components/MainFooter.tsx` - Authenticity link
-9. `src/components/Onboarding.tsx` - Fee naming
-10. `src/components/StreamerSettings.tsx` - UX improvements
-11. `src/pages/admin/AdminLayout.tsx` - New nav items
-12. `src/pages/admin/AdminSettings.tsx` - Fee naming
-13. `src/pages/admin/AdminDashboard.tsx` - Fee naming
-14. `src/pages/admin/AdminAdmins.tsx` - New permission checkboxes
-15. `src/hooks/useAdminPermissions.ts` - New permissions
-16. `src/components/SEO.tsx` - Fee naming in default description
+### Notice Display Priority
+The `useNotices` hook already orders by priority descending and filters by:
+- `is_active = true`
+- `starts_at <= now()`
+- `ends_at IS NULL OR ends_at > now()`
