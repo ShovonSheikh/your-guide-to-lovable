@@ -32,7 +32,8 @@ import {
   Settings2,
   Palette,
   Code,
-  Coins
+  Coins,
+  Mic
 } from "lucide-react";
 import { AlertPreview } from "@/components/AlertPreview";
 import { TipSoundManager } from "@/components/streamer/TipSoundManager";
