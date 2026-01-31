@@ -17,6 +17,17 @@ A creator support platform built for Bangladesh, allowing fans to tip their favo
 - **Verification Badge** – Get verified to build trust with your audience
 - **Share Tools** – QR codes, embed widgets, and bio link tools for promotion
 
+### 🔴 Streamer Mode (New!)
+
+Turn your stream into an interactive experience with real-time tip alerts.
+
+- **OBS Integration** – Get a unique Browser Source URL to display animated alerts on your stream.
+- **Tip Rules** – Customize distinct sounds and visuals for specific tip amounts (e.g., "500 Tk triggers the Victory sound + Trophy GIF").
+- **GIF Alerts** – Use our curated library, upload your own GIFs, or use external URLs.
+- **Smart Duration** – Alerts automatically sync with the duration of your GIF.
+- **Text-to-Speech (TTS)** – Read tip messages aloud to your audience with adjustable voice, speed, and pitch.
+- **Emergency Controls** – Instantly mute all sounds or clear the alert queue with a single click.
+
 ### For Supporters
 
 - **Easy Tipping** – Support your favorite creators with a few clicks
@@ -48,6 +59,7 @@ tipkoro/
 │   ├── components/           # Reusable UI components
 │   │   ├── ui/              # shadcn/ui primitives
 │   │   ├── admin/           # Admin-specific components
+│   │   ├── streamer/        # Streamer Mode components (TipSoundManager, etc.)
 │   │   └── icons/           # Custom icons
 │   ├── pages/               # Route pages
 │   │   ├── admin/           # Admin panel

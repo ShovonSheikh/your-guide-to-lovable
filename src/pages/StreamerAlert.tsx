@@ -320,6 +320,11 @@ export default function StreamerAlert() {
     setCurrentTip(tip);
     setIsVisible(true);
 
+    // Reset failure states for new alert
+    setTipGifFailed(false);
+    setLibraryGifFailed(false);
+    setCustomGifFailed(false);
+
     const tipSound = getTipSoundForAmount(tip.amount);
     setActiveTipSound(tipSound);
     const soundUrl = tipSound?.sound_url || settings?.alert_sound || DEFAULT_SOUND_URL;
