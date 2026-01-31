@@ -14,6 +14,8 @@ export interface StreamerSettings {
   alert_media_type?: 'emoji' | 'gif' | 'none' | null;
   alert_emoji?: string | null;
   alert_gif_url?: string | null;
+  match_gif_duration: boolean;
+  custom_gif_duration_seconds: number | null;
   alert_animation: 'slide' | 'bounce' | 'fade' | 'pop';
   min_amount_for_alert: number;
   show_message: boolean;
@@ -43,6 +45,10 @@ export interface TipSound {
   display_name: string;
   cooldown_seconds: number;
   is_enabled: boolean;
+  media_type: 'none' | 'library' | 'url' | 'upload';
+  gif_id: string | null;
+  gif_url: string | null;
+  gif_duration_seconds: number | null;
   created_at: string;
 }
 
@@ -74,13 +80,17 @@ export function useStreamerSettings() {
   const [saving, setSaving] = useState(false);
   const [uploadingSound, setUploadingSound] = useState(false);
   const [uploadingTipSound, setUploadingTipSound] = useState(false);
+  const [uploadingTipGif, setUploadingTipGif] = useState(false);
+  const [detectingGifDuration, setDetectingGifDuration] = useState(false);
 
-  const parseAlertSoundsStoragePath = (publicUrl: string) => {
-    const marker = '/alert-sounds/';
+  const parseStoragePath = (publicUrl: string, marker: string) => {
     const idx = publicUrl.indexOf(marker);
     if (idx === -1) return null;
     return publicUrl.slice(idx + marker.length);
   };
+
+  const parseAlertSoundsStoragePath = (publicUrl: string) => parseStoragePath(publicUrl, '/alert-sounds/');
+  const parseAlertGifsStoragePath = (publicUrl: string) => parseStoragePath(publicUrl, '/alert-gifs/');
 
   const fetchSettings = useCallback(async () => {
     if (!profile?.id) return;
@@ -168,6 +178,8 @@ export function useStreamerSettings() {
         alert_media_type: 'emoji',
         alert_emoji: '🎉',
         alert_gif_url: null,
+        match_gif_duration: true,
+        custom_gif_duration_seconds: null,
         min_amount_for_alert: 0,
         show_message: true,
         sound_enabled: true,
@@ -329,7 +341,18 @@ export function useStreamerSettings() {
   };
 
   // Tip sound management
-  const addTipSound = async (triggerAmount: number, soundUrl: string, displayName: string, cooldownSeconds: number = 10) => {
+  const addTipSound = async (
+    triggerAmount: number,
+    soundUrl: string,
+    displayName: string,
+    cooldownSeconds: number = 10,
+    media?: {
+      media_type?: 'none' | 'library' | 'url' | 'upload';
+      gif_id?: string | null;
+      gif_url?: string | null;
+      gif_duration_seconds?: number | null;
+    }
+  ) => {
     if (!profile?.id) return { error: 'No profile' };
 
     setSaving(true);
@@ -342,6 +365,10 @@ export function useStreamerSettings() {
         display_name: displayName,
         cooldown_seconds: cooldownSeconds,
         is_enabled: true,
+        media_type: media?.media_type ?? 'none',
+        gif_id: media?.gif_id ?? null,
+        gif_url: media?.gif_url ?? null,
+        gif_duration_seconds: media?.gif_duration_seconds ?? null,
       })
       .select()
       .single();
@@ -376,6 +403,13 @@ export function useStreamerSettings() {
       const path = parseAlertSoundsStoragePath(sound.sound_url);
       if (path) {
         await supabase.storage.from('alert-sounds').remove([path]);
+      }
+    }
+
+    if (sound?.gif_url) {
+      const path = parseAlertGifsStoragePath(sound.gif_url);
+      if (path) {
+        await supabase.storage.from('alert-gifs').remove([path]);
       }
     }
 
@@ -602,6 +636,71 @@ export function useStreamerSettings() {
     return { data: { publicUrl: urlData.publicUrl } };
   };
 
+  const uploadTipGif = async (file: File) => {
+    if (!profile?.id) return { error: 'No profile' };
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Maximum file size is 10MB",
+        variant: "destructive",
+      });
+      return { error: 'File too large' };
+    }
+
+    if (file.type !== 'image/gif') {
+      toast({
+        title: "Invalid File Type",
+        description: "Only GIF files are allowed",
+        variant: "destructive",
+      });
+      return { error: 'Invalid file type' };
+    }
+
+    setUploadingTipGif(true);
+
+    const filename = `${profile.id}/tip-gifs/${nanoid()}.gif`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('alert-gifs')
+      .upload(filename, file, { upsert: true });
+
+    if (uploadError) {
+      toast({
+        title: "Upload Failed",
+        description: uploadError.message,
+        variant: "destructive",
+      });
+      setUploadingTipGif(false);
+      return { error: uploadError.message };
+    }
+
+    const { data: urlData } = supabase.storage.from('alert-gifs').getPublicUrl(filename);
+    setUploadingTipGif(false);
+    return { data: { publicUrl: urlData.publicUrl } };
+  };
+
+  const detectGifDuration = async (url: string) => {
+    const trimmed = url.trim();
+    if (!trimmed) return { error: 'Missing url' };
+
+    setDetectingGifDuration(true);
+    const { data, error } = await supabase.functions.invoke('gif-duration', {
+      body: { url: trimmed },
+    });
+    setDetectingGifDuration(false);
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    if (!data || data.ok !== true) {
+      return { error: data?.error ?? 'Failed to detect duration' };
+    }
+
+    return { data: { seconds: data.seconds as number, ceilSeconds: data.ceilSeconds as number } };
+  };
+
   const getAlertUrl = () => {
     if (!settings?.alert_token) return null;
     return `${window.location.origin}/alerts/${settings.alert_token}`;
@@ -615,6 +714,8 @@ export function useStreamerSettings() {
     saving,
     uploadingSound,
     uploadingTipSound,
+    uploadingTipGif,
+    detectingGifDuration,
     enableStreamerMode,
     disableStreamerMode,
     updateSettings,
@@ -625,6 +726,8 @@ export function useStreamerSettings() {
     updateTipSound,
     uploadAlertSound,
     uploadTipSound,
+    uploadTipGif,
+    detectGifDuration,
     deleteAlertSound,
     getAlertUrl,
     refetch: fetchSettings,
