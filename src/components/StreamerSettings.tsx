@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useStreamerSettings, APPROVED_SOUNDS } from "@/hooks/useStreamerSettings";
+import { useStreamerSettings } from "@/hooks/useStreamerSettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,34 +21,30 @@ import {
   Eye,
   Clock,
   MessageSquare,
-  Coins,
   Sparkles,
   AlertCircle,
   ExternalLink,
   Upload,
   Trash,
-  Mic,
   Music,
   AlertTriangle,
   Image,
-  Plus,
-  X,
   Settings2,
   Palette,
   Code
 } from "lucide-react";
 import { AlertPreview } from "@/components/AlertPreview";
+import { TipSoundManager } from "@/components/streamer/TipSoundManager";
 
 export function StreamerSettings() {
   const { 
     settings, 
     tipSounds,
     approvedGifs,
+    APPROVED_SOUNDS,
     loading, 
     saving,
     uploadingSound,
-    uploadingTipSound,
-    uploadingTipGif,
     detectingGifDuration,
     enableStreamerMode, 
     disableStreamerMode, 
@@ -57,6 +53,7 @@ export function StreamerSettings() {
     toggleEmergencyMute,
     addTipSound,
     removeTipSound,
+    updateTipSound,
     uploadAlertSound,
     uploadTipSound,
     uploadTipGif,
@@ -72,21 +69,6 @@ export function StreamerSettings() {
   const audioPreviewRef = useRef<HTMLAudioElement>(null);
   const [playingSoundUrl, setPlayingSoundUrl] = useState<string | null>(null);
   const previewCleanupRef = useRef<(() => void) | null>(null);
-  
-  // State for adding new tip sound
-  const [newSoundAmount, setNewSoundAmount] = useState<number>(50);
-  const [newSoundSelection, setNewSoundSelection] = useState<string>('');
-  const [newTipSoundSource, setNewTipSoundSource] = useState<'approved' | 'url' | 'upload'>('approved');
-  const [newSoundUrl, setNewSoundUrl] = useState('');
-  const [newSoundName, setNewSoundName] = useState('');
-  const [newSoundFile, setNewSoundFile] = useState<File | null>(null);
-  const tipSoundFileInputRef = useRef<HTMLInputElement>(null);
-  const [tipMediaSource, setTipMediaSource] = useState<'none' | 'library' | 'url' | 'upload'>('none');
-  const [tipGifLibraryId, setTipGifLibraryId] = useState<string>('');
-  const [tipGifUrl, setTipGifUrl] = useState('');
-  const [tipGifFile, setTipGifFile] = useState<File | null>(null);
-  const [tipGifDurationSeconds, setTipGifDurationSeconds] = useState<number | ''>('');
-  const tipGifFileInputRef = useRef<HTMLInputElement>(null);
   
   type AnimationType = 'slide' | 'bounce' | 'fade' | 'pop';
   
@@ -272,184 +254,6 @@ export function StreamerSettings() {
     utterance.pitch = localSettings.tts_pitch;
     
     speechSynthesis.speak(utterance);
-  };
-
-  const handleAddTipSound = async () => {
-    const buildMedia = async () => {
-      if (tipMediaSource === 'none') return null;
-
-      if (tipMediaSource === 'library') {
-        if (!tipGifLibraryId) {
-          toast({ title: "Select a library GIF", variant: "destructive" });
-          return null;
-        }
-        return {
-          media_type: 'library' as const,
-          gif_id: tipGifLibraryId,
-          gif_url: null,
-          gif_duration_seconds: null,
-        };
-      }
-
-      if (tipMediaSource === 'url') {
-        const urlText = tipGifUrl.trim();
-        if (!urlText) {
-          toast({ title: "Enter a GIF URL", variant: "destructive" });
-          return null;
-        }
-        let parsed: URL;
-        try {
-          parsed = new URL(urlText);
-        } catch {
-          toast({ title: "Invalid GIF URL", description: "Use a valid http(s) URL", variant: "destructive" });
-          return null;
-        }
-        if (!['http:', 'https:'].includes(parsed.protocol)) {
-          toast({ title: "Invalid GIF URL", description: "Only http(s) URLs are supported", variant: "destructive" });
-          return null;
-        }
-        const detected = tipGifDurationSeconds === '' ? await detectGifDuration(parsed.toString()) : null;
-        const durationSeconds =
-          tipGifDurationSeconds === ''
-            ? ((detected as any)?.data?.seconds ?? null)
-            : tipGifDurationSeconds;
-
-        if (tipGifDurationSeconds === '' && (detected as any)?.error) {
-          toast({ title: "Couldn't detect GIF duration", description: (detected as any).error, variant: "destructive" });
-        } else if (tipGifDurationSeconds === '' && (detected as any)?.data?.seconds) {
-          setTipGifDurationSeconds(Number((detected as any).data.seconds.toFixed(2)));
-        }
-
-        return {
-          media_type: 'url' as const,
-          gif_id: null,
-          gif_url: parsed.toString(),
-          gif_duration_seconds: durationSeconds,
-        };
-      }
-
-      if (!tipGifFile) {
-        toast({ title: "Choose a GIF file", variant: "destructive" });
-        return null;
-      }
-
-      const uploadRes = await uploadTipGif(tipGifFile);
-      if ('error' in uploadRes && uploadRes.error) return null;
-      const publicUrl = (uploadRes as any)?.data?.publicUrl as string | undefined;
-      if (!publicUrl) {
-        toast({ title: "GIF upload failed", variant: "destructive" });
-        return null;
-      }
-
-      const detected = tipGifDurationSeconds === '' ? await detectGifDuration(publicUrl) : null;
-      const durationSeconds =
-        tipGifDurationSeconds === ''
-          ? ((detected as any)?.data?.seconds ?? null)
-          : tipGifDurationSeconds;
-
-      if (tipGifDurationSeconds === '' && (detected as any)?.error) {
-        toast({ title: "Couldn't detect GIF duration", description: (detected as any).error, variant: "destructive" });
-      } else if (tipGifDurationSeconds === '' && (detected as any)?.data?.seconds) {
-        setTipGifDurationSeconds(Number((detected as any).data.seconds.toFixed(2)));
-      }
-
-      return {
-        media_type: 'upload' as const,
-        gif_id: null,
-        gif_url: publicUrl,
-        gif_duration_seconds: durationSeconds,
-      };
-    };
-
-    const media = await buildMedia();
-    if (tipMediaSource !== 'none' && !media) return;
-
-    if (newTipSoundSource === 'approved') {
-      if (!newSoundSelection) {
-        toast({ title: "Select a sound", variant: "destructive" });
-        return;
-      }
-      const sound = APPROVED_SOUNDS.find(s => s.url === newSoundSelection);
-      if (!sound) return;
-
-      await addTipSound(newSoundAmount, sound.url, sound.name, 10, media ?? undefined);
-      setNewSoundAmount(50);
-      setNewSoundSelection('');
-      setTipMediaSource('none');
-      setTipGifLibraryId('');
-      setTipGifUrl('');
-      setTipGifFile(null);
-      setTipGifDurationSeconds('');
-      return;
-    }
-
-    if (newTipSoundSource === 'url') {
-      const urlText = newSoundUrl.trim();
-      if (!urlText) {
-        toast({ title: "Enter a sound URL", variant: "destructive" });
-        return;
-      }
-
-      let parsed: URL;
-      try {
-        parsed = new URL(urlText);
-      } catch {
-        toast({ title: "Invalid URL", description: "Use a valid http(s) URL", variant: "destructive" });
-        return;
-      }
-      if (!['http:', 'https:'].includes(parsed.protocol)) {
-        toast({ title: "Invalid URL", description: "Only http(s) URLs are supported", variant: "destructive" });
-        return;
-      }
-
-      const name = newSoundName.trim() || 'Custom URL Sound';
-      await addTipSound(newSoundAmount, parsed.toString(), name, 10, media ?? undefined);
-      setNewSoundAmount(50);
-      setNewSoundUrl('');
-      setNewSoundName('');
-      setTipMediaSource('none');
-      setTipGifLibraryId('');
-      setTipGifUrl('');
-      setTipGifFile(null);
-      setTipGifDurationSeconds('');
-      return;
-    }
-
-    if (!newSoundFile) {
-      toast({ title: "Choose an audio file", variant: "destructive" });
-      return;
-    }
-
-    const uploadRes = await uploadTipSound(newSoundFile);
-    if ('error' in uploadRes && uploadRes.error) return;
-    const publicUrl = (uploadRes as any)?.data?.publicUrl as string | undefined;
-    if (!publicUrl) {
-      toast({ title: "Upload failed", variant: "destructive" });
-      return;
-    }
-
-    const name = newSoundName.trim() || newSoundFile.name;
-    await addTipSound(newSoundAmount, publicUrl, name, 10, media ?? undefined);
-    setNewSoundAmount(50);
-    setNewSoundFile(null);
-    setNewSoundName('');
-    setTipMediaSource('none');
-    setTipGifLibraryId('');
-    setTipGifUrl('');
-    setTipGifFile(null);
-    setTipGifDurationSeconds('');
-  };
-
-  const handleTipSoundFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] ?? null;
-    setNewSoundFile(file);
-    e.target.value = '';
-  };
-
-  const handleTipGifFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] ?? null;
-    setTipGifFile(file);
-    e.target.value = '';
   };
 
   const defaultSoundUrl = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
@@ -824,299 +628,28 @@ export function StreamerSettings() {
                 )}
               </div>
 
-              {/* Tip-to-Play Sounds */}
-              <div className="space-y-4 p-4 border border-border rounded-xl">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-purple-500/10">
-                    <Coins className="w-5 h-5 text-purple-500" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">Tip-to-Play Sounds</h4>
-                    <p className="text-sm text-muted-foreground">Different sounds for different tip amounts</p>
-                  </div>
-                </div>
-
-                {tipSounds.length > 0 && (
-                  <div className="space-y-2">
-                    {tipSounds.map((sound) => (
-                      <div key={sound.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <span className="font-medium">৳{sound.trigger_amount}</span>
-                          <span className="text-muted-foreground">{sound.display_name}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              if (playingSoundUrl === sound.sound_url) stopPreviewSound();
-                              else playPreviewSound(sound.sound_url);
-                            }}
-                          >
-                            {playingSoundUrl === sound.sound_url ? (
-                              <Square className="w-4 h-4" />
-                            ) : (
-                              <Play className="w-4 h-4" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeTipSound(sound.id)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className="p-3 bg-secondary/30 rounded-lg space-y-3">
-                  <Label className="text-sm font-medium">Add Amount-Based Sound</Label>
-                  <div className="flex gap-2 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">৳</span>
-                      <Input
-                        type="number"
-                        value={newSoundAmount}
-                        onChange={(e) => setNewSoundAmount(Number(e.target.value))}
-                        className="w-24"
-                        min={1}
-                      />
-                    </div>
-
-                    <Select value={newTipSoundSource} onValueChange={(v: any) => setNewTipSoundSource(v)}>
-                      <SelectTrigger className="w-40">
-                        <SelectValue placeholder="Source" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="url">URL</SelectItem>
-                        <SelectItem value="upload">Upload</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    {newTipSoundSource === 'approved' && (
-                      <>
-                        <Select value={newSoundSelection} onValueChange={setNewSoundSelection}>
-                          <SelectTrigger className="w-40">
-                            <SelectValue placeholder="Select sound" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {APPROVED_SOUNDS.map((sound) => (
-                              <SelectItem key={sound.url} value={sound.url}>
-                                {sound.name} ({sound.duration}s)
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {newSoundSelection && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              if (playingSoundUrl === newSoundSelection) stopPreviewSound();
-                              else playPreviewSound(newSoundSelection);
-                            }}
-                          >
-                            {playingSoundUrl === newSoundSelection ? (
-                              <Square className="w-4 h-4" />
-                            ) : (
-                              <Play className="w-4 h-4" />
-                            )}
-                          </Button>
-                        )}
-                      </>
-                    )}
-
-                    {newTipSoundSource === 'url' && (
-                      <>
-                        <Input
-                          value={newSoundUrl}
-                          onChange={(e) => setNewSoundUrl(e.target.value)}
-                          placeholder="https://.../sound.mp3"
-                          className="w-64"
-                        />
-                        <Input
-                          value={newSoundName}
-                          onChange={(e) => setNewSoundName(e.target.value)}
-                          placeholder="Display name (optional)"
-                          className="w-52"
-                        />
-                        {newSoundUrl.trim() && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              const url = newSoundUrl.trim();
-                              if (playingSoundUrl === url) stopPreviewSound();
-                              else playPreviewSound(url);
-                            }}
-                          >
-                            {playingSoundUrl === newSoundUrl.trim() ? (
-                              <Square className="w-4 h-4" />
-                            ) : (
-                              <Play className="w-4 h-4" />
-                            )}
-                          </Button>
-                        )}
-                      </>
-                    )}
-
-                    {newTipSoundSource === 'upload' && (
-                      <>
-                        <input
-                          ref={tipSoundFileInputRef}
-                          type="file"
-                          accept="audio/mpeg,audio/wav,audio/ogg"
-                          onChange={handleTipSoundFileChange}
-                          className="hidden"
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => tipSoundFileInputRef.current?.click()}
-                          disabled={uploadingTipSound}
-                          className="gap-2"
-                        >
-                          <Upload className="w-4 h-4" />
-                          {newSoundFile ? 'Change File' : 'Choose File'}
-                        </Button>
-                        <Input
-                          value={newSoundName}
-                          onChange={(e) => setNewSoundName(e.target.value)}
-                          placeholder={newSoundFile ? newSoundFile.name : 'Display name (optional)'}
-                          className="w-52"
-                        />
-                        {newSoundFile && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              if (playingSoundUrl?.startsWith('blob:')) {
-                                stopPreviewSound();
-                                return;
-                              }
-                              const blobUrl = URL.createObjectURL(newSoundFile);
-                              playPreviewSound(blobUrl, () => URL.revokeObjectURL(blobUrl));
-                            }}
-                          >
-                            {playingSoundUrl?.startsWith('blob:') ? (
-                              <Square className="w-4 h-4" />
-                            ) : (
-                              <Play className="w-4 h-4" />
-                            )}
-                          </Button>
-                        )}
-                      </>
-                    )}
-
-                    <div className="w-full" />
-                    <Label className="text-sm text-muted-foreground">Tip Media (optional)</Label>
-                    <Select value={tipMediaSource} onValueChange={(v: any) => setTipMediaSource(v)}>
-                      <SelectTrigger className="w-40">
-                        <SelectValue placeholder="Media" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="library">Library GIF</SelectItem>
-                        <SelectItem value="url">GIF URL</SelectItem>
-                        <SelectItem value="upload">Upload GIF</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    {tipMediaSource === 'library' && (
-                      <Select value={tipGifLibraryId} onValueChange={setTipGifLibraryId}>
-                        <SelectTrigger className="w-56">
-                          <SelectValue placeholder="Choose a library GIF" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {approvedGifs.map((gif) => (
-                            <SelectItem key={gif.id} value={gif.id}>
-                              {gif.name} ({gif.duration_seconds}s)
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-
-                    {tipMediaSource === 'url' && (
-                      <>
-                        <Input
-                          value={tipGifUrl}
-                          onChange={(e) => setTipGifUrl(e.target.value)}
-                          placeholder="https://.../alert.gif"
-                          className="w-64"
-                        />
-                        <Input
-                          type="number"
-                          min={1}
-                          max={30}
-                          step={0.01}
-                          value={tipGifDurationSeconds}
-                          onChange={(e) => setTipGifDurationSeconds(e.target.value ? Number(e.target.value) : '')}
-                          placeholder="Duration (s)"
-                          className="w-28"
-                        />
-                      </>
-                    )}
-
-                    {tipMediaSource === 'upload' && (
-                      <>
-                        <input
-                          ref={tipGifFileInputRef}
-                          type="file"
-                          accept="image/gif"
-                          onChange={handleTipGifFileChange}
-                          className="hidden"
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => tipGifFileInputRef.current?.click()}
-                          disabled={uploadingTipGif}
-                          className="gap-2"
-                        >
-                          <Upload className="w-4 h-4" />
-                          {tipGifFile ? 'Change GIF' : 'Choose GIF'}
-                        </Button>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={30}
-                          step={0.01}
-                          value={tipGifDurationSeconds}
-                          onChange={(e) => setTipGifDurationSeconds(e.target.value ? Number(e.target.value) : '')}
-                          placeholder="Duration (s)"
-                          className="w-28"
-                        />
-                      </>
-                    )}
-
-                    <Button
-                      onClick={handleAddTipSound}
-                      disabled={
-                        saving ||
-                        uploadingTipSound ||
-                        uploadingTipGif ||
-                        (newTipSoundSource === 'approved' && !newSoundSelection) ||
-                        (newTipSoundSource === 'url' && !newSoundUrl.trim()) ||
-                        (newTipSoundSource === 'upload' && !newSoundFile) ||
-                        (tipMediaSource === 'library' && !tipGifLibraryId) ||
-                        (tipMediaSource === 'url' && !tipGifUrl.trim()) ||
-                        (tipMediaSource === 'upload' && !tipGifFile)
-                      }
-                    >
-                      <Plus className="w-4 h-4 mr-1" /> Add
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Plays only when the tip amount matches exactly. 10 second cooldown prevents spam.
-                  </p>
-                </div>
-              </div>
+              {/* Tip-to-Play Sounds Manager */}
+              <TipSoundManager
+                tipSounds={tipSounds}
+                approvedGifs={approvedGifs}
+                approvedSounds={APPROVED_SOUNDS}
+                onAdd={addTipSound}
+                onRemove={removeTipSound}
+                onUpdate={updateTipSound}
+                onUploadSound={async (file) => {
+                  const res = await uploadTipSound(file);
+                  return res as any;
+                }}
+                onUploadGif={async (file) => {
+                  const res = await uploadTipGif(file);
+                  return res as any;
+                }}
+                onDetectGifDuration={async (url) => {
+                  const res = await detectGifDuration(url);
+                  return res as any;
+                }}
+                isLoading={loading}
+              />
 
               {/* TTS Settings */}
               <div className="space-y-4 p-4 border border-border rounded-xl">
