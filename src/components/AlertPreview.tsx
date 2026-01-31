@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Play, RotateCcw } from "lucide-react";
+import { Play, RotateCcw, Square } from "lucide-react";
 
 interface AlertPreviewProps {
   open: boolean;
@@ -40,6 +40,40 @@ export function AlertPreview({
   const [key, setKey] = useState(0);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const ttsTimeoutRef = useRef<number | null>(null);
+  const endTimeoutRef = useRef<number | null>(null);
+  const autoplayTimeoutRef = useRef<number | null>(null);
+
+  const stopAll = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+
+    if (ttsTimeoutRef.current) {
+      window.clearTimeout(ttsTimeoutRef.current);
+      ttsTimeoutRef.current = null;
+    }
+
+    if (endTimeoutRef.current) {
+      window.clearTimeout(endTimeoutRef.current);
+      endTimeoutRef.current = null;
+    }
+
+    if (autoplayTimeoutRef.current) {
+      window.clearTimeout(autoplayTimeoutRef.current);
+      autoplayTimeoutRef.current = null;
+    }
+
+    if ('speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {
+      }
+    }
+
+    setIsPlaying(false);
+  };
 
   // Load TTS voices
   useEffect(() => {
@@ -84,6 +118,7 @@ export function AlertPreview({
   };
 
   const playAnimation = () => {
+    stopAll();
     setIsPlaying(true);
     setKey(k => k + 1);
 
@@ -95,7 +130,7 @@ export function AlertPreview({
 
     // Play TTS after a short delay
     if (ttsEnabled && 'speechSynthesis' in window) {
-      setTimeout(() => {
+      ttsTimeoutRef.current = window.setTimeout(() => {
         try {
           window.speechSynthesis.cancel();
         } catch {
@@ -118,23 +153,21 @@ export function AlertPreview({
       }, 500);
     }
 
-    setTimeout(() => setIsPlaying(false), duration * 1000);
+    endTimeoutRef.current = window.setTimeout(() => setIsPlaying(false), duration * 1000);
   };
 
   useEffect(() => {
     if (open) {
       // Auto-play on open
-      setTimeout(playAnimation, 300);
+      autoplayTimeoutRef.current = window.setTimeout(playAnimation, 300);
     } else {
-      // Cancel TTS when closing
-      if ('speechSynthesis' in window) {
-        try {
-          window.speechSynthesis.cancel();
-        } catch {
-        }
-      }
+      stopAll();
     }
   }, [open]);
+
+  useEffect(() => {
+    return () => stopAll();
+  }, []);
 
   const getAnimationClass = () => {
     switch (animation) {
@@ -217,9 +250,25 @@ export function AlertPreview({
             <Play className="w-4 h-4" />
             Play Alert
           </Button>
-          <Button variant="outline" onClick={() => { speechSynthesis.cancel(); setKey(k => k + 1); }} className="gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              stopAll();
+              setKey(k => k + 1);
+            }}
+            className="gap-2"
+          >
             <RotateCcw className="w-4 h-4" />
             Reset
+          </Button>
+          <Button
+            variant="outline"
+            onClick={stopAll}
+            disabled={!isPlaying && (!audioRef.current || audioRef.current.currentTime === 0)}
+            className="gap-2"
+          >
+            <Square className="w-4 h-4" />
+            Stop
           </Button>
         </div>
 

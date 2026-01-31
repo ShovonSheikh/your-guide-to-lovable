@@ -73,6 +73,14 @@ export function useStreamerSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingSound, setUploadingSound] = useState(false);
+  const [uploadingTipSound, setUploadingTipSound] = useState(false);
+
+  const parseAlertSoundsStoragePath = (publicUrl: string) => {
+    const marker = '/alert-sounds/';
+    const idx = publicUrl.indexOf(marker);
+    if (idx === -1) return null;
+    return publicUrl.slice(idx + marker.length);
+  };
 
   const fetchSettings = useCallback(async () => {
     if (!profile?.id) return;
@@ -360,7 +368,17 @@ export function useStreamerSettings() {
   const removeTipSound = async (soundId: string) => {
     if (!profile?.id) return { error: 'No profile' };
 
+    const sound = tipSounds.find((s) => s.id === soundId);
+
     setSaving(true);
+
+    if (sound?.sound_url) {
+      const path = parseAlertSoundsStoragePath(sound.sound_url);
+      if (path) {
+        await supabase.storage.from('alert-sounds').remove([path]);
+      }
+    }
+
     const { error } = await supabase
       .from('tip_sounds')
       .delete()
@@ -447,7 +465,7 @@ export function useStreamerSettings() {
 
     // Delete old sound if exists
     if (settings?.alert_sound) {
-      const oldPath = settings.alert_sound.split('/alert-sounds/')[1];
+      const oldPath = parseAlertSoundsStoragePath(settings.alert_sound);
       if (oldPath) {
         await supabase.storage.from('alert-sounds').remove([oldPath]);
       }
@@ -506,7 +524,7 @@ export function useStreamerSettings() {
     setSaving(true);
 
     // Delete from storage
-    const path = settings.alert_sound.split('/alert-sounds/')[1];
+    const path = parseAlertSoundsStoragePath(settings.alert_sound);
     if (path) {
       await supabase.storage.from('alert-sounds').remove([path]);
     }
@@ -538,6 +556,52 @@ export function useStreamerSettings() {
     return { data };
   };
 
+  const uploadTipSound = async (file: File) => {
+    if (!profile?.id) return { error: 'No profile' };
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Maximum file size is 5MB",
+        variant: "destructive",
+      });
+      return { error: 'File too large' };
+    }
+
+    const allowedTypes = ['audio/mpeg', 'audio/wav', 'audio/ogg'];
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Invalid File Type",
+        description: "Only MP3, WAV, or OGG files are allowed",
+        variant: "destructive",
+      });
+      return { error: 'Invalid file type' };
+    }
+
+    setUploadingTipSound(true);
+
+    const ext = file.name.split('.').pop();
+    const filename = `${profile.id}/tip-sounds/${nanoid()}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('alert-sounds')
+      .upload(filename, file, { upsert: true });
+
+    if (uploadError) {
+      toast({
+        title: "Upload Failed",
+        description: uploadError.message,
+        variant: "destructive",
+      });
+      setUploadingTipSound(false);
+      return { error: uploadError.message };
+    }
+
+    const { data: urlData } = supabase.storage.from('alert-sounds').getPublicUrl(filename);
+    setUploadingTipSound(false);
+    return { data: { publicUrl: urlData.publicUrl } };
+  };
+
   const getAlertUrl = () => {
     if (!settings?.alert_token) return null;
     return `${window.location.origin}/alerts/${settings.alert_token}`;
@@ -550,6 +614,7 @@ export function useStreamerSettings() {
     loading,
     saving,
     uploadingSound,
+    uploadingTipSound,
     enableStreamerMode,
     disableStreamerMode,
     updateSettings,
@@ -559,6 +624,7 @@ export function useStreamerSettings() {
     removeTipSound,
     updateTipSound,
     uploadAlertSound,
+    uploadTipSound,
     deleteAlertSound,
     getAlertUrl,
     refetch: fetchSettings,

@@ -225,9 +225,12 @@ export default function StreamerAlert() {
 
   // Get the appropriate sound URL based on tip amount
   const getSoundForAmount = useCallback((amount: number): string | null => {
-    // Find matching tip sound (first match since sorted by amount desc)
+    const normalizedAmount = Math.round(amount * 100);
+
+    // Find matching tip sound (exact match)
     for (const sound of tipSounds) {
-      if (amount >= sound.trigger_amount) {
+      const normalizedTrigger = Math.round(sound.trigger_amount * 100);
+      if (normalizedAmount === normalizedTrigger) {
         // Check cooldown
         const lastPlayed = soundCooldowns.current.get(sound.id) || 0;
         const now = Date.now();

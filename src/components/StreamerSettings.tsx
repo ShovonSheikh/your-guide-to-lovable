@@ -15,6 +15,7 @@ import {
   Check, 
   RefreshCw, 
   Play, 
+  Square,
   Volume2, 
   VolumeX,
   Eye,
@@ -46,6 +47,7 @@ export function StreamerSettings() {
     loading, 
     saving,
     uploadingSound,
+    uploadingTipSound,
     enableStreamerMode, 
     disableStreamerMode, 
     updateSettings,
@@ -54,6 +56,7 @@ export function StreamerSettings() {
     addTipSound,
     removeTipSound,
     uploadAlertSound,
+    uploadTipSound,
     deleteAlertSound,
     getAlertUrl 
   } = useStreamerSettings();
@@ -64,10 +67,16 @@ export function StreamerSettings() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioPreviewRef = useRef<HTMLAudioElement>(null);
   const [playingSoundUrl, setPlayingSoundUrl] = useState<string | null>(null);
+  const previewCleanupRef = useRef<(() => void) | null>(null);
   
   // State for adding new tip sound
   const [newSoundAmount, setNewSoundAmount] = useState<number>(50);
   const [newSoundSelection, setNewSoundSelection] = useState<string>('');
+  const [newTipSoundSource, setNewTipSoundSource] = useState<'approved' | 'url' | 'upload'>('approved');
+  const [newSoundUrl, setNewSoundUrl] = useState('');
+  const [newSoundName, setNewSoundName] = useState('');
+  const [newSoundFile, setNewSoundFile] = useState<File | null>(null);
+  const tipSoundFileInputRef = useRef<HTMLInputElement>(null);
   
   type AnimationType = 'slide' | 'bounce' | 'fade' | 'pop';
   
@@ -201,14 +210,28 @@ export function StreamerSettings() {
     }
   };
 
-  const playPreviewSound = (url: string) => {
+  const stopPreviewSound = () => {
     if (audioPreviewRef.current) {
-      audioPreviewRef.current.src = url;
+      audioPreviewRef.current.pause();
       audioPreviewRef.current.currentTime = 0;
-      setPlayingSoundUrl(url);
-      audioPreviewRef.current.play().catch(() => {});
-      audioPreviewRef.current.onended = () => setPlayingSoundUrl(null);
+      audioPreviewRef.current.onended = null;
     }
+    setPlayingSoundUrl(null);
+    const cleanup = previewCleanupRef.current;
+    previewCleanupRef.current = null;
+    cleanup?.();
+  };
+
+  const playPreviewSound = (url: string, onStopCleanup?: () => void) => {
+    stopPreviewSound();
+    if (!audioPreviewRef.current) return;
+
+    previewCleanupRef.current = onStopCleanup ?? null;
+    audioPreviewRef.current.src = url;
+    audioPreviewRef.current.currentTime = 0;
+    setPlayingSoundUrl(url);
+    audioPreviewRef.current.play().catch(() => {});
+    audioPreviewRef.current.onended = () => stopPreviewSound();
   };
 
   const testTTS = () => {
@@ -236,16 +259,71 @@ export function StreamerSettings() {
   };
 
   const handleAddTipSound = async () => {
-    if (!newSoundSelection) {
-      toast({ title: "Select a sound", variant: "destructive" });
+    if (newTipSoundSource === 'approved') {
+      if (!newSoundSelection) {
+        toast({ title: "Select a sound", variant: "destructive" });
+        return;
+      }
+      const sound = APPROVED_SOUNDS.find(s => s.url === newSoundSelection);
+      if (!sound) return;
+
+      await addTipSound(newSoundAmount, sound.url, sound.name, 10);
+      setNewSoundAmount(50);
+      setNewSoundSelection('');
       return;
     }
-    const sound = APPROVED_SOUNDS.find(s => s.url === newSoundSelection);
-    if (!sound) return;
-    
-    await addTipSound(newSoundAmount, sound.url, sound.name, 10);
+
+    if (newTipSoundSource === 'url') {
+      const urlText = newSoundUrl.trim();
+      if (!urlText) {
+        toast({ title: "Enter a sound URL", variant: "destructive" });
+        return;
+      }
+
+      let parsed: URL;
+      try {
+        parsed = new URL(urlText);
+      } catch {
+        toast({ title: "Invalid URL", description: "Use a valid http(s) URL", variant: "destructive" });
+        return;
+      }
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        toast({ title: "Invalid URL", description: "Only http(s) URLs are supported", variant: "destructive" });
+        return;
+      }
+
+      const name = newSoundName.trim() || 'Custom URL Sound';
+      await addTipSound(newSoundAmount, parsed.toString(), name, 10);
+      setNewSoundAmount(50);
+      setNewSoundUrl('');
+      setNewSoundName('');
+      return;
+    }
+
+    if (!newSoundFile) {
+      toast({ title: "Choose an audio file", variant: "destructive" });
+      return;
+    }
+
+    const uploadRes = await uploadTipSound(newSoundFile);
+    if ('error' in uploadRes && uploadRes.error) return;
+    const publicUrl = (uploadRes as any)?.data?.publicUrl as string | undefined;
+    if (!publicUrl) {
+      toast({ title: "Upload failed", variant: "destructive" });
+      return;
+    }
+
+    const name = newSoundName.trim() || newSoundFile.name;
+    await addTipSound(newSoundAmount, publicUrl, name, 10);
     setNewSoundAmount(50);
-    setNewSoundSelection('');
+    setNewSoundFile(null);
+    setNewSoundName('');
+  };
+
+  const handleTipSoundFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setNewSoundFile(file);
+    e.target.value = '';
   };
 
   const defaultSoundUrl = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
@@ -542,11 +620,23 @@ export function StreamerSettings() {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => playPreviewSound(settings.alert_sound!)}
+                        onClick={() => {
+                          if (playingSoundUrl === settings.alert_sound) stopPreviewSound();
+                          else playPreviewSound(settings.alert_sound!);
+                        }}
                         className="gap-2"
                       >
-                        <Play className="w-4 h-4" />
-                        Play
+                        {playingSoundUrl === settings.alert_sound ? (
+                          <>
+                            <Square className="w-4 h-4" />
+                            Stop
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-4 h-4" />
+                            Play
+                          </>
+                        )}
                       </Button>
                       <Button 
                         variant="ghost" 
@@ -567,11 +657,23 @@ export function StreamerSettings() {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => playPreviewSound(defaultSoundUrl)}
+                        onClick={() => {
+                          if (playingSoundUrl === defaultSoundUrl) stopPreviewSound();
+                          else playPreviewSound(defaultSoundUrl);
+                        }}
                         className="gap-2"
                       >
-                        <Play className="w-4 h-4" />
-                        Preview Default
+                        {playingSoundUrl === defaultSoundUrl ? (
+                          <>
+                            <Square className="w-4 h-4" />
+                            Stop
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-4 h-4" />
+                            Preview Default
+                          </>
+                        )}
                       </Button>
                     </div>
                     <input
@@ -613,17 +715,23 @@ export function StreamerSettings() {
                     {tipSounds.map((sound) => (
                       <div key={sound.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
                         <div className="flex items-center gap-3">
-                          <span className="font-medium">৳{sound.trigger_amount}+</span>
+                          <span className="font-medium">৳{sound.trigger_amount}</span>
                           <span className="text-muted-foreground">{sound.display_name}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => playPreviewSound(sound.sound_url)}
-                            disabled={playingSoundUrl === sound.sound_url}
+                            onClick={() => {
+                              if (playingSoundUrl === sound.sound_url) stopPreviewSound();
+                              else playPreviewSound(sound.sound_url);
+                            }}
                           >
-                            <Play className="w-4 h-4" />
+                            {playingSoundUrl === sound.sound_url ? (
+                              <Square className="w-4 h-4" />
+                            ) : (
+                              <Play className="w-4 h-4" />
+                            )}
                           </Button>
                           <Button
                             variant="ghost"
@@ -652,33 +760,148 @@ export function StreamerSettings() {
                         min={1}
                       />
                     </div>
-                    <Select value={newSoundSelection} onValueChange={setNewSoundSelection}>
+
+                    <Select value={newTipSoundSource} onValueChange={(v: any) => setNewTipSoundSource(v)}>
                       <SelectTrigger className="w-40">
-                        <SelectValue placeholder="Select sound" />
+                        <SelectValue placeholder="Source" />
                       </SelectTrigger>
                       <SelectContent>
-                        {APPROVED_SOUNDS.map((sound) => (
-                          <SelectItem key={sound.url} value={sound.url}>
-                            {sound.name} ({sound.duration}s)
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="url">URL</SelectItem>
+                        <SelectItem value="upload">Upload</SelectItem>
                       </SelectContent>
                     </Select>
-                    {newSoundSelection && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => playPreviewSound(newSoundSelection)}
-                      >
-                        <Play className="w-4 h-4" />
-                      </Button>
+
+                    {newTipSoundSource === 'approved' && (
+                      <>
+                        <Select value={newSoundSelection} onValueChange={setNewSoundSelection}>
+                          <SelectTrigger className="w-40">
+                            <SelectValue placeholder="Select sound" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {APPROVED_SOUNDS.map((sound) => (
+                              <SelectItem key={sound.url} value={sound.url}>
+                                {sound.name} ({sound.duration}s)
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {newSoundSelection && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              if (playingSoundUrl === newSoundSelection) stopPreviewSound();
+                              else playPreviewSound(newSoundSelection);
+                            }}
+                          >
+                            {playingSoundUrl === newSoundSelection ? (
+                              <Square className="w-4 h-4" />
+                            ) : (
+                              <Play className="w-4 h-4" />
+                            )}
+                          </Button>
+                        )}
+                      </>
                     )}
-                    <Button onClick={handleAddTipSound} disabled={saving || !newSoundSelection}>
+
+                    {newTipSoundSource === 'url' && (
+                      <>
+                        <Input
+                          value={newSoundUrl}
+                          onChange={(e) => setNewSoundUrl(e.target.value)}
+                          placeholder="https://.../sound.mp3"
+                          className="w-64"
+                        />
+                        <Input
+                          value={newSoundName}
+                          onChange={(e) => setNewSoundName(e.target.value)}
+                          placeholder="Display name (optional)"
+                          className="w-52"
+                        />
+                        {newSoundUrl.trim() && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const url = newSoundUrl.trim();
+                              if (playingSoundUrl === url) stopPreviewSound();
+                              else playPreviewSound(url);
+                            }}
+                          >
+                            {playingSoundUrl === newSoundUrl.trim() ? (
+                              <Square className="w-4 h-4" />
+                            ) : (
+                              <Play className="w-4 h-4" />
+                            )}
+                          </Button>
+                        )}
+                      </>
+                    )}
+
+                    {newTipSoundSource === 'upload' && (
+                      <>
+                        <input
+                          ref={tipSoundFileInputRef}
+                          type="file"
+                          accept="audio/mpeg,audio/wav,audio/ogg"
+                          onChange={handleTipSoundFileChange}
+                          className="hidden"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => tipSoundFileInputRef.current?.click()}
+                          disabled={uploadingTipSound}
+                          className="gap-2"
+                        >
+                          <Upload className="w-4 h-4" />
+                          {newSoundFile ? 'Change File' : 'Choose File'}
+                        </Button>
+                        <Input
+                          value={newSoundName}
+                          onChange={(e) => setNewSoundName(e.target.value)}
+                          placeholder={newSoundFile ? newSoundFile.name : 'Display name (optional)'}
+                          className="w-52"
+                        />
+                        {newSoundFile && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              if (playingSoundUrl?.startsWith('blob:')) {
+                                stopPreviewSound();
+                                return;
+                              }
+                              const blobUrl = URL.createObjectURL(newSoundFile);
+                              playPreviewSound(blobUrl, () => URL.revokeObjectURL(blobUrl));
+                            }}
+                          >
+                            {playingSoundUrl?.startsWith('blob:') ? (
+                              <Square className="w-4 h-4" />
+                            ) : (
+                              <Play className="w-4 h-4" />
+                            )}
+                          </Button>
+                        )}
+                      </>
+                    )}
+
+                    <Button
+                      onClick={handleAddTipSound}
+                      disabled={
+                        saving ||
+                        uploadingTipSound ||
+                        (newTipSoundSource === 'approved' && !newSoundSelection) ||
+                        (newTipSoundSource === 'url' && !newSoundUrl.trim()) ||
+                        (newTipSoundSource === 'upload' && !newSoundFile)
+                      }
+                    >
                       <Plus className="w-4 h-4 mr-1" /> Add
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Higher amounts take priority. 10 second cooldown prevents spam.
+                    Plays only when the tip amount matches exactly. 10 second cooldown prevents spam.
                   </p>
                 </div>
               </div>
@@ -801,6 +1024,10 @@ export function StreamerSettings() {
                   </SelectContent>
                 </Select>
 
+                <p className="text-xs text-muted-foreground">
+                  Used as the default media. If “Library GIF Alerts” is enabled below, the selected library GIF will be shown instead.
+                </p>
+
                 {localSettings.alert_media_type === 'emoji' && (
                   <div className="space-y-2">
                     <Label className="text-sm">Emoji</Label>
@@ -844,8 +1071,8 @@ export function StreamerSettings() {
                       <Image className="w-5 h-5 text-pink-500" />
                     </div>
                     <div>
-                      <h4 className="font-semibold">GIF Alerts</h4>
-                      <p className="text-sm text-muted-foreground">Show animated GIFs with tips</p>
+                      <h4 className="font-semibold">Library GIF Alerts</h4>
+                      <p className="text-sm text-muted-foreground">Use a built-in GIF from our library (overrides Default Alert Media)</p>
                     </div>
                   </div>
                   <Switch
