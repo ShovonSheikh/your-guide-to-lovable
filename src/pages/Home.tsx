@@ -6,6 +6,8 @@ import { IconWithBackground } from "@/components/IconWithBackground";
 import { TopNavbar } from "@/components/TopNavbar";
 import { MainFooter } from "@/components/MainFooter";
 import { LiveTipsFeed } from "@/components/LiveTipsFeed";
+import { NoticeBar } from "@/components/NoticeBar";
+import { useNotices } from "@/hooks/useNotices";
 import { Link, useLocation } from "react-router-dom";
 import { SignUpButton } from "@clerk/clerk-react";
 import { FAQSection } from "@/components/FAQSection";
@@ -30,6 +32,7 @@ import {
 function Index() {
   usePageTitle("Support Bangladeshi Creators");
   const location = useLocation();
+  const { notices } = useNotices('home');
 
   // Handle hash navigation from other pages
   useEffect(() => {
@@ -52,6 +55,11 @@ function Index() {
       <div className="flex h-full w-full flex-col items-center bg-background">
         <TopNavbar />
         <div className="h-20"></div>
+
+        {/* Notices */}
+        <div className="w-full max-w-[1280px] px-6">
+          <NoticeBar notices={notices} />
+        </div>
 
         {/* Hero Section */}
         <div className="flex w-full max-w-[1280px] flex-col items-center gap-6 px-6 py-12 md:px-6 md:py-24">

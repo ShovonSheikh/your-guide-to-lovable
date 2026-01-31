@@ -117,11 +117,41 @@ export function useStreamerSettings() {
     if (!profile?.id) return { error: 'No profile' };
 
     setSaving(true);
+    
+    // If settings already exist, just toggle is_enabled (preserve token)
+    if (settings) {
+      const { data, error } = await supabase
+        .from('streamer_settings')
+        .update({ is_enabled: true })
+        .eq('profile_id', profile.id)
+        .select()
+        .single();
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to enable Streamer Mode",
+          variant: "destructive"
+        });
+        setSaving(false);
+        return { error: error.message };
+      }
+
+      setSettings(data as StreamerSettings);
+      toast({
+        title: "Streamer Mode Enabled!",
+        description: "Your alert URL is ready to use"
+      });
+      setSaving(false);
+      return { data };
+    }
+    
+    // First time - create new settings with new token
     const newToken = generateToken();
     
     const { data, error } = await supabase
       .from('streamer_settings')
-      .upsert({
+      .insert({
         profile_id: profile.id,
         is_enabled: true,
         alert_token: newToken,
@@ -143,7 +173,7 @@ export function useStreamerSettings() {
         gif_enabled: false,
         gif_id: null,
         gif_position: 'center',
-      }, { onConflict: 'profile_id' })
+      })
       .select()
       .single();
 
