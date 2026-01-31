@@ -1,9 +1,18 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+const getCorsHeaders = (req: Request) => {
+  const origin = req.headers.get("origin") ?? "*";
+  const requestedHeaders =
+    req.headers.get("access-control-request-headers") ??
+    "authorization, x-client-info, apikey, content-type, x-clerk-user-id";
+
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": requestedHeaders,
+    Vary: "Origin",
+  };
 };
 
 type Result =
@@ -88,7 +97,8 @@ const parseGifDuration = (bytes: Uint8Array): Result => {
 };
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const corsHeaders = getCorsHeaders(req);
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
 
   try {
     const body = (await req.json().catch(() => null)) as { url?: string } | null;
