@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { 
   Video, 
@@ -30,7 +31,10 @@ import {
   AlertTriangle,
   Image,
   Plus,
-  X
+  X,
+  Settings2,
+  Palette,
+  Code
 } from "lucide-react";
 import { AlertPreview } from "@/components/AlertPreview";
 
@@ -254,7 +258,7 @@ export function StreamerSettings() {
 
       {/* Emergency Controls - Always visible when enabled */}
       {settings?.is_enabled && (
-        <div className={`tipkoro-card ${settings.emergency_mute ? 'border-destructive bg-destructive/10' : ''}`}>
+        <div className={`tipkoro-card ${settings.emergency_mute ? 'border-destructive bg-destructive/10' : 'border-amber-500/50 bg-amber-500/5'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-xl ${settings.emergency_mute ? 'bg-destructive/20' : 'bg-amber-500/10'}`}>
@@ -263,7 +267,7 @@ export function StreamerSettings() {
               <div>
                 <h3 className="font-semibold">Emergency Mute</h3>
                 <p className="text-sm text-muted-foreground">
-                  {settings.emergency_mute ? 'All alerts are silenced!' : 'Instantly silence all alerts'}
+                  {settings.emergency_mute ? 'All alerts are silenced!' : 'Instantly silence all alerts during stream'}
                 </p>
               </div>
             </div>
@@ -271,8 +275,9 @@ export function StreamerSettings() {
               variant={settings.emergency_mute ? "destructive" : "outline"}
               onClick={toggleEmergencyMute}
               disabled={saving}
+              className="min-w-[100px]"
             >
-              {settings.emergency_mute ? 'Unmute' : 'Mute All'}
+              {settings.emergency_mute ? 'Unmute All' : 'Mute All'}
             </Button>
           </div>
         </div>
@@ -306,22 +311,31 @@ export function StreamerSettings() {
           />
         </div>
 
-        {/* Setup Instructions */}
+        {/* Setup Instructions - Only when disabled */}
         {!settings?.is_enabled && (
           <div className="p-4 bg-secondary/50 rounded-xl">
-            <h3 className="font-medium mb-2 flex items-center gap-2">
+            <h3 className="font-medium mb-3 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-accent" />
-              How it works
+              Quick Start Guide
             </h3>
-            <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-              <li>Enable Streamer Mode to get a unique alert URL</li>
-              <li>Add it as a Browser Source in OBS (400x200 recommended)</li>
-              <li>When you receive tips, animated alerts appear on stream!</li>
+            <ol className="text-sm text-muted-foreground space-y-2">
+              <li className="flex items-start gap-2">
+                <span className="bg-accent/20 text-accent rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">1</span>
+                <span>Enable Streamer Mode to get a unique alert URL</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="bg-accent/20 text-accent rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">2</span>
+                <span>Add it as a Browser Source in OBS (400x200 recommended)</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="bg-accent/20 text-accent rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">3</span>
+                <span>When you receive tips, animated alerts appear on stream!</span>
+              </li>
             </ol>
           </div>
         )}
 
-        {/* Alert URL Section */}
+        {/* Alert URL Section - Only when enabled */}
         {settings?.is_enabled && alertUrl && (
           <div className="space-y-4">
             <div className="p-4 bg-accent/10 border border-accent/20 rounded-xl">
@@ -336,6 +350,7 @@ export function StreamerSettings() {
                   variant="outline" 
                   size="icon"
                   onClick={copyUrl}
+                  title="Copy URL"
                 >
                   {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 </Button>
@@ -349,7 +364,7 @@ export function StreamerSettings() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                Add this URL as a Browser Source in OBS/Streamlabs
+                Add this URL as a Browser Source in OBS/Streamlabs. <strong>This URL stays the same</strong> even when you toggle Streamer Mode off and on.
               </p>
             </div>
 
@@ -378,303 +393,107 @@ export function StreamerSettings() {
         )}
       </div>
 
-      {/* Amount-Based Sounds (Tip to Play) */}
+      {/* Settings Tabs - Only show when enabled */}
       {settings?.is_enabled && (
         <div className="tipkoro-card">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-xl bg-purple-500/10">
-              <Coins className="w-5 h-5 text-purple-500" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold">Tip to Play Sounds</h3>
-              <p className="text-sm text-muted-foreground">Set specific sounds for different tip amounts</p>
-            </div>
-          </div>
+          <Tabs defaultValue="basic" className="w-full">
+            <TabsList className="grid w-full grid-cols-4 mb-6">
+              <TabsTrigger value="basic" className="gap-2">
+                <Settings2 className="w-4 h-4 hidden sm:block" />
+                Basic
+              </TabsTrigger>
+              <TabsTrigger value="sounds" className="gap-2">
+                <Volume2 className="w-4 h-4 hidden sm:block" />
+                Sounds
+              </TabsTrigger>
+              <TabsTrigger value="visuals" className="gap-2">
+                <Palette className="w-4 h-4 hidden sm:block" />
+                Visuals
+              </TabsTrigger>
+              <TabsTrigger value="advanced" className="gap-2">
+                <Code className="w-4 h-4 hidden sm:block" />
+                Advanced
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Existing Tip Sounds */}
-          {tipSounds.length > 0 && (
-            <div className="space-y-2 mb-4">
-              {tipSounds.map((sound) => (
-                <div key={sound.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <span className="font-medium">৳{sound.trigger_amount}+</span>
-                    <span className="text-muted-foreground">{sound.display_name}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => playPreviewSound(sound.sound_url)}
-                      disabled={playingSoundUrl === sound.sound_url}
-                    >
-                      <Play className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeTipSound(sound.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Add New Tip Sound */}
-          <div className="p-4 bg-secondary/30 rounded-xl space-y-3">
-            <Label className="text-sm font-medium">Add Amount-Based Sound</Label>
-            <div className="flex gap-2 flex-wrap">
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">৳</span>
-                <Input
-                  type="number"
-                  value={newSoundAmount}
-                  onChange={(e) => setNewSoundAmount(Number(e.target.value))}
-                  className="w-24"
-                  min={1}
-                />
-              </div>
-              <Select value={newSoundSelection} onValueChange={setNewSoundSelection}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Select sound" />
-                </SelectTrigger>
-                <SelectContent>
-                  {APPROVED_SOUNDS.map((sound) => (
-                    <SelectItem key={sound.url} value={sound.url}>
-                      {sound.name} ({sound.duration}s)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {newSoundSelection && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => playPreviewSound(newSoundSelection)}
-                >
-                  <Play className="w-4 h-4" />
-                </Button>
-              )}
-              <Button onClick={handleAddTipSound} disabled={saving || !newSoundSelection}>
-                <Plus className="w-4 h-4 mr-1" /> Add
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Higher amounts take priority. 10 second cooldown prevents spam.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* GIF Settings */}
-      {settings?.is_enabled && (
-        <div className="tipkoro-card">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-pink-500/10">
-                <Image className="w-5 h-5 text-pink-500" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold">GIF Alerts</h3>
-                <p className="text-sm text-muted-foreground">Show animated GIFs with tips</p>
-              </div>
-            </div>
-            <Switch
-              checked={localSettings.gif_enabled}
-              onCheckedChange={(checked) => 
-                setLocalSettings(s => ({ ...s, gif_enabled: checked }))
-              }
-            />
-          </div>
-
-          {localSettings.gif_enabled && (
-            <div className="space-y-4">
+            {/* Basic Tab */}
+            <TabsContent value="basic" className="space-y-6">
               <div className="space-y-2">
-                <Label className="text-sm">Select GIF</Label>
+                <Label className="flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-muted-foreground" />
+                  Animation Style
+                </Label>
                 <Select 
-                  value={localSettings.gif_id || ''} 
-                  onValueChange={(value) => setLocalSettings(s => ({ ...s, gif_id: value || null }))}
+                  value={localSettings.alert_animation}
+                  onValueChange={(value: AnimationType) => 
+                    setLocalSettings(s => ({ ...s, alert_animation: value }))
+                  }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose a GIF" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {approvedGifs.map((gif) => (
-                      <SelectItem key={gif.id} value={gif.id}>
-                        {gif.name} ({gif.category})
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="slide">Slide In</SelectItem>
+                    <SelectItem value="bounce">Bounce</SelectItem>
+                    <SelectItem value="fade">Fade In</SelectItem>
+                    <SelectItem value="pop">Pop</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">How the alert enters the screen</p>
               </div>
 
-              {selectedGif && (
-                <div className="flex items-center justify-center p-4 bg-secondary/50 rounded-xl">
-                  <img
-                    src={selectedGif.url}
-                    alt={selectedGif.name}
-                    className="w-20 h-20 object-contain"
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
-              )}
-
-              <div className="flex items-center justify-between">
-                <Label className="text-sm text-muted-foreground">Pause GIFs</Label>
-                <Switch
-                  checked={localSettings.gifs_paused}
-                  onCheckedChange={(checked) => 
-                    setLocalSettings(s => ({ ...s, gifs_paused: checked }))
-                  }
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Settings Card - Only show when enabled */}
-      {settings?.is_enabled && (
-        <div className="tipkoro-card">
-          <h3 className="text-lg font-semibold mb-6">Alert Settings</h3>
-
-          <div className="space-y-6">
-            {/* Animation Style */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Eye className="w-4 h-4 text-muted-foreground" />
-                Animation Style
-              </Label>
-              <Select 
-                value={localSettings.alert_animation}
-                onValueChange={(value: 'slide' | 'bounce' | 'fade' | 'pop') => 
-                  setLocalSettings(s => ({ ...s, alert_animation: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="slide">Slide In</SelectItem>
-                  <SelectItem value="bounce">Bounce</SelectItem>
-                  <SelectItem value="fade">Fade In</SelectItem>
-                  <SelectItem value="pop">Pop</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Duration */}
-            <div className="space-y-3">
-              <Label className="flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-muted-foreground" />
-                  Alert Duration
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  {localSettings.alert_duration}s
-                </span>
-              </Label>
-              <Slider
-                value={[localSettings.alert_duration]}
-                onValueChange={([value]) => 
-                  setLocalSettings(s => ({ ...s, alert_duration: value }))
-                }
-                min={3}
-                max={15}
-                step={1}
-              />
-            </div>
-
-            {/* Alert Media (fallback) */}
-            <div className="space-y-3">
-              <Label className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-muted-foreground" />
-                Default Alert Media
-              </Label>
-              <Select
-                value={localSettings.alert_media_type}
-                onValueChange={(value: 'emoji' | 'gif' | 'none') =>
-                  setLocalSettings(s => ({ ...s, alert_media_type: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="emoji">Emoji</SelectItem>
-                  <SelectItem value="gif">Custom GIF URL</SelectItem>
-                  <SelectItem value="none">None</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {localSettings.alert_media_type === 'emoji' && (
-                <div className="space-y-2">
-                  <Label className="text-sm">Emoji</Label>
-                  <Input
-                    value={localSettings.alert_emoji}
-                    onChange={(e) => setLocalSettings(s => ({ ...s, alert_emoji: e.target.value }))}
-                    placeholder="🎉"
-                  />
-                </div>
-              )}
-
-              {localSettings.alert_media_type === 'gif' && (
-                <div className="space-y-2">
-                  <Label className="text-sm">GIF URL</Label>
-                  <Input
-                    value={localSettings.alert_gif_url}
-                    onChange={(e) => setLocalSettings(s => ({ ...s, alert_gif_url: e.target.value }))}
-                    placeholder="https://.../alert.gif"
-                  />
-                  {localSettings.alert_gif_url?.startsWith('http') && (
-                    <div className="flex items-center justify-center p-3 bg-background rounded-xl border border-border">
-                      <img
-                        src={localSettings.alert_gif_url}
-                        alt="GIF preview"
-                        className="w-16 h-16 object-contain"
-                        loading="lazy"
-                        referrerPolicy="no-referrer"
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Minimum Amount */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Coins className="w-4 h-4 text-muted-foreground" />
-                Minimum Amount for Alert
-              </Label>
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">৳</span>
-                <Input 
-                  type="number"
-                  value={localSettings.min_amount_for_alert}
-                  onChange={(e) => 
-                    setLocalSettings(s => ({ ...s, min_amount_for_alert: Number(e.target.value) }))
-                  }
-                  min={0}
-                  className="w-32"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Set to 0 to show all tips
-              </p>
-            </div>
-
-            {/* Toggles */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label className="flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-muted-foreground" />
-                  Show Message
+              <div className="space-y-3">
+                <Label className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-muted-foreground" />
+                    Alert Duration
+                  </span>
+                  <span className="text-sm font-medium bg-secondary px-2 py-1 rounded">
+                    {localSettings.alert_duration}s
+                  </span>
                 </Label>
+                <Slider
+                  value={[localSettings.alert_duration]}
+                  onValueChange={([value]) => 
+                    setLocalSettings(s => ({ ...s, alert_duration: value }))
+                  }
+                  min={3}
+                  max={15}
+                  step={1}
+                />
+                <p className="text-xs text-muted-foreground">How long the alert stays visible</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Coins className="w-4 h-4 text-muted-foreground" />
+                  Minimum Amount for Alert
+                </Label>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">৳</span>
+                  <Input 
+                    type="number"
+                    value={localSettings.min_amount_for_alert}
+                    onChange={(e) => 
+                      setLocalSettings(s => ({ ...s, min_amount_for_alert: Number(e.target.value) }))
+                    }
+                    min={0}
+                    className="w-32"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Set to 0 to show all tips. Tips below this amount won't trigger alerts.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
+                <div>
+                  <Label className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                    Show Message
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">Display the tip message on alerts</p>
+                </div>
                 <Switch
                   checked={localSettings.show_message}
                   onCheckedChange={(checked) => 
@@ -683,15 +502,25 @@ export function StreamerSettings() {
                 />
               </div>
 
-              <div className="flex items-center justify-between">
-                <Label className="flex items-center gap-2">
-                  {localSettings.sound_enabled ? (
-                    <Volume2 className="w-4 h-4 text-muted-foreground" />
-                  ) : (
-                    <VolumeX className="w-4 h-4 text-muted-foreground" />
-                  )}
-                  Sound Enabled
-                </Label>
+              <Button onClick={handleSaveSettings} disabled={saving} className="w-full">
+                {saving ? "Saving..." : "Save Basic Settings"}
+              </Button>
+            </TabsContent>
+
+            {/* Sounds Tab */}
+            <TabsContent value="sounds" className="space-y-6">
+              <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
+                <div>
+                  <Label className="flex items-center gap-2">
+                    {localSettings.sound_enabled ? (
+                      <Volume2 className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <VolumeX className="w-4 h-4 text-muted-foreground" />
+                    )}
+                    Sound Enabled
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">Play sounds when alerts appear</p>
+                </div>
                 <Switch
                   checked={localSettings.sound_enabled}
                   onCheckedChange={(checked) => 
@@ -700,223 +529,425 @@ export function StreamerSettings() {
                 />
               </div>
 
-              <div className="flex items-center justify-between">
-                <Label className="flex items-center gap-2 text-muted-foreground">
-                  <VolumeX className="w-4 h-4" />
-                  Pause Sounds
-                </Label>
-                <Switch
-                  checked={localSettings.sounds_paused}
-                  onCheckedChange={(checked) => 
-                    setLocalSettings(s => ({ ...s, sounds_paused: checked }))
-                  }
-                />
-              </div>
-            </div>
-
-            {/* Custom Sound Upload */}
-            <div className="space-y-3 p-4 bg-secondary/30 rounded-xl">
-              <Label className="flex items-center gap-2">
-                <Music className="w-4 h-4 text-muted-foreground" />
-                Default Alert Sound
-              </Label>
-              
-              {settings?.alert_sound ? (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => playPreviewSound(settings.alert_sound!)}
-                      className="gap-2"
-                    >
-                      <Play className="w-4 h-4" />
-                      Play
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={deleteAlertSound}
-                      disabled={saving}
-                      className="gap-2 text-destructive hover:text-destructive"
-                    >
-                      <Trash className="w-4 h-4" />
-                      Remove
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Using custom sound
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => playPreviewSound(defaultSoundUrl)}
-                      className="gap-2"
-                    >
-                      <Play className="w-4 h-4" />
-                      Preview Default
-                    </Button>
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="audio/mpeg,audio/wav,audio/ogg"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingSound}
-                    className="gap-2"
-                  >
-                    <Upload className="w-4 h-4" />
-                    {uploadingSound ? "Uploading..." : "Upload Custom Sound"}
-                  </Button>
-                  <p className="text-xs text-muted-foreground">
-                    Max 5MB. MP3, WAV, or OGG format.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* TTS Settings */}
-            <div className="space-y-4 p-4 bg-secondary/30 rounded-xl">
-              <div className="flex items-center justify-between">
+              {/* Default Alert Sound */}
+              <div className="space-y-3 p-4 border border-border rounded-xl">
                 <Label className="flex items-center gap-2">
-                  <Mic className="w-4 h-4 text-muted-foreground" />
-                  Text-to-Speech (TTS)
+                  <Music className="w-4 h-4 text-muted-foreground" />
+                  Default Alert Sound
                 </Label>
-                <Switch
-                  checked={localSettings.tts_enabled}
-                  onCheckedChange={(checked) => 
-                    setLocalSettings(s => ({ ...s, tts_enabled: checked }))
-                  }
-                />
-              </div>
-              
-              {localSettings.tts_enabled && (
-                <div className="space-y-4 pt-2">
+                
+                {settings?.alert_sound ? (
                   <div className="space-y-2">
-                    <Label className="text-sm">Voice</Label>
-                    <Select 
-                      value={localSettings.tts_voice}
-                      onValueChange={(value) => 
-                        setLocalSettings(s => ({ ...s, tts_voice: value }))
-                      }
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => playPreviewSound(settings.alert_sound!)}
+                        className="gap-2"
+                      >
+                        <Play className="w-4 h-4" />
+                        Play
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={deleteAlertSound}
+                        disabled={saving}
+                        className="gap-2 text-destructive hover:text-destructive"
+                      >
+                        <Trash className="w-4 h-4" />
+                        Remove
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Using custom sound</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => playPreviewSound(defaultSoundUrl)}
+                        className="gap-2"
+                      >
+                        <Play className="w-4 h-4" />
+                        Preview Default
+                      </Button>
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="audio/mpeg,audio/wav,audio/ogg"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingSound}
+                      className="gap-2"
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select voice" />
+                      <Upload className="w-4 h-4" />
+                      {uploadingSound ? "Uploading..." : "Upload Custom Sound"}
+                    </Button>
+                    <p className="text-xs text-muted-foreground">Max 5MB. MP3, WAV, or OGG format.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Tip-to-Play Sounds */}
+              <div className="space-y-4 p-4 border border-border rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-purple-500/10">
+                    <Coins className="w-5 h-5 text-purple-500" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold">Tip-to-Play Sounds</h4>
+                    <p className="text-sm text-muted-foreground">Different sounds for different tip amounts</p>
+                  </div>
+                </div>
+
+                {tipSounds.length > 0 && (
+                  <div className="space-y-2">
+                    {tipSounds.map((sound) => (
+                      <div key={sound.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <span className="font-medium">৳{sound.trigger_amount}+</span>
+                          <span className="text-muted-foreground">{sound.display_name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => playPreviewSound(sound.sound_url)}
+                            disabled={playingSoundUrl === sound.sound_url}
+                          >
+                            <Play className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeTipSound(sound.id)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="p-3 bg-secondary/30 rounded-lg space-y-3">
+                  <Label className="text-sm font-medium">Add Amount-Based Sound</Label>
+                  <div className="flex gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">৳</span>
+                      <Input
+                        type="number"
+                        value={newSoundAmount}
+                        onChange={(e) => setNewSoundAmount(Number(e.target.value))}
+                        className="w-24"
+                        min={1}
+                      />
+                    </div>
+                    <Select value={newSoundSelection} onValueChange={setNewSoundSelection}>
+                      <SelectTrigger className="w-40">
+                        <SelectValue placeholder="Select sound" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="default">Default</SelectItem>
-                        {voices.map((voice) => (
-                          <SelectItem key={voice.name} value={voice.name}>
-                            {voice.name} ({voice.lang})
+                        {APPROVED_SOUNDS.map((sound) => (
+                          <SelectItem key={sound.url} value={sound.url}>
+                            {sound.name} ({sound.duration}s)
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    {newSoundSelection && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => playPreviewSound(newSoundSelection)}
+                      >
+                        <Play className="w-4 h-4" />
+                      </Button>
+                    )}
+                    <Button onClick={handleAddTipSound} disabled={saving || !newSoundSelection}>
+                      <Plus className="w-4 h-4 mr-1" /> Add
+                    </Button>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label className="flex items-center justify-between text-sm">
-                      <span>Speed</span>
-                      <span className="text-muted-foreground">{localSettings.tts_rate.toFixed(1)}x</span>
-                    </Label>
-                    <Slider
-                      value={[localSettings.tts_rate]}
-                      onValueChange={([value]) => 
-                        setLocalSettings(s => ({ ...s, tts_rate: value }))
-                      }
-                      min={0.5}
-                      max={2}
-                      step={0.1}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="flex items-center justify-between text-sm">
-                      <span>Pitch</span>
-                      <span className="text-muted-foreground">{localSettings.tts_pitch.toFixed(1)}</span>
-                    </Label>
-                    <Slider
-                      value={[localSettings.tts_pitch]}
-                      onValueChange={([value]) => 
-                        setLocalSettings(s => ({ ...s, tts_pitch: value }))
-                      }
-                      min={0.5}
-                      max={2}
-                      step={0.1}
-                    />
-                  </div>
-
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={testTTS}
-                    className="gap-2"
-                  >
-                    <Play className="w-4 h-4" />
-                    Test TTS
-                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Higher amounts take priority. 10 second cooldown prevents spam.
+                  </p>
                 </div>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Read tip messages aloud using browser Text-to-Speech
-              </p>
-            </div>
+              </div>
 
-            {/* Custom CSS - Advanced */}
-            <details className="group">
-              <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Advanced: Custom CSS
-              </summary>
-              <div className="mt-3">
+              {/* TTS Settings */}
+              <div className="space-y-4 p-4 border border-border rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-blue-500/10">
+                      <Mic className="w-5 h-5 text-blue-500" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">Text-to-Speech (TTS)</h4>
+                      <p className="text-sm text-muted-foreground">Read tip messages aloud</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={localSettings.tts_enabled}
+                    onCheckedChange={(checked) => 
+                      setLocalSettings(s => ({ ...s, tts_enabled: checked }))
+                    }
+                  />
+                </div>
+                
+                {localSettings.tts_enabled && (
+                  <div className="space-y-4 pt-2">
+                    <div className="space-y-2">
+                      <Label className="text-sm">Voice</Label>
+                      <Select 
+                        value={localSettings.tts_voice}
+                        onValueChange={(value) => 
+                          setLocalSettings(s => ({ ...s, tts_voice: value }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select voice" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="default">Default</SelectItem>
+                          {voices.map((voice) => (
+                            <SelectItem key={voice.name} value={voice.name}>
+                              {voice.name} ({voice.lang})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="flex items-center justify-between text-sm">
+                        <span>Speed</span>
+                        <span className="text-muted-foreground">{localSettings.tts_rate.toFixed(1)}x</span>
+                      </Label>
+                      <Slider
+                        value={[localSettings.tts_rate]}
+                        onValueChange={([value]) => 
+                          setLocalSettings(s => ({ ...s, tts_rate: value }))
+                        }
+                        min={0.5}
+                        max={2}
+                        step={0.1}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="flex items-center justify-between text-sm">
+                        <span>Pitch</span>
+                        <span className="text-muted-foreground">{localSettings.tts_pitch.toFixed(1)}</span>
+                      </Label>
+                      <Slider
+                        value={[localSettings.tts_pitch]}
+                        onValueChange={([value]) => 
+                          setLocalSettings(s => ({ ...s, tts_pitch: value }))
+                        }
+                        min={0.5}
+                        max={2}
+                        step={0.1}
+                      />
+                    </div>
+
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={testTTS}
+                      className="gap-2"
+                    >
+                      <Play className="w-4 h-4" />
+                      Test TTS
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <Button onClick={handleSaveSettings} disabled={saving} className="w-full">
+                {saving ? "Saving..." : "Save Sound Settings"}
+              </Button>
+            </TabsContent>
+
+            {/* Visuals Tab */}
+            <TabsContent value="visuals" className="space-y-6">
+              {/* Default Alert Media */}
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-muted-foreground" />
+                  Default Alert Media
+                </Label>
+                <Select
+                  value={localSettings.alert_media_type}
+                  onValueChange={(value: 'emoji' | 'gif' | 'none') =>
+                    setLocalSettings(s => ({ ...s, alert_media_type: value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="emoji">Emoji</SelectItem>
+                    <SelectItem value="gif">Custom GIF URL</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {localSettings.alert_media_type === 'emoji' && (
+                  <div className="space-y-2">
+                    <Label className="text-sm">Emoji</Label>
+                    <Input
+                      value={localSettings.alert_emoji}
+                      onChange={(e) => setLocalSettings(s => ({ ...s, alert_emoji: e.target.value }))}
+                      placeholder="🎉"
+                      className="w-24 text-center text-2xl"
+                    />
+                  </div>
+                )}
+
+                {localSettings.alert_media_type === 'gif' && (
+                  <div className="space-y-2">
+                    <Label className="text-sm">GIF URL</Label>
+                    <Input
+                      value={localSettings.alert_gif_url}
+                      onChange={(e) => setLocalSettings(s => ({ ...s, alert_gif_url: e.target.value }))}
+                      placeholder="https://.../alert.gif"
+                    />
+                    {localSettings.alert_gif_url?.startsWith('http') && (
+                      <div className="flex items-center justify-center p-3 bg-background rounded-xl border border-border">
+                        <img
+                          src={localSettings.alert_gif_url}
+                          alt="GIF preview"
+                          className="w-16 h-16 object-contain"
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* GIF Alerts */}
+              <div className="space-y-4 p-4 border border-border rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-pink-500/10">
+                      <Image className="w-5 h-5 text-pink-500" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">GIF Alerts</h4>
+                      <p className="text-sm text-muted-foreground">Show animated GIFs with tips</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={localSettings.gif_enabled}
+                    onCheckedChange={(checked) => 
+                      setLocalSettings(s => ({ ...s, gif_enabled: checked }))
+                    }
+                  />
+                </div>
+
+                {localSettings.gif_enabled && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm">Select GIF</Label>
+                      <Select 
+                        value={localSettings.gif_id || ''} 
+                        onValueChange={(value) => setLocalSettings(s => ({ ...s, gif_id: value || null }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose a GIF" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {approvedGifs.map((gif) => (
+                            <SelectItem key={gif.id} value={gif.id}>
+                              {gif.name} ({gif.category})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {selectedGif && (
+                      <div className="flex items-center justify-center p-4 bg-secondary/50 rounded-xl">
+                        <img
+                          src={selectedGif.url}
+                          alt={selectedGif.name}
+                          className="w-20 h-20 object-contain"
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
+                      <Label className="text-sm text-muted-foreground">Pause GIFs</Label>
+                      <Switch
+                        checked={localSettings.gifs_paused}
+                        onCheckedChange={(checked) => 
+                          setLocalSettings(s => ({ ...s, gifs_paused: checked }))
+                        }
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <Button onClick={handleSaveSettings} disabled={saving} className="w-full">
+                {saving ? "Saving..." : "Save Visual Settings"}
+              </Button>
+            </TabsContent>
+
+            {/* Advanced Tab */}
+            <TabsContent value="advanced" className="space-y-6">
+              {/* Custom CSS */}
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <Code className="w-4 h-4 text-muted-foreground" />
+                  Custom CSS
+                </Label>
                 <Textarea
                   value={localSettings.custom_css}
                   onChange={(e) => 
                     setLocalSettings(s => ({ ...s, custom_css: e.target.value }))
                   }
                   placeholder=".alert-container { background: rgba(0,0,0,0.8); }"
-                  className="font-mono text-xs h-24"
+                  className="font-mono text-xs h-32"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground">
                   Override default styles with your own CSS
                 </p>
               </div>
-            </details>
 
-            <Button 
-              onClick={handleSaveSettings} 
-              disabled={saving}
-              className="w-full"
-            >
-              {saving ? "Saving..." : "Save Settings"}
-            </Button>
-          </div>
-        </div>
-      )}
+              <Button onClick={handleSaveSettings} disabled={saving} className="w-full">
+                {saving ? "Saving..." : "Save Advanced Settings"}
+              </Button>
 
-      {/* OBS Setup Guide */}
-      {settings?.is_enabled && (
-        <div className="tipkoro-card">
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-accent" />
-            OBS Setup Guide
-          </h3>
-          <ol className="text-sm text-muted-foreground space-y-3 list-decimal list-inside">
-            <li>In OBS, click <span className="text-foreground font-medium">+</span> under Sources and select <span className="text-foreground font-medium">Browser</span></li>
-            <li>Paste your Alert URL in the URL field</li>
-            <li>Set width to <span className="text-foreground font-medium">400</span> and height to <span className="text-foreground font-medium">200</span> (or larger)</li>
-            <li>Check "Shutdown source when not visible" for better performance</li>
-            <li>Position the overlay where you want alerts to appear</li>
-          </ol>
+              {/* OBS Setup Guide */}
+              <div className="p-4 border border-border rounded-xl">
+                <h4 className="font-semibold mb-4 flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-accent" />
+                  OBS Setup Guide
+                </h4>
+                <ol className="text-sm text-muted-foreground space-y-3 list-decimal list-inside">
+                  <li>In OBS, click <span className="text-foreground font-medium">+</span> under Sources and select <span className="text-foreground font-medium">Browser</span></li>
+                  <li>Paste your Alert URL in the URL field</li>
+                  <li>Set width to <span className="text-foreground font-medium">400</span> and height to <span className="text-foreground font-medium">200</span> (or larger)</li>
+                  <li>Check "Shutdown source when not visible" for better performance</li>
+                  <li>Position the overlay where you want alerts to appear</li>
+                </ol>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       )}
 
@@ -932,10 +963,6 @@ export function StreamerSettings() {
         showMessage={localSettings.show_message}
         soundEnabled={localSettings.sound_enabled}
         soundUrl={settings?.alert_sound || defaultSoundUrl}
-        ttsEnabled={localSettings.tts_enabled}
-        ttsVoice={localSettings.tts_voice}
-        ttsRate={localSettings.tts_rate}
-        ttsPitch={localSettings.tts_pitch}
       />
     </div>
   );

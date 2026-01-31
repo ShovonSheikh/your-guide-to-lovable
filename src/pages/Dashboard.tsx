@@ -5,6 +5,8 @@ import { useProfile } from "@/hooks/useProfile";
 import { useCreatorStats } from "@/hooks/useCreatorStats";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { TopNavbar } from "@/components/TopNavbar";
+import { NoticeBar } from "@/components/NoticeBar";
+import { useNotices } from "@/hooks/useNotices";
 import { Button } from "@/components/ui/button";
 import { RecentTipsList } from "@/components/RecentTipsList";
 import { SupporterDashboard } from "@/components/SupporterDashboard";
@@ -26,6 +28,7 @@ export default function Dashboard() {
   const { isSignedIn, isLoaded } = useUser();
   const { profile, loading: profileLoading } = useProfile();
   const { stats, recentTips, loading: statsLoading } = useCreatorStats();
+  const { notices } = useNotices('dashboard');
 
   if (!isLoaded || profileLoading) {
     return (
@@ -53,6 +56,9 @@ export default function Dashboard() {
       <div className="h-24" />
 
       <main className="container max-w-6xl py-8 px-4 flex-1">
+        {/* Notices */}
+        <NoticeBar notices={notices} />
+
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>

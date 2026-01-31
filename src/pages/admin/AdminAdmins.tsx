@@ -40,7 +40,9 @@ import {
   Wallet,
   Receipt,
   Mail,
-  Settings
+  Settings,
+  Bell,
+  FileText
 } from "lucide-react";
 
 interface AdminRole {
@@ -55,6 +57,8 @@ interface AdminRole {
   can_manage_mailbox: boolean;
   can_manage_settings: boolean;
   can_manage_admins: boolean;
+  can_manage_notices: boolean;
+  can_manage_pages: boolean;
   created_at: string;
   profile?: {
     first_name: string | null;
@@ -82,6 +86,8 @@ const permissionLabels = [
   { key: 'can_view_tips', label: 'Tips', icon: Receipt },
   { key: 'can_manage_mailbox', label: 'Mailbox', icon: Mail },
   { key: 'can_manage_settings', label: 'Settings', icon: Settings },
+  { key: 'can_manage_notices', label: 'Notices', icon: Bell },
+  { key: 'can_manage_pages', label: 'Pages', icon: FileText },
   { key: 'can_manage_admins', label: 'Admins', icon: Crown },
 ] as const;
 

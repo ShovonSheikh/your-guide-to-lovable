@@ -71,6 +71,19 @@ export default function Finance() {
   const [withdrawalsLoading, setWithdrawalsLoading] = useState(true);
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalRequest | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [usingSavedMethod, setUsingSavedMethod] = useState(false);
+
+  // Load saved payout method from localStorage
+  useEffect(() => {
+    const savedMethod = localStorage.getItem('lastPayoutMethod');
+    const savedNumber = localStorage.getItem('lastPayoutNumber');
+    
+    if (savedMethod && savedNumber) {
+      setPayoutMethod(savedMethod);
+      setPayoutDetails(savedNumber);
+      setUsingSavedMethod(true);
+    }
+  }, []);
 
   // Fetch withdrawal history
   useEffect(() => {
@@ -221,6 +234,10 @@ export default function Finance() {
 
       if (error) throw error;
 
+      // Save payout method to localStorage for next time
+      localStorage.setItem('lastPayoutMethod', payoutMethod);
+      localStorage.setItem('lastPayoutNumber', payoutDetails);
+
       // Refresh withdrawals list
       const { data: newWithdrawals } = await supabase
         .from('withdrawal_requests')
@@ -252,9 +269,9 @@ export default function Finance() {
         description: "Your withdrawal request has been submitted. It will be processed within 3-5 business days.",
       });
 
+      // Clear only the amount, keep payout method for next time
       setWithdrawAmount('');
-      setPayoutMethod('');
-      setPayoutDetails('');
+      setUsingSavedMethod(true);
     } catch (error: any) {
       console.error('Withdrawal error:', error);
       toast({
@@ -366,7 +383,10 @@ export default function Finance() {
 
                 <div>
                   <label className="tipkoro-label">Payout Method</label>
-                  <Select value={payoutMethod} onValueChange={setPayoutMethod}>
+                  <Select value={payoutMethod} onValueChange={(value) => {
+                    setPayoutMethod(value);
+                    setUsingSavedMethod(false);
+                  }}>
                     <SelectTrigger className="tipkoro-input">
                       <SelectValue placeholder="Select method" />
                     </SelectTrigger>
@@ -379,6 +399,11 @@ export default function Finance() {
                       <SelectItem value="rocket-agent">Rocket - Agent</SelectItem>
                     </SelectContent>
                   </Select>
+                  {usingSavedMethod && payoutMethod && (
+                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3 text-success" /> Using your last payout method
+                    </p>
+                  )}
                 </div>
 
                 <div>
