@@ -84,12 +84,35 @@ export default function StreamerAlert() {
   // Queue system refs
   const alertQueue = useRef<TipData[]>([]);
   const isProcessing = useRef(false);
+  const processedTipIds = useRef<Set<string>>(new Set());
+  const activeAlertResolve = useRef<(() => void) | null>(null);
+  const activeAlertTimeouts = useRef<number[]>([]);
   
   // Cooldown tracking for tip sounds
   const soundCooldowns = useRef<Map<string, number>>(new Map());
 
   const isSpeechSupported = typeof window !== 'undefined' && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
   const isDebug = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug');
+
+  const normalizeSettings = useCallback((data: any): StreamerSettings => {
+    return {
+      ...(data as any),
+      min_amount_for_alert: Number((data as any).min_amount_for_alert) || 0,
+      tts_enabled: Boolean((data as any).tts_enabled),
+      tts_voice: (data as any).tts_voice ?? 'default',
+      tts_rate: Number((data as any).tts_rate) || 1,
+      tts_pitch: Number((data as any).tts_pitch) || 1,
+      alert_media_type: ((data as any).alert_media_type ?? 'emoji') as any,
+      alert_emoji: (data as any).alert_emoji ?? '🎉',
+      alert_gif_url: (data as any).alert_gif_url ?? null,
+      emergency_mute: Boolean((data as any).emergency_mute),
+      sounds_paused: Boolean((data as any).sounds_paused),
+      gifs_paused: Boolean((data as any).gifs_paused),
+      gif_enabled: Boolean((data as any).gif_enabled),
+      gif_id: (data as any).gif_id ?? null,
+      gif_position: (data as any).gif_position ?? 'center',
+    };
+  }, []);
 
   // Load available TTS voices
   useEffect(() => {
@@ -134,23 +157,7 @@ export default function StreamerAlert() {
         return;
       }
 
-      const normalized: StreamerSettings = {
-        ...(data as any),
-        min_amount_for_alert: Number((data as any).min_amount_for_alert) || 0,
-        tts_enabled: Boolean((data as any).tts_enabled),
-        tts_voice: (data as any).tts_voice ?? 'default',
-        tts_rate: Number((data as any).tts_rate) || 1,
-        tts_pitch: Number((data as any).tts_pitch) || 1,
-        alert_media_type: ((data as any).alert_media_type ?? 'emoji') as any,
-        alert_emoji: (data as any).alert_emoji ?? '🎉',
-        alert_gif_url: (data as any).alert_gif_url ?? null,
-        emergency_mute: Boolean((data as any).emergency_mute),
-        sounds_paused: Boolean((data as any).sounds_paused),
-        gifs_paused: Boolean((data as any).gifs_paused),
-        gif_enabled: Boolean((data as any).gif_enabled),
-        gif_id: (data as any).gif_id ?? null,
-        gif_position: (data as any).gif_position ?? 'center',
-      };
+      const normalized = normalizeSettings(data);
 
       setSettings(normalized);
 
@@ -223,6 +230,43 @@ export default function StreamerAlert() {
     }
   }, [settings, voices, isSpeechSupported, isDebug]);
 
+  const clearActiveAlertTimeouts = useCallback(() => {
+    for (const id of activeAlertTimeouts.current) {
+      window.clearTimeout(id);
+    }
+    activeAlertTimeouts.current = [];
+  }, []);
+
+  const stopAudio = useCallback(() => {
+    if (!audioRef.current) return;
+    audioRef.current.pause();
+    audioRef.current.currentTime = 0;
+  }, []);
+
+  const stopCurrentAlert = useCallback((options?: { clearQueue?: boolean }) => {
+    clearActiveAlertTimeouts();
+    stopAudio();
+
+    if (isSpeechSupported) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {
+      }
+    }
+
+    setIsVisible(false);
+    setCurrentTip(null);
+    setCurrentTier(null);
+
+    if (options?.clearQueue) {
+      alertQueue.current = [];
+    }
+
+    const resolve = activeAlertResolve.current;
+    activeAlertResolve.current = null;
+    resolve?.();
+  }, [clearActiveAlertTimeouts, isSpeechSupported, stopAudio]);
+
   // Get the appropriate sound URL based on tip amount
   const getSoundForAmount = useCallback((amount: number): string | null => {
     const normalizedAmount = Math.round(amount * 100);
@@ -247,40 +291,50 @@ export default function StreamerAlert() {
   }, [tipSounds, isDebug]);
 
   const showAlert = useCallback(async (tip: TipData) => {
+    stopCurrentAlert();
+
     const tier = getTierForAmount(tip.amount);
     setCurrentTier(tier);
     setCurrentTip(tip);
     setIsVisible(true);
 
-    // Get sound URL (amount-based or custom or default)
     const amountSound = getSoundForAmount(tip.amount);
     const soundUrl = amountSound || settings?.alert_sound || DEFAULT_SOUND_URL;
 
-    // Play sound if not muted
     if (settings?.sound_enabled && !settings?.sounds_paused && !settings?.emergency_mute && audioRef.current) {
       audioRef.current.src = soundUrl;
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch(() => {});
     }
 
-    // Speak tip after a short delay (let sound play first)
-    if (settings?.tts_enabled && !settings?.emergency_mute) {
-      setTimeout(() => speakTip(tip, tier), 500);
-    }
+    const durationMs = (settings?.alert_duration || 5) * 1000;
 
-    // Wait for alert duration + exit animation
-    const duration = (settings?.alert_duration || 5) * 1000;
     await new Promise<void>((resolve) => {
-      setTimeout(() => {
+      activeAlertResolve.current = resolve;
+
+      if (settings?.tts_enabled && !settings?.emergency_mute) {
+        const ttsTimeout = window.setTimeout(() => speakTip(tip, tier), 500);
+        activeAlertTimeouts.current.push(ttsTimeout);
+      }
+
+      const hideTimeout = window.setTimeout(() => {
+        stopAudio();
         setIsVisible(false);
-        setTimeout(() => {
+
+        const cleanupTimeout = window.setTimeout(() => {
           setCurrentTip(null);
           setCurrentTier(null);
-          resolve();
-        }, 500); // Wait for exit animation
-      }, duration);
+          const done = activeAlertResolve.current;
+          activeAlertResolve.current = null;
+          done?.();
+        }, 500);
+
+        activeAlertTimeouts.current.push(cleanupTimeout);
+      }, durationMs);
+
+      activeAlertTimeouts.current.push(hideTimeout);
     });
-  }, [settings, getSoundForAmount, speakTip]);
+  }, [settings, getSoundForAmount, speakTip, stopCurrentAlert]);
 
   // Process alert queue
   const processQueue = useCallback(async () => {
@@ -304,6 +358,60 @@ export default function StreamerAlert() {
     alertQueue.current.push(tip);
     processQueue();
   }, [processQueue]);
+
+  useEffect(() => {
+    if (!token) return;
+
+    const channel = supabase
+      .channel(`streamer-settings-${token}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'streamer_settings',
+          filter: `alert_token=eq.${token}`,
+        },
+        async (payload) => {
+          const row = payload.new as any;
+          if (!row) return;
+
+          if (row.is_enabled === false) {
+            stopCurrentAlert({ clearQueue: true });
+            setError('Invalid or disabled alert URL');
+            return;
+          }
+
+          setError(null);
+          const normalized = normalizeSettings(row);
+
+          if (normalized.emergency_mute) {
+            stopCurrentAlert({ clearQueue: true });
+          } else if (normalized.sounds_paused || !normalized.sound_enabled) {
+            stopAudio();
+          }
+
+          setSettings(normalized);
+
+          if (normalized.gif_id) {
+            const { data: gif } = await supabase
+              .from('approved_gifs')
+              .select('*')
+              .eq('id', normalized.gif_id)
+              .single();
+
+            if (gif) setApprovedGif(gif as ApprovedGif);
+          } else {
+            setApprovedGif(null);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [token, normalizeSettings, stopAudio, stopCurrentAlert]);
 
   // Subscribe to real-time tips
   useEffect(() => {
@@ -340,6 +448,11 @@ export default function StreamerAlert() {
             if (isDebug) console.log('StreamerAlert: Tip ignored (not completed)');
             return;
           }
+
+          if (processedTipIds.current.has(tip.id)) {
+            if (isDebug) console.log('StreamerAlert: Tip ignored (already processed)');
+            return;
+          }
           
           // Check minimum amount
           if (amount < minAmount) {
@@ -356,6 +469,10 @@ export default function StreamerAlert() {
           if (isDebug) console.log('StreamerAlert: Adding to queue!');
 
           // Add to queue instead of showing directly
+          processedTipIds.current.add(tip.id);
+          if (processedTipIds.current.size > 2000) {
+            processedTipIds.current.clear();
+          }
           addToQueue({
             id: tip.id,
             supporter_name: tip.is_anonymous ? 'Anonymous' : tip.supporter_name,
@@ -409,13 +526,13 @@ export default function StreamerAlert() {
     if (settings?.gif_enabled && !settings?.gifs_paused && approvedGif) {
       const tier = currentTier || TIERS[TIERS.length - 1];
       const scale = tier.scale;
-      const size = 64 * scale;
+      const size = Math.min(360, 280 * scale);
       
       return (
         <img
           src={approvedGif.url}
           alt={approvedGif.name}
-          className="object-contain mx-auto mb-2"
+          className="object-contain mx-auto"
           style={{ width: size, height: size }}
           loading="eager"
           referrerPolicy="no-referrer"
@@ -429,18 +546,21 @@ export default function StreamerAlert() {
       const url = settings?.alert_gif_url;
       const isValid = typeof url === 'string' && /^https:\/\//i.test(url);
       if (!isValid) return <div className="text-4xl mb-2">🎉</div>;
+      const tier = currentTier || TIERS[TIERS.length - 1];
+      const size = Math.min(360, 280 * tier.scale);
       return (
         <img
           src={url}
           alt="Alert"
-          className="w-16 h-16 object-contain mx-auto mb-2"
+          className="object-contain mx-auto"
+          style={{ width: size, height: size }}
           loading="eager"
           referrerPolicy="no-referrer"
         />
       );
     }
     const emoji = (settings?.alert_emoji ?? '🎉').trim();
-    return <div className="text-4xl mb-2">{emoji || '🎉'}</div>;
+    return <div className="text-7xl">{emoji || '🎉'}</div>;
   };
 
   if (error) {
@@ -474,28 +594,18 @@ export default function StreamerAlert() {
             transform: `scale(${getTierScale()})`,
           }}
         >
-          <div className={`bg-gradient-to-br from-[#8B5CF6] to-[#6366F1] rounded-2xl p-6 text-white shadow-2xl min-w-[300px] max-w-[400px] ${getTierClasses()}`}>
-            <div className="text-center">
-              {getMediaNode()}
-              <div className="text-lg font-bold mb-2 tracking-wide">NEW TIP!</div>
-              
-              <div className="flex items-center justify-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-lg font-bold">
-                  {currentTip.supporter_name.charAt(0).toUpperCase()}
-                </div>
-                <span className="font-semibold text-lg">{currentTip.supporter_name}</span>
-              </div>
-              
-              <div className="text-3xl font-bold text-white drop-shadow-lg">
-                tipped ৳{Number(currentTip.amount).toLocaleString()}!
-              </div>
-              
-              {settings.show_message && currentTip.message && (
-                <div className="mt-4 text-sm text-white/90 italic px-4 py-2 bg-white/10 rounded-xl">
-                  "{currentTip.message}"
-                </div>
-              )}
+          <div className={`w-[512px] h-[512px] max-w-[512px] max-h-[512px] px-6 py-8 flex flex-col items-center justify-start text-center ${getTierClasses()}`}>
+            {getMediaNode()}
+
+            <div className="mt-6 text-white text-outline text-3xl font-semibold leading-tight">
+              {currentTip.supporter_name} tipped ৳{Number(currentTip.amount).toLocaleString()}!
             </div>
+
+            {settings.show_message && currentTip.message && (
+              <div className="mt-3 text-white/95 text-outline text-xl font-medium leading-snug">
+                {currentTip.message}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -513,6 +623,18 @@ export default function StreamerAlert() {
         
         .shadow-glow {
           box-shadow: 0 0 30px rgba(251, 191, 36, 0.4), 0 0 60px rgba(251, 191, 36, 0.2);
+        }
+
+        .text-outline {
+          text-shadow:
+            0 2px 0 rgba(0, 0, 0, 0.9),
+            0 -2px 0 rgba(0, 0, 0, 0.9),
+            2px 0 0 rgba(0, 0, 0, 0.9),
+            -2px 0 0 rgba(0, 0, 0, 0.9),
+            2px 2px 0 rgba(0, 0, 0, 0.9),
+            -2px -2px 0 rgba(0,  0, 0, 0.9),
+            2px -2px 0 rgba(0, 0, 0, 0.9),
+            -2px 2px 0 rgba(0, 0, 0, 0.9);
         }
         
         @keyframes slide-in-alert {
