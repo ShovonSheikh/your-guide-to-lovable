@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useTickets } from '@/hooks/useTickets';
@@ -8,9 +8,17 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import SEO from '@/components/SEO';
 import { format } from 'date-fns';
-import { Plus, MessageSquare, ArrowRight } from 'lucide-react';
+import { Plus, MessageSquare, ArrowRight, Search } from 'lucide-react';
 
 const statusColors: Record<string, string> = {
   open: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
@@ -41,6 +49,21 @@ export default function SupportTickets() {
   usePageTitle('My Tickets');
   const navigate = useNavigate();
   const { tickets, loading } = useTickets();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const filteredTickets = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    return tickets.filter((ticket) => {
+      if (statusFilter !== 'all' && ticket.status !== statusFilter) return false;
+      if (!query) return true;
+      return (
+        ticket.ticket_number.toLowerCase().includes(query) ||
+        ticket.subject.toLowerCase().includes(query)
+      );
+    });
+  }, [searchQuery, statusFilter, tickets]);
 
   return (
     <>
@@ -85,7 +108,39 @@ export default function SupportTickets() {
               </Card>
             ) : (
               <div className="space-y-4">
-                {tickets.map((ticket) => (
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search tickets..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-full sm:w-[200px]">
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="open">Open</SelectItem>
+                      <SelectItem value="in_progress">In Progress</SelectItem>
+                      <SelectItem value="waiting_reply">Awaiting Reply</SelectItem>
+                      <SelectItem value="resolved">Resolved</SelectItem>
+                      <SelectItem value="closed">Closed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {filteredTickets.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-10 text-center">
+                      <p className="text-muted-foreground">No tickets match your filters.</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  filteredTickets.map((ticket) => (
                   <Card
                     key={ticket.id}
                     className="hover:border-primary/50 cursor-pointer transition-colors"
@@ -120,7 +175,8 @@ export default function SupportTickets() {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                  ))
+                )}
               </div>
             )}
           </div>

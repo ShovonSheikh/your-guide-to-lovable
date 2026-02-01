@@ -74,7 +74,7 @@ export function useTickets() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
     if (profile) {
@@ -84,173 +84,183 @@ export function useTickets() {
     }
   }, [profile, fetchTickets]);
 
-  const createTicket = async (data: CreateTicketData) => {
-    const ticketNumber = generateTicketNumber();
+  const createTicket = useCallback(
+    async (data: CreateTicketData) => {
+      const ticketNumber = generateTicketNumber();
+      const profileId = profile?.id || null;
 
-    try {
-      // Insert ticket
-      const { data: ticket, error: ticketError } = await supabase
-        .from('support_tickets')
-        .insert({
-          ticket_number: ticketNumber,
-          profile_id: profile?.id || null,
-          guest_name: data.guest_name,
-          guest_email: data.guest_email,
-          subject: data.subject,
-          category: data.category,
-          initial_message: data.message,
-        })
-        .select()
-        .single();
+      try {
+        const { data: ticket, error: ticketError } = await supabase
+          .from('support_tickets')
+          .insert({
+            ticket_number: ticketNumber,
+            profile_id: profileId,
+            guest_name: data.guest_name,
+            guest_email: data.guest_email,
+            subject: data.subject,
+            category: data.category,
+            initial_message: data.message,
+          })
+          .select()
+          .single();
 
-      if (ticketError) throw ticketError;
+        if (ticketError) throw ticketError;
 
-      // Trigger email notification
-      await supabase.functions.invoke('send-support-email', {
-        body: {
-          type: 'ticket_created',
-          ticket_id: ticket.id,
-          ticket_number: ticketNumber,
-          email: data.guest_email,
-          subject: data.subject,
-          name: data.guest_name,
-        },
-      });
-
-      toast({
-        title: 'Ticket Created',
-        description: `Your ticket ${ticketNumber} has been submitted.`,
-      });
-
-      await fetchTickets();
-      return { data: ticket as SupportTicket, error: null };
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to create ticket',
-        variant: 'destructive',
-      });
-      return { data: null, error };
-    }
-  };
-
-  const getTicket = async (ticketId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('support_tickets')
-        .select('*')
-        .eq('id', ticketId)
-        .single();
-
-      if (error) throw error;
-      return { data: data as SupportTicket, error: null };
-    } catch (error) {
-      return { data: null, error };
-    }
-  };
-
-  const getTicketByNumber = async (ticketNumber: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('support_tickets')
-        .select('*')
-        .eq('ticket_number', ticketNumber)
-        .single();
-
-      if (error) throw error;
-      return { data: data as SupportTicket, error: null };
-    } catch (error) {
-      return { data: null, error };
-    }
-  };
-
-  const getMessages = async (ticketId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('ticket_messages')
-        .select('*')
-        .eq('ticket_id', ticketId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      return { data: (data || []) as TicketMessage[], error: null };
-    } catch (error) {
-      return { data: [], error };
-    }
-  };
-
-  const sendMessage = async (
-    ticketId: string,
-    message: string,
-    attachments: TicketMessage['attachments'] = []
-  ) => {
-    if (!profile) {
-      toast({
-        title: 'Error',
-        description: 'You must be logged in to send messages',
-        variant: 'destructive',
-      });
-      return { error: 'Not authenticated' };
-    }
-
-    try {
-      const { error } = await supabase
-        .from('ticket_messages')
-        .insert({
-          ticket_id: ticketId,
-          sender_type: 'user',
-          sender_id: profile.id,
-          sender_name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User',
-          message,
-          attachments,
+        await supabase.functions.invoke('send-support-email', {
+          body: {
+            type: 'ticket_created',
+            ticket_id: ticket.id,
+            ticket_number: ticketNumber,
+            email: data.guest_email,
+            subject: data.subject,
+            name: data.guest_name,
+          },
         });
 
-      if (error) throw error;
+        toast({
+          title: 'Ticket Created',
+          description: `Your ticket ${ticketNumber} has been submitted.`,
+        });
 
-      // Update ticket status and updated_at
-      await supabase
-        .from('support_tickets')
-        .update({ status: 'waiting_reply', updated_at: new Date().toISOString() })
-        .eq('id', ticketId);
+        await fetchTickets();
+        return { data: ticket as SupportTicket, error: null };
+      } catch (error: any) {
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to create ticket',
+          variant: 'destructive',
+        });
+        return { data: null, error };
+      }
+    },
+    [fetchTickets, profile?.id, supabase, toast]
+  );
 
-      return { error: null };
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to send message',
-        variant: 'destructive',
-      });
-      return { error };
-    }
-  };
+  const getTicket = useCallback(
+    async (ticketId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('support_tickets')
+          .select('*')
+          .eq('id', ticketId)
+          .single();
 
-  const uploadAttachment = async (file: File) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    const filePath = `${profile?.id || 'guest'}/${fileName}`;
+        if (error) throw error;
+        return { data: data as SupportTicket, error: null };
+      } catch (error) {
+        return { data: null, error };
+      }
+    },
+    [supabase]
+  );
 
-    try {
-      const { error } = await supabase.storage
-        .from('support-attachments')
-        .upload(filePath, file);
+  const getTicketByNumber = useCallback(
+    async (ticketNumber: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('support_tickets')
+          .select('*')
+          .eq('ticket_number', ticketNumber)
+          .single();
 
-      if (error) throw error;
+        if (error) throw error;
+        return { data: data as SupportTicket, error: null };
+      } catch (error) {
+        return { data: null, error };
+      }
+    },
+    [supabase]
+  );
 
-      const { data: urlData } = supabase.storage
-        .from('support-attachments')
-        .getPublicUrl(filePath);
+  const getMessages = useCallback(
+    async (ticketId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('ticket_messages')
+          .select('*')
+          .eq('ticket_id', ticketId)
+          .order('created_at', { ascending: true });
 
-      return {
-        url: urlData.publicUrl,
-        type: file.type,
-        name: file.name,
-        size: file.size,
-      };
-    } catch (error) {
-      console.error('Upload error:', error);
-      return null;
-    }
-  };
+        if (error) throw error;
+        return { data: (data || []) as TicketMessage[], error: null };
+      } catch (error) {
+        return { data: [], error };
+      }
+    },
+    [supabase]
+  );
+
+  const sendMessage = useCallback(
+    async (ticketId: string, message: string, attachments: TicketMessage['attachments'] = []) => {
+      if (!profile) {
+        toast({
+          title: 'Error',
+          description: 'You must be logged in to send messages',
+          variant: 'destructive',
+        });
+        return { error: 'Not authenticated' };
+      }
+
+      const senderName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User';
+
+      try {
+        const { error } = await supabase
+          .from('ticket_messages')
+          .insert({
+            ticket_id: ticketId,
+            sender_type: 'user',
+            sender_id: profile.id,
+            sender_name: senderName,
+            message,
+            attachments,
+          });
+
+        if (error) throw error;
+
+        await supabase
+          .from('support_tickets')
+          .update({ status: 'waiting_reply', updated_at: new Date().toISOString() })
+          .eq('id', ticketId);
+
+        return { error: null };
+      } catch (error: any) {
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to send message',
+          variant: 'destructive',
+        });
+        return { error };
+      }
+    },
+    [profile, supabase, toast]
+  );
+
+  const uploadAttachment = useCallback(
+    async (file: File) => {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${profile?.id || 'guest'}/${fileName}`;
+
+      try {
+        const { error } = await supabase.storage.from('support-attachments').upload(filePath, file);
+
+        if (error) throw error;
+
+        const { data: urlData } = supabase.storage.from('support-attachments').getPublicUrl(filePath);
+
+        return {
+          url: urlData.publicUrl,
+          type: file.type,
+          name: file.name,
+          size: file.size,
+        };
+      } catch (error) {
+        console.error('Upload error:', error);
+        return null;
+      }
+    },
+    [profile?.id, supabase]
+  );
 
   return {
     tickets,
@@ -293,7 +303,7 @@ export function useAdminTickets() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
     fetchTickets();

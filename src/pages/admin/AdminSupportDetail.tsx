@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useProfile } from '@/hooks/useProfile';
+import { useSupabase } from '@/hooks/useSupabase';
 import { useAdminTickets, SupportTicket, TicketMessage } from '@/hooks/useTickets';
 import { useTickets } from '@/hooks/useTickets';
 import { TicketChat } from '@/components/TicketChat';
@@ -32,7 +33,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { ArrowLeft, Clock, Tag, User, Mail, CheckCircle, XCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
 const statusColors: Record<string, string> = {
   open: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
@@ -62,8 +62,9 @@ const categoryLabels: Record<string, string> = {
 export default function AdminSupportDetail() {
   const { ticketId } = useParams<{ ticketId: string }>();
   const navigate = useNavigate();
+  const supabase = useSupabase();
   const { profile } = useProfile();
-  const { getTicket, getMessages, uploadAttachment } = useTickets();
+  const { getTicket, uploadAttachment } = useTickets();
   const { updateTicketStatus, sendAdminMessage, closeTicket } = useAdminTickets();
   
   const [ticket, setTicket] = useState<SupportTicket | null>(null);
@@ -87,12 +88,15 @@ export default function AdminSupportDetail() {
 
     setMessagesLoading(true);
     // Fetch all messages including internal for admin
-    const { data: allMessages } = await supabase
+    const { data: allMessages, error: messagesError } = await supabase
       .from('ticket_messages')
       .select('*')
       .eq('ticket_id', ticketId)
       .order('created_at', { ascending: true });
     
+    if (messagesError) {
+      console.error('Error fetching ticket messages:', messagesError);
+    }
     setMessages((allMessages || []) as TicketMessage[]);
     setMessagesLoading(false);
   };
@@ -106,17 +110,21 @@ export default function AdminSupportDetail() {
     if (!ticketId || ticket?.status === 'closed') return;
 
     const interval = setInterval(async () => {
-      const { data: allMessages } = await supabase
+      const { data: allMessages, error: messagesError } = await supabase
         .from('ticket_messages')
         .select('*')
         .eq('ticket_id', ticketId)
         .order('created_at', { ascending: true });
       
+      if (messagesError) {
+        console.error('Error fetching ticket messages:', messagesError);
+        return;
+      }
       setMessages((allMessages || []) as TicketMessage[]);
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [ticketId, ticket?.status]);
+  }, [supabase, ticketId, ticket?.status]);
 
   const handleSendMessage = async (message: string, attachments?: TicketMessage['attachments']) => {
     if (!ticketId || !profile) return;
