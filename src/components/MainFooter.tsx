@@ -1,6 +1,5 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Shield } from "lucide-react";
 
 
 export function MainFooter() {
@@ -72,8 +71,8 @@ export function MainFooter() {
               >
                 FAQs
               </button>
-              <Link to="/authenticity" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors flex items-center gap-1">
-                <Shield className="w-3 h-3" /> Trust & Security
+              <Link to="/authenticity" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
+                Trust & Security
               </Link>
               <a href="https://status.tipkoro.com" target="_blank" rel="noopener noreferrer" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
                 Status

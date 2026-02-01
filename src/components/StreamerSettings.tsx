@@ -637,7 +637,6 @@ export function StreamerSettings() {
                 approvedSounds={APPROVED_SOUNDS}
                 onAdd={addTipSound}
                 onRemove={removeTipSound}
-                onUpdate={updateTipSound}
                 onUploadSound={async (file) => {
                   const res = await uploadTipSound(file);
                   return res as any;

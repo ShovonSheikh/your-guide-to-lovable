@@ -67,6 +67,7 @@ export type Database = {
           can_manage_notices: boolean
           can_manage_pages: boolean
           can_manage_settings: boolean
+          can_manage_support: boolean
           can_manage_users: boolean
           can_manage_verifications: boolean
           can_manage_withdrawals: boolean
@@ -84,6 +85,7 @@ export type Database = {
           can_manage_notices?: boolean
           can_manage_pages?: boolean
           can_manage_settings?: boolean
+          can_manage_support?: boolean
           can_manage_users?: boolean
           can_manage_verifications?: boolean
           can_manage_withdrawals?: boolean
@@ -101,6 +103,7 @@ export type Database = {
           can_manage_notices?: boolean
           can_manage_pages?: boolean
           can_manage_settings?: boolean
+          can_manage_support?: boolean
           can_manage_users?: boolean
           can_manage_verifications?: boolean
           can_manage_withdrawals?: boolean
@@ -969,6 +972,7 @@ export type Database = {
           alert_token: string | null
           created_at: string
           custom_css: string | null
+          custom_gif_duration_seconds: number | null
           emergency_mute: boolean | null
           gif_enabled: boolean | null
           gif_id: string | null
@@ -976,6 +980,7 @@ export type Database = {
           gifs_paused: boolean | null
           id: string
           is_enabled: boolean
+          match_gif_duration: boolean
           min_amount_for_alert: number
           profile_id: string
           show_message: boolean
@@ -997,6 +1002,7 @@ export type Database = {
           alert_token?: string | null
           created_at?: string
           custom_css?: string | null
+          custom_gif_duration_seconds?: number | null
           emergency_mute?: boolean | null
           gif_enabled?: boolean | null
           gif_id?: string | null
@@ -1004,6 +1010,7 @@ export type Database = {
           gifs_paused?: boolean | null
           id?: string
           is_enabled?: boolean
+          match_gif_duration?: boolean
           min_amount_for_alert?: number
           profile_id: string
           show_message?: boolean
@@ -1025,6 +1032,7 @@ export type Database = {
           alert_token?: string | null
           created_at?: string
           custom_css?: string | null
+          custom_gif_duration_seconds?: number | null
           emergency_mute?: boolean | null
           gif_enabled?: boolean | null
           gif_id?: string | null
@@ -1032,6 +1040,7 @@ export type Database = {
           gifs_paused?: boolean | null
           id?: string
           is_enabled?: boolean
+          match_gif_duration?: boolean
           min_amount_for_alert?: number
           profile_id?: string
           show_message?: boolean
@@ -1067,13 +1076,169 @@ export type Database = {
           },
         ]
       }
+      support_tickets: {
+        Row: {
+          assigned_to: string | null
+          category: string
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string | null
+          guest_email: string
+          guest_name: string | null
+          id: string
+          priority: string
+          profile_id: string | null
+          status: string
+          subject: string
+          ticket_number: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          category?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string | null
+          guest_email: string
+          guest_name?: string | null
+          id?: string
+          priority?: string
+          profile_id?: string | null
+          status?: string
+          subject: string
+          ticket_number: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          category?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string | null
+          guest_email?: string
+          guest_name?: string | null
+          id?: string
+          priority?: string
+          profile_id?: string | null
+          status?: string
+          subject?: string
+          ticket_number?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_messages: {
+        Row: {
+          attachments: Json | null
+          created_at: string | null
+          id: string
+          is_internal: boolean | null
+          message: string
+          sender_id: string | null
+          sender_name: string
+          sender_type: string
+          ticket_id: string
+        }
+        Insert: {
+          attachments?: Json | null
+          created_at?: string | null
+          id?: string
+          is_internal?: boolean | null
+          message: string
+          sender_id?: string | null
+          sender_name: string
+          sender_type: string
+          ticket_id: string
+        }
+        Update: {
+          attachments?: Json | null
+          created_at?: string | null
+          id?: string
+          is_internal?: boolean | null
+          message?: string
+          sender_id?: string | null
+          sender_name?: string
+          sender_type?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tip_sounds: {
         Row: {
           cooldown_seconds: number | null
           created_at: string | null
           display_name: string
+          gif_duration_seconds: number | null
+          gif_id: string | null
+          gif_url: string | null
           id: string
           is_enabled: boolean | null
+          media_type: string
           profile_id: string
           sound_url: string
           trigger_amount: number
@@ -1082,8 +1247,12 @@ export type Database = {
           cooldown_seconds?: number | null
           created_at?: string | null
           display_name: string
+          gif_duration_seconds?: number | null
+          gif_id?: string | null
+          gif_url?: string | null
           id?: string
           is_enabled?: boolean | null
+          media_type?: string
           profile_id: string
           sound_url: string
           trigger_amount: number
@@ -1092,13 +1261,24 @@ export type Database = {
           cooldown_seconds?: number | null
           created_at?: string | null
           display_name?: string
+          gif_duration_seconds?: number | null
+          gif_id?: string | null
+          gif_url?: string | null
           id?: string
           is_enabled?: boolean | null
+          media_type?: string
           profile_id?: string
           sound_url?: string
           trigger_amount?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "tip_sounds_gif_id_fkey"
+            columns: ["gif_id"]
+            isOneToOne: false
+            referencedRelation: "approved_gifs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tip_sounds_profile_id_fkey"
             columns: ["profile_id"]
