@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useSupabase } from '@/hooks/useSupabase';
 import { useProfile } from './useProfile';
 import { useToast } from './use-toast';
 
@@ -53,6 +53,7 @@ function generateTicketNumber(): string {
 }
 
 export function useTickets() {
+  const supabase = useSupabase();
   const { profile } = useProfile();
   const { toast } = useToast();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
@@ -97,24 +98,12 @@ export function useTickets() {
           guest_email: data.guest_email,
           subject: data.subject,
           category: data.category,
+          initial_message: data.message,
         })
         .select()
         .single();
 
       if (ticketError) throw ticketError;
-
-      // Insert initial message
-      const { error: messageError } = await supabase
-        .from('ticket_messages')
-        .insert({
-          ticket_id: ticket.id,
-          sender_type: 'user',
-          sender_id: profile?.id || null,
-          sender_name: data.guest_name,
-          message: data.message,
-        });
-
-      if (messageError) throw messageError;
 
       // Trigger email notification
       await supabase.functions.invoke('send-support-email', {
@@ -278,6 +267,7 @@ export function useTickets() {
 
 // Admin hook for managing all tickets
 export function useAdminTickets() {
+  const supabase = useSupabase();
   const { toast } = useToast();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [loading, setLoading] = useState(true);

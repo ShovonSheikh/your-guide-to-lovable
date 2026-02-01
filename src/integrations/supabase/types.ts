@@ -1092,6 +1092,7 @@ export type Database = {
           subject: string
           ticket_number: string
           updated_at: string | null
+          initial_message?: string | null
         }
         Insert: {
           assigned_to?: string | null
@@ -1108,6 +1109,7 @@ export type Database = {
           subject: string
           ticket_number: string
           updated_at?: string | null
+          initial_message?: string | null
         }
         Update: {
           assigned_to?: string | null
