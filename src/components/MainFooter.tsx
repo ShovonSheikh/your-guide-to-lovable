@@ -74,6 +74,9 @@ export function MainFooter() {
               <Link to="/authenticity" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
                 Trust & Security
               </Link>
+              <Link to="/support" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
+                Support
+              </Link>
               <a href="https://status.tipkoro.com" target="_blank" rel="noopener noreferrer" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
                 Status
               </a>

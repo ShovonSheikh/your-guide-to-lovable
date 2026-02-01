@@ -69,6 +69,7 @@ export default function AdminLayout() {
   const navItems = allNavItems.filter(item => {
     const permKey = permissionMap[item.id];
     if (!permKey) return true;
+    if (permissions.isSuperAdmin) return true;
     return permissions[permKey];
   });
 

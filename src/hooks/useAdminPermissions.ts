@@ -81,6 +81,9 @@ export function useAdminPermissions() {
                           data.can_manage_mailbox &&
                           data.can_manage_settings,
           };
+          if (perms.isSuperAdmin) {
+            perms.canManageSupport = true;
+          }
           setPermissions(perms);
         } else {
           // No admin_roles record found - check if user is admin in profiles (fallback)

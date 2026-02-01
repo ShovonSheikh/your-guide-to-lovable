@@ -76,6 +76,12 @@ export function TopNavbar({ className }: { className?: string }) {
             >
               Explore
             </Link>
+            <Link
+              to="/support"
+              className="rounded-full bg-secondary/50 px-4 py-1.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
+            >
+              Support
+            </Link>
           </nav>
 
           {/* Right-side actions */}
@@ -155,6 +161,13 @@ export function TopNavbar({ className }: { className?: string }) {
               className="rounded-xl bg-secondary/50 px-4 py-3 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
             >
               Explore
+            </Link>
+            <Link
+              to="/support"
+              onClick={() => setMobileMenuOpen(false)}
+              className="rounded-xl bg-secondary/50 px-4 py-3 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
+            >
+              Support
             </Link>
 
             <div className="border-t border-border pt-3 mt-2">
