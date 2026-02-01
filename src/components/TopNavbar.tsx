@@ -58,18 +58,22 @@ export function TopNavbar({ className }: { className?: string }) {
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-3">
-            <button
-              onClick={() => scrollToSection("how")}
-              className="rounded-full bg-secondary/50 px-4 py-1.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
-            >
-              How it Works
-            </button>
-            <button
-              onClick={() => scrollToSection("pricing")}
-              className="rounded-full bg-secondary/50 px-4 py-1.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
-            >
-              Pricing
-            </button>
+            {!isSignedIn && (
+              <>
+                <button
+                  onClick={() => scrollToSection("how")}
+                  className="rounded-full bg-secondary/50 px-4 py-1.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
+                >
+                  How it Works
+                </button>
+                <button
+                  onClick={() => scrollToSection("pricing")}
+                  className="rounded-full bg-secondary/50 px-4 py-1.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
+                >
+                  Pricing
+                </button>
+              </>
+            )}
             <Link
               to="/explore"
               className="rounded-full bg-secondary/50 px-4 py-1.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
@@ -92,11 +96,10 @@ export function TopNavbar({ className }: { className?: string }) {
                   <div className="flex items-center gap-3">
                     {isAdmin && (
                       <Link to="/admin">
-                        <Button variant="outline" className="rounded-full px-4 h-9 gap-2 relative">
+                        <Button variant="ghost" size="icon" className="rounded-full w-9 h-9 relative hover:bg-secondary/80">
                           <Shield className="w-4 h-4" />
-                          Admin
                           {unreadEmails > 0 && (
-                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-destructive rounded-full border-2 border-background" />
+                            <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-destructive rounded-full border-2 border-background" />
                           )}
                         </Button>
                       </Link>

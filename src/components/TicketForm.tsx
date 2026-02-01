@@ -118,7 +118,6 @@ export function TicketForm({ onSuccess }: TicketFormProps) {
                 id="guest_name"
                 placeholder="John Doe"
                 {...register('guest_name')}
-                disabled={!!profile}
               />
               {errors.guest_name && (
                 <p className="text-sm text-destructive">{errors.guest_name.message}</p>
@@ -132,7 +131,6 @@ export function TicketForm({ onSuccess }: TicketFormProps) {
                 type="email"
                 placeholder="you@example.com"
                 {...register('guest_email')}
-                disabled={!!profile}
               />
               {errors.guest_email && (
                 <p className="text-sm text-destructive">{errors.guest_email.message}</p>
