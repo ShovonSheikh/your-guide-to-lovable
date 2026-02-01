@@ -182,7 +182,7 @@ function Index() {
                   <p className="text-muted-foreground">Support your favorite creators with ease</p>
                 </div>
                 <div className="flex flex-col gap-3 mt-8 flex-grow">
-                  {["Unlimited tipping", "Follow creators", "Get notifications", "Support locally via bKash, Nagad, Rocket"].map((feature) => (
+                  {["Unlimited tipping", "Support via bKash, Nagad, Rocket", "View creator profiles", "Anonymous tipping option"].map((feature) => (
                     <div key={feature} className="flex items-start gap-3">
                       <div className="mt-1 p-0.5 rounded-full bg-success/20 text-success">
                         <Check className="w-3 h-3" />
@@ -237,7 +237,7 @@ function Index() {
                 </div>
 
                 <div className="flex flex-col gap-3 mt-6 flex-grow">
-                  {["Unlimited tips received", "Custom creator page", "Analytics dashboard", "bKash/Nagad/Rocket withdrawals"].map((feature) => (
+                  {["Receive unlimited tips", "Custom page (tipkoro.com/you)", "Earnings dashboard", "Withdraw to bKash, Nagad, Rocket", "Funding goals", "Streamer Mode (OBS alerts)"].map((feature) => (
                     <div key={feature} className="flex items-start gap-3">
                       <div className="mt-1 p-0.5 rounded-full bg-tipkoro-gold text-tipkoro-dark">
                         <Check className="w-3 h-3" />

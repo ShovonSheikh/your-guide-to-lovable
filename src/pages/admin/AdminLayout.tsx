@@ -18,7 +18,8 @@ import {
   Crown,
   ImageIcon,
   Bell,
-  FileText
+  FileText,
+  MessageSquare
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ const allNavItems = [
   { id: "email-templates", label: "Email Templates", icon: Mail, path: "/admin/email-templates" },
   { id: "notices", label: "Notices", icon: Bell, path: "/admin/notices" },
   { id: "pages", label: "Pages", icon: FileText, path: "/admin/pages" },
+  { id: "support", label: "Support", icon: MessageSquare, path: "/admin/support" },
   { id: "settings", label: "Settings", icon: Settings, path: "/admin/settings" },
   { id: "admins", label: "Admins", icon: Crown, path: "/admin/admins" },
 ];

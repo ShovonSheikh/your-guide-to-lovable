@@ -14,6 +14,7 @@ export interface AdminPermissions {
   canManageAdmins: boolean;
   canManageNotices: boolean;
   canManagePages: boolean;
+  canManageSupport: boolean;
   isSuperAdmin: boolean;
 }
 
@@ -29,6 +30,7 @@ const defaultPermissions: AdminPermissions = {
   canManageAdmins: false,
   canManageNotices: false,
   canManagePages: false,
+  canManageSupport: false,
   isSuperAdmin: false,
 };
 
@@ -69,6 +71,7 @@ export function useAdminPermissions() {
             canManageAdmins: data.can_manage_admins,
             canManageNotices: data.can_manage_notices ?? false,
             canManagePages: data.can_manage_pages ?? false,
+            canManageSupport: data.can_manage_support ?? false,
             isSuperAdmin: data.can_manage_admins && 
                           data.can_manage_users && 
                           data.can_manage_creators && 
@@ -101,6 +104,7 @@ export function useAdminPermissions() {
               canManageAdmins: true,
               canManageNotices: true,
               canManagePages: true,
+              canManageSupport: true,
               isSuperAdmin: true,
             });
           } else {
@@ -134,4 +138,5 @@ export const permissionMap: Record<string, keyof AdminPermissions> = {
   admins: 'canManageAdmins',
   notices: 'canManageNotices',
   pages: 'canManagePages',
+  support: 'canManageSupport',
 };
