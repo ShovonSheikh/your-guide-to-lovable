@@ -227,8 +227,30 @@ export default function CreatorProfile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      <div className="min-h-screen bg-background">
+        <TopNavbar />
+        <div className="h-24" />
+        <main className="container max-w-5xl py-8 px-4 animate-fade-in">
+          {/* Skeleton Hero */}
+          <div className="tipkoro-card mb-8">
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+              <div className="h-24 w-24 rounded-full bg-muted animate-pulse" />
+              <div className="text-center md:text-left flex-1 space-y-3">
+                <div className="h-8 w-48 bg-muted animate-pulse rounded mx-auto md:mx-0" />
+                <div className="h-5 w-32 bg-muted animate-pulse rounded mx-auto md:mx-0" />
+                <div className="h-16 w-full max-w-xl bg-muted animate-pulse rounded mt-4" />
+              </div>
+            </div>
+          </div>
+          {/* Skeleton Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 tipkoro-card h-96 bg-muted/20 animate-pulse" />
+            <div className="space-y-6">
+              <div className="tipkoro-card h-32 bg-muted/20 animate-pulse" />
+              <div className="tipkoro-card h-48 bg-muted/20 animate-pulse" />
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
@@ -264,7 +286,7 @@ export default function CreatorProfile() {
         <TopNavbar />
         <div className="h-24" />
 
-        <main className="container max-w-5xl py-8 px-4">
+        <main className="container max-w-5xl py-8 px-4 animate-fade-in">
           {/* Hero Section */}
           <div className="tipkoro-card mb-8">
             <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
@@ -358,7 +380,7 @@ export default function CreatorProfile() {
                 )}
                 
                 {/* Amount Selection */}
-                <div className="grid grid-cols-5 gap-2 mb-4">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-4">
                   {tipAmounts.map((amount) => (
                     <button
                       key={amount}

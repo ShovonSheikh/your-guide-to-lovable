@@ -25,7 +25,7 @@ export default function Support() {
         <TopNavbar />
         <div className="h-20" />
 
-        <main className="flex-1 py-12">
+        <main className="flex-1 py-12 animate-fade-in">
           <div className="container max-w-[1000px] px-6">
             <div className="text-center mb-12">
               <h1 className="text-4xl font-bold font-display mb-4">How can we help?</h1>
