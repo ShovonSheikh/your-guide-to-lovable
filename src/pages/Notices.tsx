@@ -62,7 +62,7 @@ export default function Notices() {
     <div className="min-h-screen bg-background flex flex-col">
       <TopNavbar />
       
-      <main className="flex-1 container max-w-3xl py-12 px-4">
+      <main className="flex-1 container max-w-3xl pt-24 pb-12 px-4">
         <div className="mb-8">
           <h1 className="text-4xl font-display font-bold mb-2 flex items-center gap-3">
             <Bell className="w-8 h-8 text-primary" />
