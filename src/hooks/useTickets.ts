@@ -60,11 +60,19 @@ export function useTickets() {
   const [loading, setLoading] = useState(true);
 
   const fetchTickets = useCallback(async () => {
+    if (!profile) {
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     try {
+      // Explicitly filter by profile_id OR guest_email to only get user's own tickets
+      // This prevents admins from seeing other users' tickets in their personal dashboard
       const { data, error } = await supabase
         .from('support_tickets')
         .select('*')
+        .or(`profile_id.eq.${profile.id},guest_email.eq.${profile.email}`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -74,7 +82,7 @@ export function useTickets() {
     } finally {
       setLoading(false);
     }
-  }, [supabase]);
+  }, [supabase, profile]);
 
   useEffect(() => {
     if (profile) {
