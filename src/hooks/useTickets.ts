@@ -243,21 +243,30 @@ export function useTickets() {
     [profile, supabase, toast]
   );
 
+  // Upload attachment to ticket-specific folder for secure access
   const uploadAttachment = useCallback(
-    async (file: File) => {
+    async (file: File, ticketId?: string) => {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `${profile?.id || 'guest'}/${fileName}`;
+      // Use ticket_id as folder name for RLS policy compliance
+      // If no ticketId provided (ticket creation flow), use a temp folder that will be inaccessible
+      const folderId = ticketId || `temp-${profile?.id || 'guest'}`;
+      const filePath = `${folderId}/${fileName}`;
 
       try {
         const { error } = await supabase.storage.from('support-attachments').upload(filePath, file);
 
         if (error) throw error;
 
-        const { data: urlData } = supabase.storage.from('support-attachments').getPublicUrl(filePath);
+        // Use createSignedUrl for private bucket access
+        const { data: signedData, error: signError } = await supabase.storage
+          .from('support-attachments')
+          .createSignedUrl(filePath, 60 * 60 * 24 * 365); // 1 year expiry
+
+        if (signError) throw signError;
 
         return {
-          url: urlData.publicUrl,
+          url: signedData.signedUrl,
           type: file.type,
           name: file.name,
           size: file.size,

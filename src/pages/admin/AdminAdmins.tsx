@@ -190,10 +190,10 @@ export default function AdminAdmins() {
   const addAdmin = async (userId: string) => {
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('admin_roles')
-        .insert({
-          user_id: userId,
+      // Use server-side function for secure privilege management
+      const { error } = await supabase.rpc('grant_admin_role', {
+        target_user_id: userId,
+        permissions: {
           can_view_dashboard: true,
           can_manage_users: false,
           can_manage_creators: false,
@@ -203,15 +203,13 @@ export default function AdminAdmins() {
           can_manage_mailbox: false,
           can_manage_settings: false,
           can_manage_admins: false,
-        });
+          can_manage_notices: false,
+          can_manage_pages: false,
+          can_manage_support: false,
+        }
+      });
 
       if (error) throw error;
-
-      // Also set is_admin = true on their profile
-      await supabase
-        .from('profiles')
-        .update({ is_admin: true })
-        .eq('user_id', userId);
 
       toast({
         title: "Admin Added",
@@ -269,18 +267,12 @@ export default function AdminAdmins() {
     if (!confirm(`Are you sure you want to remove this admin?`)) return;
 
     try {
-      const { error } = await supabase
-        .from('admin_roles')
-        .delete()
-        .eq('id', admin.id);
+      // Use server-side function for secure privilege management
+      const { error } = await supabase.rpc('revoke_admin_role', {
+        target_user_id: admin.user_id
+      });
 
       if (error) throw error;
-
-      // Also remove is_admin flag
-      await supabase
-        .from('profiles')
-        .update({ is_admin: false })
-        .eq('user_id', admin.user_id);
 
       toast({
         title: "Admin Removed",

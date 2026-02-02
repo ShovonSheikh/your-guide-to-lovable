@@ -1715,6 +1715,10 @@ export type Database = {
           message: string
         }[]
       }
+      grant_admin_role: {
+        Args: { permissions?: Json; target_user_id: string }
+        Returns: string
+      }
       increment_creator_stats: {
         Args: {
           creator_profile_id: string
@@ -1725,6 +1729,10 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_super_admin: { Args: { clerk_user_id: string }; Returns: boolean }
+      revoke_admin_role: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       account_type: "supporter" | "creator"

@@ -1,4 +1,5 @@
 import React from 'react';
+import DOMPurify from 'dompurify';
 import { TopNavbar } from '@/components/TopNavbar';
 import { MainFooter } from '@/components/MainFooter';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -7,9 +8,9 @@ import { Spinner } from '@/components/ui/spinner';
 import { Shield, AlertCircle } from 'lucide-react';
 import SEO from '@/components/SEO';
 
-// Simple markdown-to-HTML converter for basic formatting
+// Simple markdown-to-HTML converter with XSS sanitization
 function parseMarkdown(content: string): string {
-  return content
+  const html = content
     // Headers
     .replace(/^### (.*$)/gim, '<h3 class="text-xl font-semibold mt-6 mb-3">$1</h3>')
     .replace(/^## (.*$)/gim, '<h2 class="text-2xl font-semibold mt-8 mb-4">$1</h2>')
@@ -25,6 +26,12 @@ function parseMarkdown(content: string): string {
       return `<p class="text-foreground/80 mb-4">${para}</p>`;
     })
     .join('\n');
+  
+  // Sanitize to prevent XSS attacks
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['h1', 'h2', 'h3', 'p', 'strong', 'em', 'br', 'hr'],
+    ALLOWED_ATTR: ['class']
+  });
 }
 
 export default function Authenticity() {
