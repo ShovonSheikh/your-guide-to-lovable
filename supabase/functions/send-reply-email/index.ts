@@ -3,6 +3,17 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
+// Ensure Message-ID follows RFC 2822 format with angle brackets
+function ensureMessageIdFormat(messageId: string): string {
+  if (!messageId) return '';
+  // If already has angle brackets, return as-is
+  if (messageId.startsWith('<') && messageId.endsWith('>')) {
+    return messageId;
+  }
+  // Wrap in angle brackets for RFC 2822 compliance
+  return `<${messageId}>`;
+}
+
 async function sendEmailViaResend(params: {
   from: string;
   to: string[];
@@ -116,21 +127,23 @@ const handler = async (req: Request): Promise<Response> => {
     const headers: Record<string, string> = {};
     
     if (in_reply_to) {
-      headers["In-Reply-To"] = in_reply_to;
+      // Ensure proper RFC 2822 format for threading headers
+      headers["In-Reply-To"] = ensureMessageIdFormat(in_reply_to);
       
       // Build References header for proper threading
-      // If this is part of a thread, we should include the chain of message_ids
-      // For now, we'll include the original message_id
       const references: string[] = [];
       
-      // Add the original message_id to references
+      // Add the original message_id to references (already in RFC 2822 format from DB)
       if (originalEmail?.message_id) {
-        references.push(originalEmail.message_id);
+        references.push(ensureMessageIdFormat(originalEmail.message_id));
       }
       
       // If in_reply_to is different from original, add it too
       if (in_reply_to && in_reply_to !== originalEmail?.message_id) {
-        references.push(in_reply_to);
+        const formattedInReplyTo = ensureMessageIdFormat(in_reply_to);
+        if (!references.includes(formattedInReplyTo)) {
+          references.push(formattedInReplyTo);
+        }
       }
       
       if (references.length > 0) {
