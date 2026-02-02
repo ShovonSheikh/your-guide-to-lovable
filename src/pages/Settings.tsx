@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useUser } from "@clerk/clerk-react";
-import { Navigate, useSearchParams, Link } from "react-router-dom";
+import { Navigate, useSearchParams, Link, useNavigate } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
+import { useTickets } from "@/hooks/useTickets";
 import { TopNavbar } from "@/components/TopNavbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { User, Link as LinkIcon, Shield, CreditCard, ArrowLeft, Info, Calendar, CheckCircle, Clock, BadgeCheck, Lock, ShieldCheck, Bell, Video } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { User, Link as LinkIcon, Shield, CreditCard, ArrowLeft, Info, Calendar, CheckCircle, Clock, BadgeCheck, Lock, ShieldCheck, Bell, Video, MessageSquare, Check, Sparkles, TicketIcon, Search, ExternalLink } from "lucide-react";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -18,11 +21,14 @@ import { VerificationForm } from "@/components/VerificationForm";
 import { WithdrawalPinSetup } from "@/components/WithdrawalPinSetup";
 import { ChangePinDialog } from "@/components/ChangePinDialog";
 import { StreamerSettings } from "@/components/StreamerSettings";
+import { createCreatorCheckout, PLATFORM_FEE } from "@/lib/api";
+import { formatDistanceToNow } from "date-fns";
 
 const tabs = [
   { id: 'profile', label: 'Profile', icon: User },
   { id: 'links', label: 'Social Links', icon: LinkIcon },
   { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'my-tickets', label: 'My Tickets', icon: MessageSquare },
   { id: 'streamer', label: 'Streamer Mode', icon: Video, creatorOnly: true },
   { id: 'verification', label: 'Verification', icon: BadgeCheck, creatorOnly: true },
   { id: 'security', label: 'Security', icon: Shield },
@@ -235,6 +241,320 @@ function NotificationsTab({ profile }: { profile: any }) {
           {saving ? "Saving..." : "Save Preferences"}
         </Button>
       </div>
+    </div>
+  );
+}
+
+// My Tickets Tab Component
+function MyTicketsTab() {
+  const navigate = useNavigate();
+  const { tickets, loading } = useTickets();
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredTickets = useMemo(() => {
+    return tickets.filter(ticket => {
+      const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
+      const matchesSearch = !searchQuery || 
+        ticket.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        ticket.ticket_number.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesStatus && matchesSearch;
+    });
+  }, [tickets, statusFilter, searchQuery]);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'open': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+      case 'in_progress': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+      case 'waiting_reply': return 'bg-purple-500/10 text-purple-500 border-purple-500/20';
+      case 'resolved': return 'bg-green-500/10 text-green-500 border-green-500/20';
+      case 'closed': return 'bg-muted text-muted-foreground border-muted';
+      default: return 'bg-secondary text-secondary-foreground';
+    }
+  };
+
+  const formatStatus = (status: string) => {
+    return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  if (loading) {
+    return (
+      <div className="tipkoro-card">
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 bg-secondary rounded w-1/3" />
+          <div className="h-12 bg-secondary rounded" />
+          <div className="h-24 bg-secondary rounded" />
+          <div className="h-24 bg-secondary rounded" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="tipkoro-card">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <TicketIcon className="w-5 h-5" />
+            My Support Tickets
+          </h2>
+          <Button onClick={() => navigate('/support')} className="gap-2">
+            <MessageSquare className="w-4 h-4" />
+            New Ticket
+          </Button>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search tickets..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="open">Open</SelectItem>
+              <SelectItem value="in_progress">In Progress</SelectItem>
+              <SelectItem value="waiting_reply">Awaiting Reply</SelectItem>
+              <SelectItem value="resolved">Resolved</SelectItem>
+              <SelectItem value="closed">Closed</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Ticket List */}
+        {filteredTickets.length === 0 ? (
+          <div className="text-center py-12">
+            <TicketIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground mb-4">
+              {tickets.length === 0 
+                ? "You haven't submitted any support tickets yet." 
+                : "No tickets match your filters."}
+            </p>
+            {tickets.length === 0 && (
+              <Button onClick={() => navigate('/support')} variant="outline">
+                Create Your First Ticket
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredTickets.map(ticket => (
+              <div
+                key={ticket.id}
+                onClick={() => navigate(`/support/ticket/${ticket.id}`)}
+                className="p-4 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors cursor-pointer border border-transparent hover:border-accent/30"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-mono text-xs text-muted-foreground">{ticket.ticket_number}</span>
+                      <Badge variant="outline" className={getStatusColor(ticket.status)}>
+                        {formatStatus(ticket.status)}
+                      </Badge>
+                    </div>
+                    <h3 className="font-semibold truncate">{ticket.subject}</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {formatDistanceToNow(new Date(ticket.updated_at), { addSuffix: true })}
+                    </p>
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Billing Tab Component  
+function BillingTab({ profile, subscription, subscriptionLoading, formatDate, supabase }: { 
+  profile: any; 
+  subscription: any; 
+  subscriptionLoading: boolean;
+  formatDate: (date: string | null) => string;
+  supabase: any;
+}) {
+  const [upgrading, setUpgrading] = useState(false);
+
+  const creatorBenefits = [
+    'Custom creator page (tipkoro.com/username)',
+    'Receive unlimited tips',
+    'Earnings dashboard with analytics',
+    'Withdraw to bKash, Nagad, or Rocket',
+    'Create funding goals',
+    'Streamer Mode with OBS alerts',
+  ];
+
+  const handleUpgrade = async () => {
+    if (!profile) return;
+    
+    setUpgrading(true);
+    try {
+      // Create pending subscription
+      await supabase.from('creator_subscriptions').insert({
+        profile_id: profile.id,
+        amount: PLATFORM_FEE,
+        payment_status: 'pending',
+      });
+
+      // Redirect to payment
+      const result = await createCreatorCheckout({
+        fullname: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User',
+        email: profile.email,
+        reference_id: profile.id,
+      });
+
+      if (result.payment_url) {
+        window.location.href = result.payment_url;
+      } else if (result.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to start upgrade process",
+        variant: "destructive",
+      });
+    }
+    setUpgrading(false);
+  };
+
+  return (
+    <div className="tipkoro-card space-y-6">
+      <h2 className="text-xl font-semibold">Billing & Subscription</h2>
+
+      {profile?.account_type === 'creator' ? (
+        <div className="space-y-6">
+          {/* Plan Info */}
+          <div className="p-4 bg-accent/10 rounded-xl border border-accent/20">
+            <div className="flex items-center gap-3 mb-2">
+              <CheckCircle className="w-5 h-5 text-success" />
+              <span className="font-semibold">Creator Plan Active</span>
+            </div>
+            <p className="text-2xl font-bold font-display">৳150<span className="text-base font-normal text-muted-foreground">/month</span></p>
+          </div>
+
+          {/* Subscription Details */}
+          {subscriptionLoading ? (
+            <div className="animate-pulse bg-secondary/50 rounded-xl p-4 h-32" />
+          ) : subscription ? (
+            <div className="space-y-4">
+              <h3 className="font-medium">Subscription Details</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 bg-secondary/50 rounded-xl">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    <Calendar className="w-4 h-4" />
+                    <span className="text-sm">Billing Started</span>
+                  </div>
+                  <p className="font-medium">{formatDate(subscription.billing_start)}</p>
+                </div>
+                <div className="p-4 bg-secondary/50 rounded-xl">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    <Clock className="w-4 h-4" />
+                    <span className="text-sm">Active Until</span>
+                  </div>
+                  <p className="font-medium">{formatDate(subscription.active_until)}</p>
+                </div>
+              </div>
+
+              {subscription.promo && (
+                <div className="p-3 bg-success/10 rounded-lg border border-success/20">
+                  <p className="text-sm text-success font-medium">
+                    🎉 You're on the Early Creator Offer! Enjoy 2 free months.
+                  </p>
+                </div>
+              )}
+
+              <div className="p-4 bg-secondary/30 rounded-xl">
+                <p className="text-sm text-muted-foreground mb-2">Payment Method Used</p>
+                <p className="font-medium capitalize">{subscription.payment_method || 'Mobile Payment'}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 bg-secondary/30 rounded-xl">
+              <p className="text-sm text-muted-foreground">
+                Your Creator Account Fee (৳150/month) will be deducted from your first earnings.
+              </p>
+            </div>
+          )}
+
+          <div className="pt-4 border-t border-border">
+            <h3 className="font-medium mb-2">How Billing Works</h3>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li>• A ৳150/month Creator Account Fee is deducted from your earnings</li>
+              <li>• No fee on tips — supporters pay zero, you receive 100%</li>
+              <li>• Withdraw your full available balance anytime (no minimum)</li>
+              <li>• Withdrawals are processed within 3-5 business days</li>
+              <li>• View your earnings and request withdrawals in the Finance section</li>
+            </ul>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Current Plan */}
+          <div className="p-4 bg-secondary/50 rounded-xl">
+            <p className="text-sm text-muted-foreground mb-1">Current Plan</p>
+            <p className="text-xl font-bold">Supporter (Free)</p>
+          </div>
+
+          {/* Upgrade CTA */}
+          <div className="p-6 bg-gradient-to-br from-accent/10 to-primary/5 rounded-xl border border-accent/20">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 rounded-full bg-accent/20">
+                <Sparkles className="w-5 h-5 text-accent" />
+              </div>
+              <h3 className="text-xl font-bold">Upgrade to Creator</h3>
+            </div>
+            <p className="text-muted-foreground mb-4">
+              Start receiving tips from your supporters and unlock all creator features.
+            </p>
+            <Button 
+              onClick={handleUpgrade} 
+              disabled={upgrading}
+              className="w-full h-12 bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover font-semibold"
+            >
+              {upgrading ? "Processing..." : `Upgrade for ৳${PLATFORM_FEE}/month`}
+            </Button>
+          </div>
+
+          {/* Benefits List */}
+          <div className="space-y-3">
+            <h3 className="font-semibold">Creator Benefits</h3>
+            <ul className="space-y-2">
+              {creatorBenefits.map((benefit, index) => (
+                <li key={index} className="flex items-center gap-2 text-sm">
+                  <Check className="w-4 h-4 text-success flex-shrink-0" />
+                  <span>{benefit}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Pricing Info */}
+          <div className="p-4 bg-secondary/30 rounded-xl">
+            <h4 className="font-medium mb-2">Pricing</h4>
+            <p className="text-sm text-muted-foreground">
+              ৳150/month flat fee. No percentage taken from tips — your supporters pay zero, you receive 100%.
+              TipKoro commits to never exceeding 20% if we ever change to percentage-based pricing.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -565,6 +885,10 @@ export default function Settings() {
               <NotificationsTab profile={profile} />
             )}
 
+            {currentTab === 'my-tickets' && (
+              <MyTicketsTab />
+            )}
+
             {currentTab === 'streamer' && profile?.account_type === 'creator' && (
               <StreamerSettings />
             )}
@@ -584,85 +908,13 @@ export default function Settings() {
             )}
 
             {currentTab === 'billing' && (
-              <div className="tipkoro-card space-y-6">
-                <h2 className="text-xl font-semibold">Billing & Subscription</h2>
-
-                {profile?.account_type === 'creator' ? (
-                  <div className="space-y-6">
-                    {/* Plan Info */}
-                    <div className="p-4 bg-accent/10 rounded-xl border border-accent/20">
-                      <div className="flex items-center gap-3 mb-2">
-                        <CheckCircle className="w-5 h-5 text-success" />
-                        <span className="font-semibold">Creator Plan Active</span>
-                      </div>
-                      <p className="text-2xl font-bold font-display">৳150<span className="text-base font-normal text-muted-foreground">/month</span></p>
-                    </div>
-
-                    {/* Subscription Details */}
-                    {subscriptionLoading ? (
-                      <div className="animate-pulse bg-secondary/50 rounded-xl p-4 h-32" />
-                    ) : subscription ? (
-                      <div className="space-y-4">
-                        <h3 className="font-medium">Subscription Details</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="p-4 bg-secondary/50 rounded-xl">
-                            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                              <Calendar className="w-4 h-4" />
-                              <span className="text-sm">Billing Started</span>
-                            </div>
-                            <p className="font-medium">{formatDate(subscription.billing_start)}</p>
-                          </div>
-                          <div className="p-4 bg-secondary/50 rounded-xl">
-                            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                              <Clock className="w-4 h-4" />
-                              <span className="text-sm">Active Until</span>
-                            </div>
-                            <p className="font-medium">{formatDate(subscription.active_until)}</p>
-                          </div>
-                        </div>
-
-                        {subscription.promo && (
-                          <div className="p-3 bg-success/10 rounded-lg border border-success/20">
-                            <p className="text-sm text-success font-medium">
-                              🎉 You're on the Early Creator Offer! Enjoy 2 free months.
-                            </p>
-                          </div>
-                        )}
-
-                        <div className="p-4 bg-secondary/30 rounded-xl">
-                          <p className="text-sm text-muted-foreground mb-2">Payment Method Used</p>
-                          <p className="font-medium capitalize">{subscription.payment_method || 'Mobile Payment'}</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-4 bg-secondary/30 rounded-xl">
-                        <p className="text-sm text-muted-foreground">
-                          Your Creator Account Fee (৳150/month) will be deducted from your first earnings.
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="pt-4 border-t border-border">
-                      <h3 className="font-medium mb-2">How Billing Works</h3>
-                      <ul className="space-y-2 text-sm text-muted-foreground">
-                        <li>• A ৳150/month Creator Account Fee is deducted from your earnings</li>
-                        <li>• No fee on tips — supporters pay zero, you receive 100%</li>
-                        <li>• Withdraw your full available balance anytime (no minimum)</li>
-                        <li>• Withdrawals are processed within 3-5 business days</li>
-                        <li>• View your earnings and request withdrawals in the Finance section</li>
-                      </ul>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground mb-4">You're on the free Supporter plan.</p>
-                    <p className="text-sm text-muted-foreground">
-                      As a supporter, you can tip your favorite creators for free.
-                      Want to receive tips? Upgrade to a Creator account!
-                    </p>
-                  </div>
-                )}
-              </div>
+              <BillingTab 
+                profile={profile} 
+                subscription={subscription} 
+                subscriptionLoading={subscriptionLoading}
+                formatDate={formatDate}
+                supabase={supabase}
+              />
             )}
           </div>
         </div>

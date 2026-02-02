@@ -1,43 +1,19 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useProfile } from '@/hooks/useProfile';
-import { useTickets } from '@/hooks/useTickets';
 import { TopNavbar } from '@/components/TopNavbar';
 import { MainFooter } from '@/components/MainFooter';
 import { TicketForm } from '@/components/TicketForm';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import SEO from '@/components/SEO';
-import { Search, MessageSquare, Clock, CheckCircle, HelpCircle } from 'lucide-react';
+import { Clock, CheckCircle, HelpCircle, TicketIcon } from 'lucide-react';
 
 export default function Support() {
   usePageTitle('Support');
   const navigate = useNavigate();
-  const { profile, loading: profileLoading } = useProfile();
-  const { getTicketByNumber } = useTickets();
-  const [ticketSearch, setTicketSearch] = useState('');
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState('');
-
-  const handleTicketSearch = async () => {
-    if (!ticketSearch.trim()) return;
-
-    setSearching(true);
-    setSearchError('');
-
-    const result = await getTicketByNumber(ticketSearch.trim().toUpperCase());
-
-    if (result.data) {
-      navigate(`/support/ticket/${result.data.id}`);
-    } else {
-      setSearchError('Ticket not found. Please check the ticket number.');
-    }
-
-    setSearching(false);
-  };
+  const { profile } = useProfile();
 
   return (
     <>
@@ -58,62 +34,22 @@ export default function Support() {
               </p>
             </div>
 
-            <Tabs defaultValue="new" className="space-y-8">
-              <TabsList className="grid w-full max-w-[400px] mx-auto grid-cols-2">
-                <TabsTrigger value="new" className="gap-2">
-                  <MessageSquare className="w-4 h-4" />
-                  New Ticket
-                </TabsTrigger>
-                <TabsTrigger value="lookup" className="gap-2">
-                  <Search className="w-4 h-4" />
-                  Find Ticket
-                </TabsTrigger>
-              </TabsList>
+            {/* Ticket Form */}
+            <TicketForm />
 
-              <TabsContent value="new">
-                <TicketForm />
-              </TabsContent>
-
-              <TabsContent value="lookup">
-                <Card className="max-w-lg mx-auto">
-                  <CardHeader>
-                    <CardTitle>Find Your Ticket</CardTitle>
-                    <CardDescription>
-                      Enter your ticket number to view its status and continue the conversation.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="TK-20260201-XXXX"
-                        value={ticketSearch}
-                        onChange={(e) => setTicketSearch(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleTicketSearch()}
-                        className="font-mono"
-                      />
-                      <Button onClick={handleTicketSearch} disabled={searching}>
-                        {searching ? 'Searching...' : 'Search'}
-                      </Button>
-                    </div>
-                    {searchError && (
-                      <p className="text-sm text-destructive">{searchError}</p>
-                    )}
-
-                    {profile && (
-                      <div className="pt-4 border-t">
-                        <Button
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => navigate('/support/tickets')}
-                        >
-                          View All My Tickets
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
+            {/* Link to view existing tickets for logged-in users */}
+            {profile && (
+              <div className="text-center mt-8">
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => navigate('/settings?tab=my-tickets')}
+                >
+                  <TicketIcon className="w-4 h-4" />
+                  View Your Existing Tickets
+                </Button>
+              </div>
+            )}
 
             {/* Quick Help Section */}
             <div className="mt-16">
