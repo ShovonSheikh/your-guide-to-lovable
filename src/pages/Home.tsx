@@ -27,6 +27,7 @@ import {
   Shield,
   Check,
   Clock,
+  Bell,
 } from "lucide-react";
 
 function Index() {
@@ -59,6 +60,15 @@ function Index() {
         {/* Notices */}
         <div className="w-full max-w-[1280px] px-6">
           <NoticeBar notices={notices} />
+          <div className="flex justify-center mt-2">
+            <Link 
+              to="/notices" 
+              className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-2"
+            >
+              <Bell className="w-4 h-4" />
+              View all announcements
+            </Link>
+          </div>
         </div>
 
         {/* Hero Section */}

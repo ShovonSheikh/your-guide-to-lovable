@@ -44,6 +44,11 @@ interface CreatorData {
   created_at: string | null;
 }
 
+interface TipSound {
+  trigger_amount: number;
+  display_name: string;
+}
+
 const tipAmounts = [50, 100, 200, 500, 1000];
 
 export default function CreatorProfile() {
@@ -62,12 +67,40 @@ export default function CreatorProfile() {
   const [customAmount, setCustomAmount] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [streamerTipOptions, setStreamerTipOptions] = useState<{
+    isStreamerEnabled: boolean;
+    tipSounds: TipSound[];
+  }>({ isStreamerEnabled: false, tipSounds: [] });
 
   useEffect(() => {
     if (username) {
       fetchCreator();
     }
   }, [username]);
+
+  // Fetch streamer options when creator is loaded
+  useEffect(() => {
+    const fetchStreamerOptions = async () => {
+      if (!creator?.id) return;
+      
+      // Check if streamer mode is enabled via tip_sounds RLS (it checks streamer_settings internally)
+      const { data: sounds } = await supabase
+        .from('tip_sounds')
+        .select('trigger_amount, display_name')
+        .eq('profile_id', creator.id)
+        .eq('is_enabled', true)
+        .order('trigger_amount', { ascending: true });
+      
+      if (sounds && sounds.length > 0) {
+        setStreamerTipOptions({
+          isStreamerEnabled: true,
+          tipSounds: sounds
+        });
+      }
+    };
+    
+    fetchStreamerOptions();
+  }, [creator?.id]);
 
   const fetchCreator = async () => {
     try {
@@ -291,6 +324,38 @@ export default function CreatorProfile() {
                 <p className="text-muted-foreground text-sm mb-6">
                   Show your appreciation by sending a tip. 100% goes directly to the creator!
                 </p>
+
+                {/* Streamer Tip-to-Play Section */}
+                {streamerTipOptions.isStreamerEnabled && streamerTipOptions.tipSounds.length > 0 && (
+                  <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-semibold text-primary">Tip-to-Play Sounds</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      These amounts trigger special sounds & visuals on {creator?.first_name}'s stream!
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {streamerTipOptions.tipSounds.map((sound) => (
+                        <button
+                          key={sound.trigger_amount}
+                          onClick={() => {
+                            setSelectedAmount(sound.trigger_amount);
+                            setCustomAmount('');
+                          }}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border ${
+                            selectedAmount === sound.trigger_amount
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-secondary/50 hover:bg-primary/10 border-primary/30'
+                          }`}
+                        >
+                          <span className="block">৳{sound.trigger_amount}</span>
+                          <span className="text-[10px] opacity-80">{sound.display_name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 
                 {/* Amount Selection */}
                 <div className="grid grid-cols-5 gap-2 mb-4">
