@@ -1,334 +1,269 @@
 
-# Site-Wide UI/UX Polish Plan
+
+# Database Issues Fix Plan
 
 ## Overview
 
-A comprehensive polish of the entire TipKoro application focusing on four key areas:
-1. **Mobile Responsiveness** - Better touch targets, spacing, and layouts
-2. **Animations & Polish** - Smooth transitions, hover effects, micro-interactions
-3. **Visual Consistency** - Standardized spacing, colors, typography, card styles
-4. **UX Improvements** - Better loading states, empty states, keyboard navigation, user feedback
+This plan addresses all 9 database linter issues found in the Supabase project while ensuring existing functionality remains intact. The issues fall into three categories:
+
+1. **Security Definer View (1 ERROR)** - Views that may bypass RLS policies
+2. **Function Search Path Mutable (2 WARNINGs)** - Functions without explicit search_path
+3. **RLS Policy Always True (6 WARNINGs)** - Overly permissive INSERT/UPDATE/DELETE policies
 
 ---
 
-## Part 1: Mobile Responsiveness
+## Current Issues Analysis
 
-### 1.1 Global Touch Target Improvements
-**Files:** Multiple components
+### Issue 1: Security Definer View (ERROR)
 
-- Increase minimum touch target size to 44x44px for all interactive elements
-- Add `min-h-[44px]` to buttons in mobile contexts
-- Ensure adequate spacing between clickable items (minimum 8px gaps)
+**Finding:** The `public_tips` view has `security_barrier=true` but is still flagged. The `public_profiles` view correctly uses `security_invoker=true`.
 
-### 1.2 Page-Specific Mobile Fixes
+**Problem:** The `public_tips` view uses `security_barrier` instead of `security_invoker`, which can still pose security risks.
 
-**Dashboard.tsx**
-- Stats grid: Already responsive (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`)
-- Add `gap-3` on mobile, `gap-4` on desktop for stats cards
-- Quick actions cards: Stack vertically on mobile with full-width
+**Fix:** Recreate `public_tips` view with `security_invoker=true` to enforce RLS of the querying user.
 
-**CreatorProfile.tsx**
-- Tip amount grid: Change from 5 columns to `grid-cols-3 sm:grid-cols-5` for better mobile fit
-- Profile header: Stack avatar and info vertically on mobile
-- Funding goal card: Ensure progress bar and text don't overflow
+### Issue 2-3: Function Search Path Mutable (WARN)
 
-**Finance.tsx**
-- Two-column grid: Already uses `lg:grid-cols-2`, good for mobile
-- Withdrawal form inputs: Add proper padding and spacing
+**Finding:** Two functions lack explicit `search_path`:
+- `create_initial_ticket_message()` 
+- `delete_user_data()`
 
-**Explore.tsx**
-- Creator cards grid: Already responsive (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4`)
-- Search input: Ensure full width on mobile with proper padding
+**Problem:** Without an explicit search_path, these functions are vulnerable to search_path injection attacks.
 
-**Settings.tsx**
-- Tab navigation: Convert to horizontal scroll on mobile with `overflow-x-auto`
-- Form fields: Stack labels and inputs properly
-- Action buttons: Full width on mobile
+**Fix:** Add `SET search_path TO 'public'` to both functions.
 
-**TopNavbar.tsx**
-- Mobile menu: Already has slide-down animation
-- Increase touch targets for mobile menu items to 48px height
+### Issues 4-9: RLS Policy Always True (WARN)
 
-### 1.3 Admin Pages Mobile Polish
-**AdminLayout.tsx and related pages**
-- Already optimized per memory - verify consistent behavior
-- Card-based views for tables on mobile
-- Touch-friendly action buttons
+These policies use `WITH CHECK (true)` for INSERT operations:
+
+| Table | Policy | Analysis | Action |
+|-------|--------|----------|--------|
+| `approved_gifs` | SELECT `USING (true)` | OK - intentionally public read | Keep as-is |
+| `creator_signups` | ALL `true/true` (service_role only) | OK - restricted to service_role | Keep as-is |
+| `email_logs` | INSERT `WITH CHECK (true)` | Needs fix - should be service_role only | Restrict |
+| `inbound_emails` | INSERT `WITH CHECK (true)` | Needs fix - should be service_role only | Restrict |
+| `platform_config` | SELECT `USING (true)` | OK - intentionally public read | Keep as-is |
+| `rate_limits` | ALL `true` | OK - used by edge functions via service_role | Keep as-is |
+| `support_tickets` | INSERT `WITH CHECK (true)` | OK - guests can create tickets | Keep as-is |
+| `ticket_messages` | INSERT `WITH CHECK (true)` | Needs fix - should restrict | Restrict |
+| `tips` | INSERT `WITH CHECK (true)` (service_role) | OK - restricted to service_role | Keep as-is |
 
 ---
 
-## Part 2: Animations & Polish
+## Detailed Fixes
 
-### 2.1 Page Entrance Animations
-**All main pages**
+### Fix 1: Update public_tips View
 
-Add staggered fade-in animations for page content:
+Replace `security_barrier` with `security_invoker`:
 
-```tsx
-// Pattern to apply to main content containers
-<main className="animate-fade-in">
-  <div className="stagger-children">
-    {/* Content sections */}
-  </div>
-</main>
+```sql
+-- Drop and recreate public_tips view with security_invoker
+DROP VIEW IF EXISTS public.public_tips;
+
+CREATE VIEW public.public_tips
+WITH (security_invoker=on) AS
+SELECT 
+    id,
+    creator_id,
+    amount,
+    currency,
+    message,
+    is_anonymous,
+    created_at,
+    CASE
+        WHEN is_anonymous THEN 'Anonymous'::text
+        ELSE supporter_name
+    END AS supporter_display_name
+FROM tips
+WHERE payment_status = 'completed';
 ```
 
-**Pages to update:**
-- Home.tsx
-- Dashboard.tsx
-- CreatorProfile.tsx
-- Finance.tsx
-- Explore.tsx
-- Settings.tsx
-- Support.tsx
-- Contact.tsx
-- About.tsx
-- Notices.tsx
+**Impact:** View will now respect the RLS policies of the calling user, matching how `public_profiles` works.
 
-### 2.2 Interactive Hover Effects
-**Components to enhance:**
+### Fix 2: Harden create_initial_ticket_message Function
 
-**Cards (tipkoro-card class already has shadow transition)**
-- Add subtle lift effect: `hover:-translate-y-0.5 transition-transform duration-200`
+Add `SET search_path TO 'public'`:
 
-**Buttons**
-- Ensure all buttons have `transition-all duration-200`
-- Add subtle scale on press: `active:scale-[0.98]`
-
-**Links and Navigation**
-- Add underline animation for text links using `story-link` class
-- Navbar buttons already have hover states
-
-### 2.3 Skeleton Loading States
-**Create consistent skeleton patterns:**
-
-Add to `src/components/ui/skeleton.tsx` (already exists):
-- Card skeleton component
-- Stats card skeleton
-- List item skeleton
-
-**Apply skeleton loaders to:**
-- Dashboard stats loading
-- Creator profile loading
-- Finance page stats
-- Explore page creator grid
-- Recent tips list (already has skeletons)
-- Settings tabs content
-
-### 2.4 Micro-interactions
-- Button press feedback (active:scale)
-- Form input focus states (ring-2 on focus)
-- Toast notifications (already using sonner)
-- Copy-to-clipboard confirmation animations
-- Success checkmarks with scale-in animation
-
----
-
-## Part 3: Visual Consistency
-
-### 3.1 Spacing Standardization
-**Define consistent spacing scale:**
-
-| Context | Mobile | Desktop |
-|---------|--------|---------|
-| Page padding | `px-4 py-6` | `px-4 py-8` |
-| Section gaps | `gap-6` | `gap-8` |
-| Card internal padding | `p-4` | `p-6` |
-| Grid gaps | `gap-4` | `gap-6` |
-
-**Files to update with consistent spacing:**
-- All page layouts
-- Card components
-- Grid layouts
-
-### 3.2 Card Style Standardization
-**Ensure all cards use `tipkoro-card` class consistently:**
-
-Current issues found:
-- Some pages use `Card` component from shadcn
-- Some use raw `div` with custom classes
-- Some use `tipkoro-card`
-
-**Standardization approach:**
-- Use `tipkoro-card` for main content cards
-- Use `Card` component for smaller, secondary UI (like Support quick help cards)
-- Add `tipkoro-card` variants if needed (e.g., `tipkoro-card-compact`)
-
-**Files to audit and standardize:**
-- Dashboard.tsx (uses tipkoro-card - good)
-- Finance.tsx (uses tipkoro-card - good)
-- Settings.tsx (uses tipkoro-card - good)
-- Support.tsx (uses Card component - appropriate)
-- Contact.tsx (uses custom rounded-2xl - should be tipkoro-card)
-- About.tsx (uses bg-card with custom classes - should be tipkoro-card)
-- Explore.tsx (uses tipkoro-card - good)
-
-### 3.3 Typography Consistency
-**Ensure proper font usage:**
-
-| Element | Font Family | Weight |
-|---------|-------------|--------|
-| h1-h6 | `font-display` (Bricolage Grotesque) | semibold/bold |
-| Body text | `font-sans` (DM Sans) | normal |
-| Labels | `font-sans` | medium |
-| Buttons | `font-sans` | medium/semibold |
-
-**Pattern for page headers:**
-```tsx
-<h1 className="text-3xl md:text-4xl font-display font-bold mb-2">Page Title</h1>
-<p className="text-lg text-muted-foreground mb-8">Subtitle text</p>
+```sql
+CREATE OR REPLACE FUNCTION public.create_initial_ticket_message()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+BEGIN
+  IF NEW.initial_message IS NOT NULL THEN
+    INSERT INTO public.ticket_messages (
+      ticket_id,
+      sender_type,
+      sender_id,
+      sender_name,
+      message,
+      is_internal
+    ) VALUES (
+      NEW.id,
+      'user',
+      NEW.profile_id,
+      COALESCE(NEW.guest_name, 'Guest'),
+      NEW.initial_message,
+      false
+    );
+  END IF;
+  RETURN NEW;
+END;
+$function$;
 ```
 
-### 3.4 Color Token Usage
-**Audit for hardcoded colors and replace with design tokens:**
+### Fix 3: Harden delete_user_data Function
 
-Found issues:
-- Some components use `bg-amber-50/50` instead of tokens
-- Purple/pink gradient in streamer section (acceptable as accent)
-- Payment provider colors (bKash pink, Nagad orange, Rocket purple) - keep as brand colors
+Add `SET search_path TO 'public'`:
 
-**No changes needed for:**
-- Brand-specific colors (payment providers)
-- Accent gradients (streamer tip section)
-
----
-
-## Part 4: UX Improvements
-
-### 4.1 Enhanced Empty States
-**Create engaging empty states with:**
-- Relevant icon (muted, large)
-- Clear message
-- Actionable CTA
-
-**Pages/components needing empty state improvements:**
-
-| Location | Current State | Improvement |
-|----------|---------------|-------------|
-| RecentTipsList | Has icon + message | Add animation on icon |
-| Explore (no creators) | Has icon + message | Good |
-| Settings/My Tickets | Has icon + CTA | Good |
-| Finance/Withdrawals | Has icon + message | Good |
-
-### 4.2 Improved Loading States
-**Replace "Loading..." text with skeleton loaders:**
-
-| Page | Current | Improvement |
-|------|---------|-------------|
-| Dashboard | "Loading..." text | Skeleton for stats + cards |
-| Finance | "Loading..." text | Skeleton for stats + form |
-| Explore | "Loading creators..." | Skeleton grid of cards |
-| CreatorProfile | Custom skeletons | Already good |
-| Settings tabs | Has skeletons | Already good |
-
-### 4.3 Better Form Feedback
-**Add clear feedback for form interactions:**
-
-- Input focus: Already has `focus:ring-2`
-- Validation errors: Show inline with red text
-- Success states: Show green checkmark
-- Loading states: Disable button + show spinner
-
-**Pattern:**
-```tsx
-<Button disabled={isSubmitting}>
-  {isSubmitting ? (
-    <>
-      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-      Saving...
-    </>
-  ) : (
-    "Save"
-  )}
-</Button>
+```sql
+CREATE OR REPLACE FUNCTION public.delete_user_data(target_user_id text)
+RETURNS TABLE(id_front_url text, id_back_url text, selfie_url text)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+-- ... existing function body unchanged ...
+$function$;
 ```
 
-### 4.4 Keyboard Navigation
-**Ensure proper focus management:**
+### Fix 4: Restrict email_logs INSERT Policy
 
-- All interactive elements should be focusable
-- Visible focus rings (already configured via Tailwind)
-- Logical tab order
-- Escape key closes modals (handled by Radix)
+The current policy allows anyone to insert. It should only allow service_role:
 
-### 4.5 NotFound Page Enhancement
-**Current:** Very basic design
+```sql
+-- Drop the overly permissive policy
+DROP POLICY IF EXISTS "Service role can insert email logs" ON public.email_logs;
 
-**Improvement:**
-- Add TipKoro branding
-- Better illustration/icon
-- Suggested links (Home, Explore, Support)
-- Consistent with site design
+-- Create restrictive policy (service_role bypasses RLS, but this makes intent clear)
+-- Actually, since service_role bypasses RLS anyway, we just remove the public insert
+-- No need for a replacement - service_role will still work
+```
 
----
+**Note:** Service role bypasses RLS automatically, so removing the `WITH CHECK (true)` policy for public role is sufficient.
 
-## Implementation Approach
+### Fix 5: Restrict inbound_emails INSERT Policy
 
-### Phase 1: Foundation (High Impact)
-1. Add `animate-fade-in` to all main page containers
-2. Standardize card styles across all pages
-3. Implement skeleton loaders for Dashboard and Explore
-4. Enhance NotFound page
+Similar to email_logs:
 
-### Phase 2: Mobile Polish
-5. Optimize touch targets in TopNavbar mobile menu
-6. Fix Creator Profile tip amount grid for mobile
-7. Add horizontal scroll tabs for Settings on mobile
-8. Verify all form inputs are properly sized
+```sql
+-- Drop the overly permissive policy  
+DROP POLICY IF EXISTS "Service role can insert inbound emails" ON public.inbound_emails;
+```
 
-### Phase 3: Consistency Pass
-9. Standardize page header patterns
-10. Audit and fix spacing inconsistencies
-11. Replace hardcoded colors with tokens where applicable
-12. Ensure all cards follow tipkoro-card pattern
+### Fix 6: Restrict ticket_messages INSERT Policy
 
-### Phase 4: Micro-interactions
-13. Add hover lift effects to interactive cards
-14. Add active:scale to buttons
-15. Enhance loading state feedback
-16. Add subtle animations to empty states
+The "Service role can insert messages" policy allows anyone to insert. We need to keep functionality for:
+1. Edge functions inserting messages (via service_role)
+2. Users inserting messages to their own tickets
+
+Current policies are correct for users. Just remove the overly permissive service role one:
+
+```sql
+-- Remove overly permissive policy
+DROP POLICY IF EXISTS "Service role can insert messages" ON public.ticket_messages;
+```
+
+**Note:** Edge functions use service_role which bypasses RLS, so this won't break anything.
 
 ---
 
-## Files to Modify
+## Policies That Should STAY As-Is
 
-| File | Changes |
+These policies are intentionally permissive and should NOT be changed:
+
+1. **`approved_gifs` SELECT (true)** - GIFs are meant to be publicly viewable for streamer alerts
+2. **`creator_signups` ALL (true)** - Restricted to service_role, used by edge functions
+3. **`platform_config` SELECT (true)** - Configuration is intentionally public (maintenance mode, etc.)
+4. **`rate_limits` ALL (true)** - Used by edge functions for rate limiting via service_role
+5. **`support_tickets` INSERT (true)** - Guests need to create tickets without authentication
+6. **`tips` INSERT (true)** - Restricted to service_role, used by create-tip edge function
+
+---
+
+## Implementation Steps
+
+### Step 1: Create Migration File
+
+A single migration will handle all fixes:
+
+```sql
+-- Fix public_tips view security
+DROP VIEW IF EXISTS public.public_tips;
+CREATE VIEW public.public_tips
+WITH (security_invoker=on) AS
+SELECT 
+    id, creator_id, amount, currency, message, is_anonymous, created_at,
+    CASE WHEN is_anonymous THEN 'Anonymous'::text ELSE supporter_name END AS supporter_display_name
+FROM public.tips
+WHERE payment_status = 'completed';
+
+-- Fix function search paths
+CREATE OR REPLACE FUNCTION public.create_initial_ticket_message()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'public' AS $function$
+BEGIN
+  IF NEW.initial_message IS NOT NULL THEN
+    INSERT INTO public.ticket_messages (ticket_id, sender_type, sender_id, sender_name, message, is_internal)
+    VALUES (NEW.id, 'user', NEW.profile_id, COALESCE(NEW.guest_name, 'Guest'), NEW.initial_message, false);
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.delete_user_data(target_user_id text)
+RETURNS TABLE(id_front_url text, id_back_url text, selfie_url text)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'public' AS $function$
+-- Full function body preserved
+$function$;
+
+-- Remove overly permissive INSERT policies
+DROP POLICY IF EXISTS "Service role can insert email logs" ON public.email_logs;
+DROP POLICY IF EXISTS "Service role can insert inbound emails" ON public.inbound_emails;
+DROP POLICY IF EXISTS "Service role can insert messages" ON public.ticket_messages;
+```
+
+---
+
+## Risk Assessment
+
+| Change | Risk Level | Mitigation |
+|--------|------------|------------|
+| public_tips view | Low | Uses same pattern as working public_profiles |
+| Function search_path | None | Standard security hardening, no behavior change |
+| email_logs policy | None | Service role bypasses RLS anyway |
+| inbound_emails policy | None | Service role bypasses RLS anyway |
+| ticket_messages policy | None | User policies + service role cover all use cases |
+
+---
+
+## Verification After Migration
+
+1. **Explore page** - Creators should still load from public_profiles view
+2. **Creator profile** - Recent tips should display via public_tips view
+3. **Support tickets** - Guests can still create tickets
+4. **Ticket replies** - Logged-in users can reply to their tickets
+5. **Admin functions** - Admins can manage tickets
+6. **Email sending** - Edge functions can still log emails (via service_role)
+7. **User deletion** - delete_user_data function works correctly
+
+---
+
+## Files to Create
+
+| File | Purpose |
 |------|---------|
-| `src/pages/Dashboard.tsx` | Add page animation, skeleton loaders, spacing fixes |
-| `src/pages/Home.tsx` | Add section animations, verify mobile layout |
-| `src/pages/CreatorProfile.tsx` | Fix tip grid mobile, add animations |
-| `src/pages/Finance.tsx` | Add skeletons, standardize spacing |
-| `src/pages/Explore.tsx` | Add skeleton grid, page animation |
-| `src/pages/Settings.tsx` | Mobile tab scroll, animations |
-| `src/pages/Support.tsx` | Page animation, verify card styles |
-| `src/pages/Contact.tsx` | Standardize to tipkoro-card, animations |
-| `src/pages/About.tsx` | Standardize to tipkoro-card, animations |
-| `src/pages/Notices.tsx` | Add page animation |
-| `src/pages/NotFound.tsx` | Complete redesign |
-| `src/components/TopNavbar.tsx` | Larger mobile touch targets |
-| `src/components/ui/button.tsx` | Add active:scale states |
-| `src/components/ui/skeleton.tsx` | Add card skeleton variants |
-| `src/index.css` | Add any new utility classes needed |
+| `supabase/migrations/XXXXXX_fix_database_security_issues.sql` | Single migration with all fixes |
 
 ---
 
 ## Technical Notes
 
-### Animation Classes Available (from tailwind.config.ts)
-- `animate-fade-in` - 0.5s ease-out fade + slide up
-- `animate-scale-in` - 0.3s scale entrance
-- `animate-slide-in-right` - 0.3s slide from right
-- `animate-shimmer` - For loading states
-- `stagger-children` - CSS class for staggered child animations
+- Service role always bypasses RLS, so removing `WITH CHECK (true)` policies doesn't affect edge functions
+- The `security_invoker=on` option makes views respect the calling user's RLS permissions
+- All functions with SECURITY DEFINER should have explicit search_path to prevent injection attacks
+- The remaining "always true" warnings are intentional for public-facing features
 
-### Card Classes
-- `.tipkoro-card` - Standard card with shadow and hover effect
-- `Card` component - Simpler shadcn card for secondary UI
-
-### Focus States
-All form elements should have:
-```css
-focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent
-```
-
-This is already defined in `.tipkoro-input` class.
