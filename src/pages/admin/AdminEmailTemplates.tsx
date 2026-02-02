@@ -20,13 +20,14 @@ import type { Json } from '@/integrations/supabase/types';
 
 // Email types
 const EMAIL_TYPES = [
+    { id: 'welcome_user', label: 'Welcome User', description: 'Welcome email for all new signups (supporters & creators)' },
+    { id: 'welcome_creator', label: 'Welcome Creator', description: 'Welcome email for new creators after onboarding' },
     { id: 'tip_received', label: 'Tip Received', description: 'Sent to creator when they receive a tip' },
     { id: 'tip_sent', label: 'Tip Sent', description: 'Sent to supporter after sending a tip' },
     { id: 'withdrawal_submitted', label: 'Withdrawal Submitted', description: 'Confirmation when withdrawal is requested' },
     { id: 'withdrawal_processing', label: 'Withdrawal Processing', description: 'When withdrawal is approved for processing' },
     { id: 'withdrawal_completed', label: 'Withdrawal Completed', description: 'When withdrawal is successfully completed' },
     { id: 'withdrawal_rejected', label: 'Withdrawal Rejected', description: 'When withdrawal request is rejected' },
-    { id: 'welcome_creator', label: 'Welcome Creator', description: 'Welcome email for new creators' },
     { id: 'weekly_summary', label: 'Weekly Summary', description: 'Weekly earnings summary for creators' },
     { id: 'withdrawal_otp', label: 'Withdrawal OTP', description: 'OTP code for withdrawal verification' },
     { id: 'verification_approved', label: 'Verification Approved', description: 'Sent when creator verification is approved' },
@@ -39,6 +40,13 @@ const EMAIL_TYPES = [
 
 // Available dynamic variables per email type
 const DYNAMIC_VARIABLES: Record<string, Array<{ name: string; description: string; example: string }>> = {
+    welcome_user: [
+        { name: 'first_name', description: 'User first name', example: 'John' },
+    ],
+    welcome_creator: [
+        { name: 'username', description: 'Creator username', example: 'johndoe' },
+        { name: 'first_name', description: 'Creator first name', example: 'John' },
+    ],
     tip_received: [
         { name: 'amount', description: 'Tip amount', example: '500' },
         { name: 'supporter_name', description: 'Name of the supporter', example: 'Jane Smith' },
@@ -61,10 +69,6 @@ const DYNAMIC_VARIABLES: Record<string, Array<{ name: string; description: strin
     withdrawal_rejected: [
         { name: 'amount', description: 'Withdrawal amount', example: '1000' },
         { name: 'reason', description: 'Rejection reason', example: 'Insufficient balance' },
-    ],
-    welcome_creator: [
-        { name: 'username', description: 'Creator username', example: 'johndoe' },
-        { name: 'first_name', description: 'Creator first name', example: 'John' },
     ],
     weekly_summary: [
         { name: 'week_tips_count', description: 'Number of tips this week', example: '12' },
@@ -113,6 +117,30 @@ const DYNAMIC_VARIABLES: Record<string, Array<{ name: string; description: strin
 
 // Default templates (simplified versions)
 const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
+    welcome_user: {
+        subject: '👋 Welcome to TipKoro, {{first_name}}!',
+        html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+  <div style="max-width: 560px; margin: 0 auto;">
+    <div style="text-align: center; padding: 24px 0;">
+      <span style="font-size: 28px; font-weight: 700; color: #1F1C18;">💛 TipKoro</span>
+    </div>
+    <div style="background: #FEFDFB; border: 1px solid #E5E0D5; border-radius: 20px; padding: 44px 36px;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <span style="font-size: 48px;">👋</span>
+      </div>
+      <h1 style="font-size: 26px; font-weight: 700; text-align: center; margin: 0 0 10px;">Welcome to TipKoro!</h1>
+      <p style="color: #7A7469; text-align: center; margin: 0 0 28px;">Hi {{first_name}}, thanks for joining the TipKoro community!</p>
+      <p style="color: #4A453D; text-align: center; margin: 0 0 28px;">Whether you're here to support your favorite creators or share your own content, we're excited to have you.</p>
+      <div style="text-align: center;">
+        <a href="https://tipkoro.com/explore" style="display: inline-block; background: #1F1C18; color: #fff; padding: 16px 40px; border-radius: 12px; text-decoration: none; font-weight: 600;">Explore Creators</a>
+      </div>
+    </div>
+    <div style="text-align: center; padding: 24px 0; color: #7A7469; font-size: 14px;">
+      <p style="margin: 0;">Made with ❤️ in Bangladesh</p>
+    </div>
+  </div>
+</div>`,
+    },
     tip_received: {
         subject: '💰 You received ৳{{amount}} on TipKoro!',
         html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
