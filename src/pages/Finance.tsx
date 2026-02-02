@@ -4,6 +4,7 @@ import { Navigate, Link } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { useCreatorStats } from "@/hooks/useCreatorStats";
 import { useSupabase } from "@/hooks/useSupabase";
+import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { TopNavbar } from "@/components/TopNavbar";
 import { EarningsChart } from "@/components/EarningsChart";
@@ -38,7 +39,8 @@ import {
   Loader2,
   ShieldAlert,
   ArrowLeft,
-  ShieldCheck
+  ShieldCheck,
+  Download
 } from "lucide-react";
 import { format } from "date-fns";
 import { WithdrawalVerificationDialog } from "@/components/WithdrawalVerificationDialog";
@@ -59,12 +61,14 @@ export default function Finance() {
   const { isSignedIn, isLoaded } = useUser();
   const { profile, loading: profileLoading } = useProfile();
   const { stats, loading: statsLoading } = useCreatorStats();
+  const { config } = usePlatformConfig();
   const supabase = useSupabase();
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [payoutMethod, setPayoutMethod] = useState('');
   const [payoutDetails, setPayoutDetails] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [verificationDialogOpen, setVerificationDialogOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Withdrawal history state
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
@@ -173,9 +177,18 @@ export default function Finance() {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Creator Fee is ৳150/month
-  const creatorFee = 150;
+  // Calculate fee based on model (fixed or percentage)
   const totalReceived = stats?.totalReceived || profile?.total_received || 0;
+  let creatorFee = 150; // Default fixed fee
+  
+  if (config.fee_model.type === 'percentage') {
+    creatorFee = Math.max(
+      config.percentage_fee.min_amount,
+      Math.round(totalReceived * (config.percentage_fee.rate / 100))
+    );
+  } else {
+    creatorFee = config.creator_account_fee.amount;
+  }
   
   // Calculate pending/processing withdrawals total - prevents multiple withdrawal requests
   const pendingWithdrawalsTotal = withdrawals
@@ -185,6 +198,60 @@ export default function Finance() {
   // Available balance = Total - Fee - Pending Withdrawals
   const availableBalance = Math.max(0, totalReceived - creatorFee - pendingWithdrawalsTotal);
   const canWithdraw = availableBalance > 0;
+
+  // CSV Export handler
+  const handleExportCSV = async () => {
+    if (!profile?.id) return;
+    setExporting(true);
+    
+    try {
+      const { data: tips, error } = await supabase
+        .from('tips')
+        .select('id, supporter_name, supporter_email, amount, currency, message, is_anonymous, payment_method, transaction_id, created_at')
+        .eq('creator_id', profile.id)
+        .eq('payment_status', 'completed')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      if (!tips || tips.length === 0) {
+        toast({ title: 'No Data', description: 'No tips to export yet.' });
+        return;
+      }
+      
+      // Build CSV
+      const headers = ['Date', 'Supporter Name', 'Amount', 'Currency', 'Message', 'Payment Method', 'Transaction ID'];
+      const rows = tips.map(tip => [
+        format(new Date(tip.created_at), 'yyyy-MM-dd HH:mm:ss'),
+        tip.is_anonymous ? 'Anonymous' : tip.supporter_name,
+        tip.amount,
+        tip.currency || 'BDT',
+        `"${(tip.message || '').replace(/"/g, '""')}"`,
+        tip.payment_method || '',
+        tip.transaction_id || '',
+      ]);
+      
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+      ].join('\n');
+      
+      // Download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `tipkoro-earnings-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      
+      toast({ title: 'Exported!', description: `${tips.length} tips exported to CSV.` });
+    } catch (err) {
+      console.error('Export error:', err);
+      toast({ title: 'Error', description: 'Failed to export data.', variant: 'destructive' });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const initiateWithdraw = () => {
     if (!withdrawAmount || !payoutMethod || !payoutDetails) {
@@ -465,10 +532,16 @@ export default function Finance() {
 
           {/* Earnings Chart */}
           <div className="tipkoro-card">
-            <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Earnings History
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                Earnings History
+              </h2>
+              <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={exporting}>
+                {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                Export CSV
+              </Button>
+            </div>
             
             <EarningsChart 
               data={stats?.monthlyEarnings || []} 

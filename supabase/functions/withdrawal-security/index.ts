@@ -15,44 +15,79 @@ interface SecurityRequest {
   withdrawal_amount?: number;
 }
 
-// Rate limiting map (in production, use Redis or database)
-const rateLimitMap = new Map<string, { attempts: number; lastAttempt: number }>();
+// Database-backed rate limiting constants
 const MAX_ATTEMPTS = 5;
-const LOCKOUT_DURATION = 60 * 60 * 1000; // 1 hour
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
-function checkRateLimit(profileId: string): { allowed: boolean; remainingAttempts: number } {
-  const now = Date.now();
-  const record = rateLimitMap.get(profileId);
+async function checkRateLimit(
+  supabase: any,
+  profileId: string
+): Promise<{ allowed: boolean; remainingAttempts: number }> {
+  const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
+  const action = 'withdrawal_pin_verify';
   
-  if (!record) {
-    return { allowed: true, remainingAttempts: MAX_ATTEMPTS };
+  const { data: existingRecord } = await supabase
+    .from('rate_limits')
+    .select('id, count, window_start')
+    .eq('action', action)
+    .eq('identifier', profileId)
+    .gte('window_start', windowStart)
+    .order('window_start', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingRecord) {
+    if (existingRecord.count >= MAX_ATTEMPTS) {
+      return { allowed: false, remainingAttempts: 0 };
+    }
+    return { allowed: true, remainingAttempts: MAX_ATTEMPTS - existingRecord.count };
   }
   
-  // Reset if lockout period passed
-  if (now - record.lastAttempt > LOCKOUT_DURATION) {
-    rateLimitMap.delete(profileId);
-    return { allowed: true, remainingAttempts: MAX_ATTEMPTS };
-  }
-  
-  if (record.attempts >= MAX_ATTEMPTS) {
-    return { allowed: false, remainingAttempts: 0 };
-  }
-  
-  return { allowed: true, remainingAttempts: MAX_ATTEMPTS - record.attempts };
+  return { allowed: true, remainingAttempts: MAX_ATTEMPTS };
 }
 
-function recordFailedAttempt(profileId: string): void {
-  const record = rateLimitMap.get(profileId);
-  if (record) {
-    record.attempts++;
-    record.lastAttempt = Date.now();
-  } else {
-    rateLimitMap.set(profileId, { attempts: 1, lastAttempt: Date.now() });
+async function recordFailedAttempt(supabase: any, profileId: string): Promise<number> {
+  const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
+  const action = 'withdrawal_pin_verify';
+  
+  const { data: existingRecord } = await supabase
+    .from('rate_limits')
+    .select('id, count, window_start')
+    .eq('action', action)
+    .eq('identifier', profileId)
+    .gte('window_start', windowStart)
+    .order('window_start', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingRecord) {
+    const newCount = existingRecord.count + 1;
+    await supabase
+      .from('rate_limits')
+      .update({ count: newCount, updated_at: new Date().toISOString() })
+      .eq('id', existingRecord.id);
+    return MAX_ATTEMPTS - newCount;
   }
+  
+  await supabase
+    .from('rate_limits')
+    .insert({ 
+      action, 
+      identifier: profileId, 
+      count: 1, 
+      window_start: new Date().toISOString() 
+    });
+  return MAX_ATTEMPTS - 1;
 }
 
-function resetRateLimit(profileId: string): void {
-  rateLimitMap.delete(profileId);
+async function resetRateLimit(supabase: any, profileId: string): Promise<void> {
+  const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
+  await supabase
+    .from('rate_limits')
+    .delete()
+    .eq('action', 'withdrawal_pin_verify')
+    .eq('identifier', profileId)
+    .gte('window_start', windowStart);
 }
 
 function generateOTP(): string {
@@ -93,8 +128,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { action, pin, otp, new_pin, withdrawal_amount }: SecurityRequest = await req.json();
 
-    // Check rate limiting
-    const rateLimit = checkRateLimit(profile.id);
+    // Check rate limiting (database-backed)
+    const rateLimit = await checkRateLimit(supabase, profile.id);
     if (!rateLimit.allowed) {
       return new Response(
         JSON.stringify({ 
@@ -152,8 +187,7 @@ const handler = async (req: Request): Promise<Response> => {
       case 'verify-pin': {
         if (!pin || pin.length !== 6) {
           // Use consistent error response to prevent enumeration
-          recordFailedAttempt(profile.id);
-          const remaining = rateLimit.remainingAttempts - 1;
+          const remaining = await recordFailedAttempt(supabase, profile.id);
           return new Response(
             JSON.stringify({ 
               error: "Invalid PIN", 
@@ -172,8 +206,7 @@ const handler = async (req: Request): Promise<Response> => {
           : false;
 
         if (!isValid) {
-          recordFailedAttempt(profile.id);
-          const remaining = rateLimit.remainingAttempts - 1;
+          const remaining = await recordFailedAttempt(supabase, profile.id);
           return new Response(
             JSON.stringify({ 
               error: "Invalid PIN", // Generic message - doesn't reveal if PIN exists
@@ -185,7 +218,7 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         // Reset rate limit on success
-        resetRateLimit(profile.id);
+        await resetRateLimit(supabase, profile.id);
 
         return new Response(
           JSON.stringify({ success: true, verified: true }),
@@ -379,11 +412,11 @@ const handler = async (req: Request): Promise<Response> => {
         // Verify current PIN
         const isCurrentValid = bcrypt.compareSync(pin, profile.withdrawal_pin_hash);
         if (!isCurrentValid) {
-          recordFailedAttempt(profile.id);
+          const remaining = await recordFailedAttempt(supabase, profile.id);
           return new Response(
             JSON.stringify({ 
               error: "Current PIN is incorrect",
-              remaining_attempts: rateLimit.remainingAttempts - 1
+              remaining_attempts: remaining
             }),
             { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
           );
@@ -409,7 +442,7 @@ const handler = async (req: Request): Promise<Response> => {
           );
         }
 
-        resetRateLimit(profile.id);
+        await resetRateLimit(supabase, profile.id);
 
         return new Response(
           JSON.stringify({ success: true, message: "Withdrawal PIN updated successfully" }),
