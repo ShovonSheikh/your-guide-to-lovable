@@ -72,7 +72,7 @@ export default function Explore() {
         <TopNavbar />
         <div className="h-24" />
 
-      <main className="container max-w-6xl py-8 px-4">
+      <main className="container max-w-6xl py-8 px-4 animate-fade-in">
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-display font-bold mb-4">
@@ -98,8 +98,16 @@ export default function Explore() {
 
         {/* Creators Grid */}
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="animate-pulse text-muted-foreground">Loading creators...</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+              <div key={i} className="tipkoro-card flex flex-col items-center text-center">
+                <div className="h-20 w-20 rounded-full bg-muted animate-pulse" />
+                <div className="h-5 w-28 bg-muted animate-pulse rounded mt-4" />
+                <div className="h-4 w-20 bg-muted animate-pulse rounded mt-2" />
+                <div className="h-10 w-full bg-muted animate-pulse rounded mt-4" />
+                <div className="h-4 w-24 bg-muted animate-pulse rounded mt-4" />
+              </div>
+            ))}
           </div>
         ) : filteredCreators.length === 0 ? (
           <div className="text-center py-20">

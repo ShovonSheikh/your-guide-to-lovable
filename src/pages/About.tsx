@@ -19,7 +19,7 @@ export default function About() {
                 <TopNavbar />
                 <div className="h-24" />
 
-                <main className="container max-w-4xl py-12 px-4">
+                <main className="container max-w-4xl py-12 px-4 animate-fade-in">
                     <h1 className="text-4xl font-display font-bold mb-4">About TipKoro</h1>
                     <p className="text-xl text-muted-foreground mb-12">
                         Bangladesh's first and leading creator tipping platform
@@ -27,7 +27,7 @@ export default function About() {
 
                     <div className="prose prose-gray max-w-none space-y-12">
                         {/* Mission Section */}
-                        <section className="bg-secondary/30 rounded-2xl p-8">
+                        <section className="tipkoro-card">
                             <h2 className="text-2xl font-semibold mb-4 flex items-center gap-3">
                                 <Heart className="w-6 h-6 text-tipkoro-gold" />
                                 Our Mission
@@ -50,28 +50,28 @@ export default function About() {
                         <section>
                             <h2 className="text-2xl font-semibold mb-6">What We Stand For</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="bg-card border border-border rounded-xl p-6">
+                                <div className="tipkoro-card hover:-translate-y-0.5 transition-transform duration-200">
                                     <Users className="w-8 h-8 text-tipkoro-gold mb-3" />
                                     <h3 className="font-bold text-lg mb-2">Creator First</h3>
                                     <p className="text-foreground/70 text-sm">
                                         Every decision we make prioritizes the needs of Bangladeshi creators. You keep what you earn — we only charge a flat monthly fee with zero transaction cuts.
                                     </p>
                                 </div>
-                                <div className="bg-card border border-border rounded-xl p-6">
+                                <div className="tipkoro-card hover:-translate-y-0.5 transition-transform duration-200">
                                     <Zap className="w-8 h-8 text-tipkoro-gold mb-3" />
                                     <h3 className="font-bold text-lg mb-2">Local Payments</h3>
                                     <p className="text-foreground/70 text-sm">
                                         We built TipKoro specifically for Bangladesh. bKash, Nagad, Rocket — if your supporters use it, we support it.
                                     </p>
                                 </div>
-                                <div className="bg-card border border-border rounded-xl p-6">
+                                <div className="tipkoro-card hover:-translate-y-0.5 transition-transform duration-200">
                                     <Shield className="w-8 h-8 text-tipkoro-gold mb-3" />
                                     <h3 className="font-bold text-lg mb-2">Transparent Pricing</h3>
                                     <p className="text-foreground/70 text-sm">
                                         No hidden fees, no surprise cuts. Just ৳150/month for creators, and completely free for supporters. Simple.
                                     </p>
                                 </div>
-                                <div className="bg-card border border-border rounded-xl p-6">
+                                <div className="tipkoro-card hover:-translate-y-0.5 transition-transform duration-200">
                                     <Heart className="w-8 h-8 text-tipkoro-gold mb-3" />
                                     <h3 className="font-bold text-lg mb-2">Made in Bangladesh</h3>
                                     <p className="text-foreground/70 text-sm">
@@ -82,7 +82,7 @@ export default function About() {
                         </section>
 
                         {/* Contact CTA */}
-                        <section className="text-center bg-accent/10 rounded-2xl p-8">
+                        <section className="text-center tipkoro-card bg-accent/10">
                             <h2 className="text-2xl font-semibold mb-4">Get in Touch</h2>
                             <p className="text-foreground/80 mb-4">
                                 Have questions? Want to partner with us? We'd love to hear from you.

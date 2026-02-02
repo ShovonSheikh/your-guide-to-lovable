@@ -747,8 +747,23 @@ export default function Settings() {
 
   if (!isLoaded || loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      <div className="min-h-screen bg-background">
+        <TopNavbar />
+        <div className="h-24" />
+        <main className="container max-w-4xl py-8 px-4 pb-16 flex-1 animate-fade-in">
+          <div className="h-5 w-32 bg-muted animate-pulse rounded mb-6" />
+          <div className="h-8 w-32 bg-muted animate-pulse rounded mb-8" />
+          <div className="flex flex-col md:flex-row gap-8">
+            <div className="flex md:flex-col gap-2 md:w-48 flex-shrink-0">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-10 w-full bg-muted animate-pulse rounded-lg" />
+              ))}
+            </div>
+            <div className="flex-1">
+              <div className="tipkoro-card h-96 bg-muted/20 animate-pulse" />
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
@@ -806,7 +821,7 @@ export default function Settings() {
       <TopNavbar />
       <div className="h-24" />
 
-      <main className="container max-w-4xl py-8 px-4 pb-16 flex-1">
+      <main className="container max-w-4xl py-8 px-4 pb-16 flex-1 animate-fade-in">
         {/* Back to Dashboard button */}
         <Link to="/dashboard" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6">
           <ArrowLeft className="w-4 h-4" />
@@ -816,18 +831,18 @@ export default function Settings() {
         <h1 className="text-3xl font-display font-bold mb-8">Settings</h1>
 
         <div className="flex flex-col md:flex-row gap-8">
-          {/* Tabs */}
-          <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 md:w-48 flex-shrink-0">
+          {/* Tabs - horizontal scroll on mobile */}
+          <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 md:w-48 flex-shrink-0 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
             {visibleTabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setSearchParams({ tab: tab.id })}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${currentTab === tab.id
+                className={`flex items-center gap-2 px-4 py-3 min-h-[44px] rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 active:scale-[0.98] ${currentTab === tab.id
                   ? 'bg-accent text-accent-foreground'
                   : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                   }`}
               >
-                <tab.icon className="w-4 h-4" />
+                <tab.icon className="w-4 h-4 flex-shrink-0" />
                 {tab.label}
               </button>
             ))}

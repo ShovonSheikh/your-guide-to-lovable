@@ -53,7 +53,7 @@ function Index() {
         keywords="TipKoro, support Bangladeshi creators, bKash tips, Nagad payments, Rocket tips, ko-fi alternative Bangladesh, buy me a coffee Bangladesh"
         url="https://tipkoro.com"
       />
-      <div className="flex h-full w-full flex-col items-center bg-background">
+      <div className="flex h-full w-full flex-col items-center bg-background animate-fade-in">
         <TopNavbar />
         <div className="h-20"></div>
 

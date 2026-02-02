@@ -33,8 +33,50 @@ export default function Dashboard() {
 
   if (!isLoaded || profileLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      <div className="min-h-screen bg-background flex flex-col">
+        <TopNavbar />
+        <div className="h-24" />
+        <main className="container max-w-6xl py-8 px-4 flex-1 animate-fade-in">
+          {/* Skeleton Header */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <div className="space-y-2">
+              <div className="h-8 w-64 bg-muted animate-pulse rounded-lg" />
+              <div className="h-5 w-40 bg-muted animate-pulse rounded-lg" />
+            </div>
+            <div className="flex gap-3">
+              <div className="h-12 w-28 bg-muted animate-pulse rounded-xl" />
+              <div className="h-12 w-28 bg-muted animate-pulse rounded-xl" />
+            </div>
+          </div>
+          {/* Skeleton Stats Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="tipkoro-card">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 h-9 w-9 rounded-lg bg-muted animate-pulse" />
+                  <div className="h-4 w-20 bg-muted animate-pulse rounded" />
+                </div>
+                <div className="h-8 w-24 bg-muted animate-pulse rounded" />
+              </div>
+            ))}
+          </div>
+          {/* Skeleton Recent Tips */}
+          <div className="tipkoro-card">
+            <div className="h-6 w-32 bg-muted animate-pulse rounded mb-4" />
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-secondary/30">
+                  <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-32 bg-muted animate-pulse rounded" />
+                    <div className="h-3 w-20 bg-muted animate-pulse rounded" />
+                  </div>
+                  <div className="h-5 w-16 bg-muted animate-pulse rounded" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
@@ -56,7 +98,7 @@ export default function Dashboard() {
       <TopNavbar />
       <div className="h-24" />
 
-      <main className="container max-w-6xl py-8 px-4 flex-1">
+      <main className="container max-w-6xl py-8 px-4 flex-1 animate-fade-in">
         {/* Notices */}
         <NoticeBar notices={notices} />
         <div className="flex justify-end mb-4">

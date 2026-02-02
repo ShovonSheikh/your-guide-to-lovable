@@ -19,7 +19,7 @@ export default function Contact() {
                 <TopNavbar />
                 <div className="h-24" />
 
-                <main className="container max-w-3xl py-12 px-4">
+                <main className="container max-w-3xl py-12 px-4 animate-fade-in">
                     <h1 className="text-4xl font-display font-bold mb-4">Contact Us</h1>
                     <p className="text-xl text-muted-foreground mb-12">
                         We're here to help. Reach out anytime.
@@ -27,7 +27,7 @@ export default function Contact() {
 
                     <div className="space-y-8">
                         {/* Email Contact */}
-                        <div className="bg-card border border-border rounded-2xl p-8">
+                        <div className="tipkoro-card">
                             <div className="flex items-start gap-4">
                                 <div className="p-3 bg-accent/20 rounded-xl">
                                     <Mail className="w-6 h-6 text-tipkoro-gold" />
@@ -48,7 +48,7 @@ export default function Contact() {
                         </div>
 
                         {/* Response Time */}
-                        <div className="bg-card border border-border rounded-2xl p-8">
+                        <div className="tipkoro-card">
                             <div className="flex items-start gap-4">
                                 <div className="p-3 bg-accent/20 rounded-xl">
                                     <Clock className="w-6 h-6 text-tipkoro-gold" />
@@ -64,7 +64,7 @@ export default function Contact() {
                         </div>
 
                         {/* Social/Community */}
-                        <div className="bg-card border border-border rounded-2xl p-8">
+                        <div className="tipkoro-card">
                             <div className="flex items-start gap-4">
                                 <div className="p-3 bg-accent/20 rounded-xl">
                                     <MessageCircle className="w-6 h-6 text-tipkoro-gold" />

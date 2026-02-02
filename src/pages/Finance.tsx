@@ -138,8 +138,29 @@ export default function Finance() {
 
   if (!isLoaded || profileLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      <div className="min-h-screen bg-background">
+        <TopNavbar />
+        <div className="h-24" />
+        <main className="container max-w-4xl py-8 px-4 pb-16 animate-fade-in">
+          <div className="h-5 w-32 bg-muted animate-pulse rounded mb-6" />
+          <div className="h-8 w-40 bg-muted animate-pulse rounded mb-2" />
+          <div className="h-5 w-64 bg-muted animate-pulse rounded mb-6" />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="tipkoro-card">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 h-9 w-9 rounded-lg bg-muted animate-pulse" />
+                  <div className="h-4 w-20 bg-muted animate-pulse rounded" />
+                </div>
+                <div className="h-8 w-24 bg-muted animate-pulse rounded" />
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="tipkoro-card h-80 bg-muted/20 animate-pulse" />
+            <div className="tipkoro-card h-80 bg-muted/20 animate-pulse" />
+          </div>
+        </main>
       </div>
     );
   }
@@ -289,7 +310,7 @@ export default function Finance() {
       <TopNavbar />
       <div className="h-24" />
 
-      <main className="container max-w-4xl py-8 px-4 pb-16">
+      <main className="container max-w-4xl py-8 px-4 pb-16 animate-fade-in">
         {/* Back to Dashboard */}
         <Link to="/dashboard" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6">
           <ArrowLeft className="w-4 h-4" />
