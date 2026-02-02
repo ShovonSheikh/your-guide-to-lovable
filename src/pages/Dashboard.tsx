@@ -20,7 +20,8 @@ import {
   TrendingDown,
   Settings,
   Wallet,
-  ShieldAlert
+  ShieldAlert,
+  Bell
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -58,6 +59,12 @@ export default function Dashboard() {
       <main className="container max-w-6xl py-8 px-4 flex-1">
         {/* Notices */}
         <NoticeBar notices={notices} />
+        <div className="flex justify-end mb-4">
+          <Link to="/notices" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-2">
+            <Bell className="w-4 h-4" />
+            All Announcements
+          </Link>
+        </div>
 
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
