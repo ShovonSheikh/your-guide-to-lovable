@@ -159,7 +159,6 @@ export function TicketChat({
         ) : (
           <div className="space-y-4">
             {messages.map((msg) => {
-              const isUser = msg.sender_type === 'user';
               const isSystem = msg.sender_type === 'system';
 
               if (isSystem) {
@@ -172,17 +171,23 @@ export function TicketChat({
                 );
               }
 
+              // If viewing as admin, admin messages should be on right (like "self")
+              // If viewing as user, user messages should be on right (like "self")
+              const isSelf = isAdmin 
+                ? msg.sender_type === 'admin' 
+                : msg.sender_type === 'user';
+
               return (
                 <div
                   key={msg.id}
                   className={cn(
                     'flex flex-col gap-1 max-w-[80%]',
-                    isUser ? 'ml-auto items-end' : 'mr-auto items-start'
+                    isSelf ? 'ml-auto items-end' : 'mr-auto items-start'
                   )}
                 >
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <span className="font-medium">
-                      {isUser ? msg.sender_name : `${msg.sender_name} (Support)`}
+                      {isSelf ? 'You' : (isAdmin ? msg.sender_name : `${msg.sender_name} (Support)`)}
                     </span>
                     <span>•</span>
                     <span>{format(new Date(msg.created_at), 'MMM d, h:mm a')}</span>
@@ -190,7 +195,7 @@ export function TicketChat({
                   <div
                     className={cn(
                       'rounded-2xl px-4 py-2.5',
-                      isUser
+                      isSelf
                         ? 'bg-primary text-primary-foreground rounded-br-md'
                         : 'bg-secondary rounded-bl-md'
                     )}

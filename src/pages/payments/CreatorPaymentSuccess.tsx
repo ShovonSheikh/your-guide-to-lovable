@@ -89,11 +89,23 @@ const CreatorPaymentSuccess: React.FC = () => {
         });
       }
 
-      // Update profile onboarding status to 'profile' step
-      await supabase
-        .from("profiles")
-        .update({ onboarding_status: "profile" })
-        .eq("id", profile.id);
+      // Determine if this is an upgrade (existing user with completed onboarding)
+      // or a new user onboarding
+      const isUpgrade = profile.onboarding_status === 'completed' && profile.account_type === 'supporter';
+
+      if (isUpgrade) {
+        // This is an upgrade from supporter to creator
+        await supabase
+          .from("profiles")
+          .update({ account_type: "creator" })
+          .eq("id", profile.id);
+      } else {
+        // This is new onboarding - update to profile step
+        await supabase
+          .from("profiles")
+          .update({ onboarding_status: "profile" })
+          .eq("id", profile.id);
+      }
 
       await refetchProfile();
       setVerified(true);
@@ -144,6 +156,9 @@ const CreatorPaymentSuccess: React.FC = () => {
     );
   }
 
+  // Check if this was an upgrade
+  const isUpgrade = profile?.onboarding_status === 'completed';
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Confetti />
@@ -155,10 +170,12 @@ const CreatorPaymentSuccess: React.FC = () => {
           </div>
 
           <h1 className="text-2xl font-bold font-display mb-2">
-            Payment Successful!
+            {isUpgrade ? "Upgrade Successful!" : "Payment Successful!"}
           </h1>
           <p className="text-muted-foreground mb-6">
-            Your creator account has been activated.
+            {isUpgrade 
+              ? "You're now a Creator! Start receiving tips from your supporters." 
+              : "Your creator account has been activated."}
           </p>
 
           {/* Payment Summary */}
@@ -171,7 +188,7 @@ const CreatorPaymentSuccess: React.FC = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Status</span>
-                <span className="text-success font-medium">Paid by Creator</span>
+                <span className="text-success font-medium">Paid</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Subscription Period</span>
@@ -186,20 +203,30 @@ const CreatorPaymentSuccess: React.FC = () => {
             </div>
           </div>
 
-          {/* Next Steps */}
-          <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 mb-8 text-left">
-            <h3 className="font-semibold text-accent-foreground mb-2">Next Step</h3>
-            <p className="text-sm text-muted-foreground">
-              Complete your profile to set up your creator page. Add your bio, social links, 
-              and start receiving tips from your supporters!
-            </p>
-          </div>
+          {/* Next Steps - Different for upgrade vs new user */}
+          {isUpgrade ? (
+            <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 mb-8 text-left">
+              <h3 className="font-semibold text-accent-foreground mb-2">What's Next?</h3>
+              <p className="text-sm text-muted-foreground">
+                Your creator dashboard is ready! Start sharing your profile link with supporters
+                and set up your funding goals.
+              </p>
+            </div>
+          ) : (
+            <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 mb-8 text-left">
+              <h3 className="font-semibold text-accent-foreground mb-2">Next Step</h3>
+              <p className="text-sm text-muted-foreground">
+                Complete your profile to set up your creator page. Add your bio, social links, 
+                and start receiving tips from your supporters!
+              </p>
+            </div>
+          )}
 
           <Button
-            onClick={() => navigate("/complete-profile")}
+            onClick={() => navigate(isUpgrade ? "/dashboard" : "/complete-profile")}
             className="w-full h-12 bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover font-semibold"
           >
-            Complete Your Profile
+            {isUpgrade ? "Go to Dashboard" : "Complete Your Profile"}
             <ArrowRight className="w-5 h-5 ml-2" />
           </Button>
         </div>

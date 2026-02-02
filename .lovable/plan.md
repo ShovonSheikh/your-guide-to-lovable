@@ -1,394 +1,269 @@
 
 
-# Implementation Plan: Build Fix, Pricing Update, Footer Cleanup, Support Ticket System & Refinement Suggestions
+# Database Issues Fix Plan
 
 ## Overview
 
-This plan addresses:
-1. **Critical Build Error** - Fix TipSoundManager prop mismatch
-2. **Pricing Table** - Update to show only actual features
-3. **Footer Icons** - Remove icons from links
-4. **Support Ticket System** - Full ticket-based support with chat and email notifications
-5. **Refinement Suggestions** - Ideas for improving existing features
+This plan addresses all 9 database linter issues found in the Supabase project while ensuring existing functionality remains intact. The issues fall into three categories:
+
+1. **Security Definer View (1 ERROR)** - Views that may bypass RLS policies
+2. **Function Search Path Mutable (2 WARNINGs)** - Functions without explicit search_path
+3. **RLS Policy Always True (6 WARNINGs)** - Overly permissive INSERT/UPDATE/DELETE policies
 
 ---
 
-## Part 1: Fix Build Error (CRITICAL)
+## Current Issues Analysis
 
-### Issue
-```
-Property 'onUpdate' does not exist on type 'IntrinsicAttributes & TipSoundManagerProps'.
-```
+### Issue 1: Security Definer View (ERROR)
 
-The `StreamerSettings.tsx` component passes `onUpdate={updateTipSound}` to `TipSoundManager`, but the component's props interface doesn't include `onUpdate`.
+**Finding:** The `public_tips` view has `security_barrier=true` but is still flagged. The `public_profiles` view correctly uses `security_invoker=true`.
 
-### Solution
-Remove the `onUpdate` prop from the TipSoundManager component call since it's not being used in the component.
+**Problem:** The `public_tips` view uses `security_barrier` instead of `security_invoker`, which can still pose security risks.
 
-**File: `src/components/StreamerSettings.tsx` (Line 640)**
+**Fix:** Recreate `public_tips` view with `security_invoker=true` to enforce RLS of the querying user.
 
-```typescript
-// Before (line 640):
-onUpdate={updateTipSound}
+### Issue 2-3: Function Search Path Mutable (WARN)
 
-// After:
-// Remove this line entirely
-```
+**Finding:** Two functions lack explicit `search_path`:
+- `create_initial_ticket_message()` 
+- `delete_user_data()`
 
----
+**Problem:** Without an explicit search_path, these functions are vulnerable to search_path injection attacks.
 
-## Part 2: Update Pricing Table Features
+**Fix:** Add `SET search_path TO 'public'` to both functions.
 
-### Current Features Listed
+### Issues 4-9: RLS Policy Always True (WARN)
 
-**Supporter (Free):**
-- Unlimited tipping
-- Follow creators (NOT IMPLEMENTED)
-- Get notifications (NOT IMPLEMENTED for supporters)
-- Support locally via bKash, Nagad, Rocket
+These policies use `WITH CHECK (true)` for INSERT operations:
 
-**Creator (৳150/month):**
-- Unlimited tips received
-- Custom creator page
-- Analytics dashboard
-- bKash/Nagad/Rocket withdrawals
-
-### Updated Features (Only Actual Features)
-
-**Supporter (Free):**
-- Unlimited tipping
-- Support via bKash, Nagad, Rocket
-- View creator profiles
-- Anonymous tipping option
-
-**Creator (৳150/month):**
-- Receive unlimited tips
-- Custom creator page (tipkoro.com/username)
-- Earnings dashboard
-- Withdraw to bKash, Nagad, or Rocket
-- Funding goals
-- Streamer Mode (OBS alerts)
-
-**File: `src/pages/Home.tsx` (Lines 184-193, 239-247)**
+| Table | Policy | Analysis | Action |
+|-------|--------|----------|--------|
+| `approved_gifs` | SELECT `USING (true)` | OK - intentionally public read | Keep as-is |
+| `creator_signups` | ALL `true/true` (service_role only) | OK - restricted to service_role | Keep as-is |
+| `email_logs` | INSERT `WITH CHECK (true)` | Needs fix - should be service_role only | Restrict |
+| `inbound_emails` | INSERT `WITH CHECK (true)` | Needs fix - should be service_role only | Restrict |
+| `platform_config` | SELECT `USING (true)` | OK - intentionally public read | Keep as-is |
+| `rate_limits` | ALL `true` | OK - used by edge functions via service_role | Keep as-is |
+| `support_tickets` | INSERT `WITH CHECK (true)` | OK - guests can create tickets | Keep as-is |
+| `ticket_messages` | INSERT `WITH CHECK (true)` | Needs fix - should restrict | Restrict |
+| `tips` | INSERT `WITH CHECK (true)` (service_role) | OK - restricted to service_role | Keep as-is |
 
 ---
 
-## Part 3: Remove Footer Icon
+## Detailed Fixes
 
-Remove the Shield icon from the "Trust & Security" link in the footer.
+### Fix 1: Update public_tips View
 
-**File: `src/components/MainFooter.tsx` (Lines 75-77)**
-
-```typescript
-// Before:
-<Link to="/authenticity" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors flex items-center gap-1">
-  <Shield className="w-3 h-3" /> Trust & Security
-</Link>
-
-// After:
-<Link to="/authenticity" className="text-sm text-background/70 hover:text-tipkoro-gold transition-colors">
-  Trust & Security
-</Link>
-```
-
-Also remove the Shield import if no longer needed.
-
----
-
-## Part 4: Support Ticket System
-
-### Database Schema
-
-**New Tables:**
+Replace `security_barrier` with `security_invoker`:
 
 ```sql
--- Support Tickets
-CREATE TABLE public.support_tickets (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  ticket_number TEXT UNIQUE NOT NULL, -- e.g., "TK-20240131-001"
-  
-  -- User Info (for both registered and unregistered)
-  profile_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
-  guest_name TEXT,
-  guest_email TEXT NOT NULL, -- Required for all tickets
-  
-  -- Ticket Details
-  subject TEXT NOT NULL,
-  category TEXT NOT NULL DEFAULT 'general', -- 'general', 'payment', 'withdrawal', 'account', 'technical', 'other'
-  priority TEXT NOT NULL DEFAULT 'normal', -- 'low', 'normal', 'high', 'urgent'
-  status TEXT NOT NULL DEFAULT 'open', -- 'open', 'in_progress', 'waiting_reply', 'resolved', 'closed'
-  
-  -- Metadata
-  assigned_to UUID REFERENCES profiles(id),
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  closed_at TIMESTAMPTZ,
-  closed_by UUID REFERENCES profiles(id)
-);
+-- Drop and recreate public_tips view with security_invoker
+DROP VIEW IF EXISTS public.public_tips;
 
--- Ticket Messages (Chat)
-CREATE TABLE public.ticket_messages (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  ticket_id UUID NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
-  
-  -- Sender
-  sender_type TEXT NOT NULL, -- 'user', 'admin', 'system'
-  sender_id UUID REFERENCES profiles(id), -- NULL for guests
-  sender_name TEXT NOT NULL,
-  
-  -- Content
-  message TEXT NOT NULL,
-  attachments JSONB DEFAULT '[]', -- Array of {url, type, name, size}
-  
-  -- Metadata
-  is_internal BOOLEAN DEFAULT false, -- Internal notes (hidden from user)
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Indexes
-CREATE INDEX idx_tickets_profile ON support_tickets(profile_id);
-CREATE INDEX idx_tickets_email ON support_tickets(guest_email);
-CREATE INDEX idx_tickets_status ON support_tickets(status);
-CREATE INDEX idx_messages_ticket ON ticket_messages(ticket_id);
+CREATE VIEW public.public_tips
+WITH (security_invoker=on) AS
+SELECT 
+    id,
+    creator_id,
+    amount,
+    currency,
+    message,
+    is_anonymous,
+    created_at,
+    CASE
+        WHEN is_anonymous THEN 'Anonymous'::text
+        ELSE supporter_name
+    END AS supporter_display_name
+FROM tips
+WHERE payment_status = 'completed';
 ```
 
-**RLS Policies:**
+**Impact:** View will now respect the RLS policies of the calling user, matching how `public_profiles` works.
+
+### Fix 2: Harden create_initial_ticket_message Function
+
+Add `SET search_path TO 'public'`:
 
 ```sql
--- Users can view their own tickets (by profile_id or email)
--- Admins can view all tickets
--- Edge function (service role) can insert/update
+CREATE OR REPLACE FUNCTION public.create_initial_ticket_message()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+BEGIN
+  IF NEW.initial_message IS NOT NULL THEN
+    INSERT INTO public.ticket_messages (
+      ticket_id,
+      sender_type,
+      sender_id,
+      sender_name,
+      message,
+      is_internal
+    ) VALUES (
+      NEW.id,
+      'user',
+      NEW.profile_id,
+      COALESCE(NEW.guest_name, 'Guest'),
+      NEW.initial_message,
+      false
+    );
+  END IF;
+  RETURN NEW;
+END;
+$function$;
 ```
 
-**Admin Roles Update:**
+### Fix 3: Harden delete_user_data Function
+
+Add `SET search_path TO 'public'`:
+
 ```sql
-ALTER TABLE admin_roles ADD COLUMN can_manage_support BOOLEAN NOT NULL DEFAULT false;
+CREATE OR REPLACE FUNCTION public.delete_user_data(target_user_id text)
+RETURNS TABLE(id_front_url text, id_back_url text, selfie_url text)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+-- ... existing function body unchanged ...
+$function$;
 ```
 
-### Storage Bucket
+### Fix 4: Restrict email_logs INSERT Policy
 
-Create `support-attachments` bucket for images and videos in ticket chat.
+The current policy allows anyone to insert. It should only allow service_role:
 
-### Frontend Pages
+```sql
+-- Drop the overly permissive policy
+DROP POLICY IF EXISTS "Service role can insert email logs" ON public.email_logs;
 
-1. **`/support`** - Public support page with ticket creation form and ticket lookup
-2. **`/support/tickets`** - List of user's tickets (for logged-in users)
-3. **`/support/ticket/:ticketId`** - Ticket detail with chat interface
-4. **`/admin/support`** - Admin ticket management
-5. **`/admin/support/:ticketId`** - Admin ticket detail with chat
+-- Create restrictive policy (service_role bypasses RLS, but this makes intent clear)
+-- Actually, since service_role bypasses RLS anyway, we just remove the public insert
+-- No need for a replacement - service_role will still work
+```
 
-### UI Components
+**Note:** Service role bypasses RLS automatically, so removing the `WITH CHECK (true)` policy for public role is sufficient.
 
-**Ticket Creation Form:**
-- Name (auto-filled if logged in)
-- Email (auto-filled if logged in)
-- Subject
-- Category dropdown
-- Initial message (textarea)
-- Attachments (optional)
+### Fix 5: Restrict inbound_emails INSERT Policy
 
-**Ticket Chat Interface:**
-- Message bubbles (user vs admin)
-- Timestamp
-- Attachment preview (images inline, videos/files as links)
-- Emoji picker
-- Image/video upload button
-- "Type a message" input
+Similar to email_logs:
 
-### Email Notifications (Edge Function)
+```sql
+-- Drop the overly permissive policy  
+DROP POLICY IF EXISTS "Service role can insert inbound emails" ON public.inbound_emails;
+```
 
-**`send-support-email` Edge Function:**
+### Fix 6: Restrict ticket_messages INSERT Policy
 
-1. **Ticket Created** - Sent to user's email
-   - Subject: "Ticket #TK-XXXXX Created - {subject}"
-   - Body: Ticket details + link to view ticket
+The "Service role can insert messages" policy allows anyone to insert. We need to keep functionality for:
+1. Edge functions inserting messages (via service_role)
+2. Users inserting messages to their own tickets
 
-2. **New Reply** - Sent when admin replies
-   - Subject: "New Reply on Ticket #TK-XXXXX"
-   - Body: Message preview + link
+Current policies are correct for users. Just remove the overly permissive service role one:
 
-3. **Ticket Closed** - Sent when ticket is resolved/closed
-   - Subject: "Ticket #TK-XXXXX Closed"
-   - Body: Resolution summary + feedback link
+```sql
+-- Remove overly permissive policy
+DROP POLICY IF EXISTS "Service role can insert messages" ON public.ticket_messages;
+```
 
-### Files to Create
+**Note:** Edge functions use service_role which bypasses RLS, so this won't break anything.
+
+---
+
+## Policies That Should STAY As-Is
+
+These policies are intentionally permissive and should NOT be changed:
+
+1. **`approved_gifs` SELECT (true)** - GIFs are meant to be publicly viewable for streamer alerts
+2. **`creator_signups` ALL (true)** - Restricted to service_role, used by edge functions
+3. **`platform_config` SELECT (true)** - Configuration is intentionally public (maintenance mode, etc.)
+4. **`rate_limits` ALL (true)** - Used by edge functions for rate limiting via service_role
+5. **`support_tickets` INSERT (true)** - Guests need to create tickets without authentication
+6. **`tips` INSERT (true)** - Restricted to service_role, used by create-tip edge function
+
+---
+
+## Implementation Steps
+
+### Step 1: Create Migration File
+
+A single migration will handle all fixes:
+
+```sql
+-- Fix public_tips view security
+DROP VIEW IF EXISTS public.public_tips;
+CREATE VIEW public.public_tips
+WITH (security_invoker=on) AS
+SELECT 
+    id, creator_id, amount, currency, message, is_anonymous, created_at,
+    CASE WHEN is_anonymous THEN 'Anonymous'::text ELSE supporter_name END AS supporter_display_name
+FROM public.tips
+WHERE payment_status = 'completed';
+
+-- Fix function search paths
+CREATE OR REPLACE FUNCTION public.create_initial_ticket_message()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'public' AS $function$
+BEGIN
+  IF NEW.initial_message IS NOT NULL THEN
+    INSERT INTO public.ticket_messages (ticket_id, sender_type, sender_id, sender_name, message, is_internal)
+    VALUES (NEW.id, 'user', NEW.profile_id, COALESCE(NEW.guest_name, 'Guest'), NEW.initial_message, false);
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.delete_user_data(target_user_id text)
+RETURNS TABLE(id_front_url text, id_back_url text, selfie_url text)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'public' AS $function$
+-- Full function body preserved
+$function$;
+
+-- Remove overly permissive INSERT policies
+DROP POLICY IF EXISTS "Service role can insert email logs" ON public.email_logs;
+DROP POLICY IF EXISTS "Service role can insert inbound emails" ON public.inbound_emails;
+DROP POLICY IF EXISTS "Service role can insert messages" ON public.ticket_messages;
+```
+
+---
+
+## Risk Assessment
+
+| Change | Risk Level | Mitigation |
+|--------|------------|------------|
+| public_tips view | Low | Uses same pattern as working public_profiles |
+| Function search_path | None | Standard security hardening, no behavior change |
+| email_logs policy | None | Service role bypasses RLS anyway |
+| inbound_emails policy | None | Service role bypasses RLS anyway |
+| ticket_messages policy | None | User policies + service role cover all use cases |
+
+---
+
+## Verification After Migration
+
+1. **Explore page** - Creators should still load from public_profiles view
+2. **Creator profile** - Recent tips should display via public_tips view
+3. **Support tickets** - Guests can still create tickets
+4. **Ticket replies** - Logged-in users can reply to their tickets
+5. **Admin functions** - Admins can manage tickets
+6. **Email sending** - Edge functions can still log emails (via service_role)
+7. **User deletion** - delete_user_data function works correctly
+
+---
+
+## Files to Create
 
 | File | Purpose |
 |------|---------|
-| `src/pages/Support.tsx` | Public support page with form |
-| `src/pages/SupportTickets.tsx` | User's ticket list |
-| `src/pages/SupportTicketDetail.tsx` | Ticket detail with chat |
-| `src/pages/admin/AdminSupport.tsx` | Admin ticket list |
-| `src/pages/admin/AdminSupportDetail.tsx` | Admin ticket detail |
-| `src/components/TicketChat.tsx` | Chat interface component |
-| `src/components/TicketForm.tsx` | Ticket creation form |
-| `src/hooks/useTickets.ts` | Hook for ticket operations |
-| `supabase/functions/send-support-email/index.ts` | Email notifications |
-
-### Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/App.tsx` | Add new routes |
-| `src/pages/admin/AdminLayout.tsx` | Add "Support" nav item |
-| `src/hooks/useAdminPermissions.ts` | Add `canManageSupport` |
-| `src/pages/admin/AdminAdmins.tsx` | Add permission toggle |
-| `src/components/MainFooter.tsx` | Add Support link (optional) |
+| `supabase/migrations/XXXXXX_fix_database_security_issues.sql` | Single migration with all fixes |
 
 ---
 
-## Part 5: Refinement Suggestions for Existing Features
+## Technical Notes
 
-Based on my codebase analysis, here are refinement opportunities:
-
-### 1. Dashboard Enhancements
-- **Add "Quick Stats" cards**: Show this month's earnings vs last month at a glance
-- **Recent Activity Feed**: Last 5 tips with timestamps on dashboard
-- **Goal Progress Widget**: Show funding goal progress prominently if one is active
-
-### 2. Creator Profile Improvements
-- **Social Links Preview**: Show social icons on creator profile cards
-- **Tip Amount Suggestions**: Pre-set tip amounts (৳10, ৳50, ৳100) as quick buttons
-- **Message Character Counter**: Show remaining characters when typing a tip message
-
-### 3. Finance Page Polish
-- **Withdrawal History Filters**: Filter by status (pending, completed, failed)
-- **Export to CSV**: Download transaction history
-- **Pending Withdrawal Banner**: Show prominent notification when withdrawal is processing
-
-### 4. Streamer Mode Refinements
-- **Live Preview Panel**: Show a live preview of what the alert will look like
-- **Test Alert Button**: Send a test alert to the OBS overlay
-- **Sound Volume Control**: Add volume slider for alert sounds
-- **Quick Presets**: "Gaming", "Chill", "Hype" preset configurations
-
-### 5. Email Templates
-- **Branded Templates**: Add TipKoro logo and consistent styling
-- **Unsubscribe Links**: Add proper unsubscribe options for marketing emails
-- **Email Preview in Admin**: Preview templates before saving
-
-### 6. Mobile Responsiveness
-- **Bottom Navigation**: Add fixed bottom nav for mobile users
-- **Swipe Gestures**: Swipe to switch between dashboard tabs
-- **Pull to Refresh**: Add pull-to-refresh on tip lists
-
-### 7. Performance Optimizations
-- **Image Lazy Loading**: Lazy load creator avatars and GIFs
-- **Pagination**: Add pagination to long lists (tips, withdrawals)
-- **Skeleton Loaders**: Replace spinners with skeleton UI for better UX
-
-### 8. Security Enhancements
-- **Session Management**: Show active sessions, allow logout from other devices
-- **Login History**: Track and display login attempts
-- **Rate Limiting UI**: Show helpful message when rate limited
-
-### 9. Accessibility
-- **Keyboard Navigation**: Ensure all modals are keyboard accessible
-- **Screen Reader Labels**: Add aria-labels to icon-only buttons
-- **Focus Indicators**: Improve focus ring visibility
-
-### 10. Analytics for Creators
-- **Top Supporters Widget**: Show top 5 supporters by total amount
-- **Peak Tipping Hours**: Chart showing when most tips are received
-- **Message Cloud**: Word cloud from tip messages (for fun insights)
-
----
-
-## Implementation Priority
-
-| Priority | Task | Complexity | Est. Time |
-|----------|------|------------|-----------|
-| 1 | Fix Build Error | Low | 5 min |
-| 2 | Remove Footer Icon | Low | 2 min |
-| 3 | Update Pricing Features | Low | 10 min |
-| 4 | Support Ticket System | High | 3-4 hours |
-| 5 | Refinements (pick 2-3) | Medium | 1-2 hours each |
-
----
-
-## Summary of Database Migrations
-
-```sql
--- Migration: Add support ticket system
-
--- 1. Create support_tickets table
-CREATE TABLE public.support_tickets (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  ticket_number TEXT UNIQUE NOT NULL,
-  profile_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
-  guest_name TEXT,
-  guest_email TEXT NOT NULL,
-  subject TEXT NOT NULL,
-  category TEXT NOT NULL DEFAULT 'general',
-  priority TEXT NOT NULL DEFAULT 'normal',
-  status TEXT NOT NULL DEFAULT 'open',
-  assigned_to UUID REFERENCES profiles(id),
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  closed_at TIMESTAMPTZ,
-  closed_by UUID REFERENCES profiles(id)
-);
-
--- 2. Create ticket_messages table
-CREATE TABLE public.ticket_messages (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  ticket_id UUID NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
-  sender_type TEXT NOT NULL,
-  sender_id UUID REFERENCES profiles(id),
-  sender_name TEXT NOT NULL,
-  message TEXT NOT NULL,
-  attachments JSONB DEFAULT '[]',
-  is_internal BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- 3. Indexes
-CREATE INDEX idx_tickets_profile ON support_tickets(profile_id);
-CREATE INDEX idx_tickets_email ON support_tickets(guest_email);
-CREATE INDEX idx_tickets_status ON support_tickets(status);
-CREATE INDEX idx_messages_ticket ON ticket_messages(ticket_id);
-
--- 4. Add admin permission
-ALTER TABLE admin_roles ADD COLUMN can_manage_support BOOLEAN NOT NULL DEFAULT false;
-
--- 5. RLS Policies
-ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
-ALTER TABLE ticket_messages ENABLE ROW LEVEL SECURITY;
-
--- Tickets policies
-CREATE POLICY "Users can view own tickets" ON support_tickets FOR SELECT
-USING (
-  profile_id IN (SELECT id FROM profiles WHERE user_id = (current_setting('request.headers')::json->>'x-clerk-user-id'))
-);
-
-CREATE POLICY "Admins can view all tickets" ON support_tickets FOR ALL
-USING (is_admin());
-
-CREATE POLICY "Service role can insert tickets" ON support_tickets FOR INSERT
-WITH CHECK (true);
-
--- Messages policies
-CREATE POLICY "Users can view messages of their tickets" ON ticket_messages FOR SELECT
-USING (
-  ticket_id IN (
-    SELECT id FROM support_tickets 
-    WHERE profile_id IN (SELECT id FROM profiles WHERE user_id = (current_setting('request.headers')::json->>'x-clerk-user-id'))
-  )
-  AND is_internal = false
-);
-
-CREATE POLICY "Admins can manage all messages" ON ticket_messages FOR ALL
-USING (is_admin());
-
-CREATE POLICY "Service role can insert messages" ON ticket_messages FOR INSERT
-WITH CHECK (true);
-```
-
----
-
-## Recommended Next Steps After This Plan
-
-1. Implement the support ticket system (highest value feature)
-2. Pick 2-3 refinements from the list above
-3. Consider adding real-time updates to the ticket chat using Supabase Realtime
+- Service role always bypasses RLS, so removing `WITH CHECK (true)` policies doesn't affect edge functions
+- The `security_invoker=on` option makes views respect the calling user's RLS permissions
+- All functions with SECURITY DEFINER should have explicit search_path to prevent injection attacks
+- The remaining "always true" warnings are intentional for public-facing features
 

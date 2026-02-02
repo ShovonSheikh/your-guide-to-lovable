@@ -58,22 +58,18 @@ export function TopNavbar({ className }: { className?: string }) {
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-3">
-            {!isSignedIn && (
-              <>
-                <button
-                  onClick={() => scrollToSection("how")}
-                  className="rounded-full bg-secondary/50 px-4 py-1.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
-                >
-                  How it Works
-                </button>
-                <button
-                  onClick={() => scrollToSection("pricing")}
-                  className="rounded-full bg-secondary/50 px-4 py-1.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
-                >
-                  Pricing
-                </button>
-              </>
-            )}
+            <button
+              onClick={() => scrollToSection("how")}
+              className="rounded-full bg-secondary/50 px-4 py-1.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
+            >
+              How it Works
+            </button>
+            <button
+              onClick={() => scrollToSection("pricing")}
+              className="rounded-full bg-secondary/50 px-4 py-1.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
+            >
+              Pricing
+            </button>
             <Link
               to="/explore"
               className="rounded-full bg-secondary/50 px-4 py-1.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
@@ -148,27 +144,27 @@ export function TopNavbar({ className }: { className?: string }) {
           <nav className="flex flex-col gap-2">
             <button
               onClick={() => scrollToSection("how")}
-              className="rounded-xl bg-secondary/50 px-4 py-3 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 text-left"
+              className="rounded-xl bg-secondary/50 px-4 py-3.5 min-h-[48px] text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 text-left"
             >
               How it Works
             </button>
             <button
               onClick={() => scrollToSection("pricing")}
-              className="rounded-xl bg-secondary/50 px-4 py-3 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 text-left"
+              className="rounded-xl bg-secondary/50 px-4 py-3.5 min-h-[48px] text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 text-left"
             >
               Pricing
             </button>
             <Link
               to="/explore"
               onClick={() => setMobileMenuOpen(false)}
-              className="rounded-xl bg-secondary/50 px-4 py-3 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
+              className="rounded-xl bg-secondary/50 px-4 py-3.5 min-h-[48px] text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 flex items-center"
             >
               Explore
             </Link>
             <Link
               to="/support"
               onClick={() => setMobileMenuOpen(false)}
-              className="rounded-xl bg-secondary/50 px-4 py-3 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
+              className="rounded-xl bg-secondary/50 px-4 py-3.5 min-h-[48px] text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 flex items-center"
             >
               Support
             </Link>

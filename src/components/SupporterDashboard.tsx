@@ -147,11 +147,11 @@ export function SupporterDashboard() {
                   Start receiving tips from your supporters. Only ৳150/month Creator Account Fee.
                 </p>
               </div>
-              <Link to="/signup">
-                <Button className="bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover w-full sm:w-auto">
-                  Get Started
-                </Button>
-              </Link>
+            <Link to="/settings?tab=billing">
+              <Button className="bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover w-full sm:w-auto">
+                Get Started
+              </Button>
+            </Link>
             </div>
           </CardContent>
         </Card>
@@ -300,7 +300,7 @@ export function SupporterDashboard() {
                 Start receiving tips from your supporters. Only ৳150/month Creator Account Fee.
               </p>
             </div>
-            <Link to="/signup">
+            <Link to="/settings?tab=billing">
               <Button className="bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover w-full sm:w-auto">
                 Get Started
               </Button>

@@ -27,6 +27,7 @@ import {
   Shield,
   Check,
   Clock,
+  Bell,
 } from "lucide-react";
 
 function Index() {
@@ -52,13 +53,22 @@ function Index() {
         keywords="TipKoro, support Bangladeshi creators, bKash tips, Nagad payments, Rocket tips, ko-fi alternative Bangladesh, buy me a coffee Bangladesh"
         url="https://tipkoro.com"
       />
-      <div className="flex h-full w-full flex-col items-center bg-background">
+      <div className="flex h-full w-full flex-col items-center bg-background animate-fade-in">
         <TopNavbar />
         <div className="h-20"></div>
 
         {/* Notices */}
         <div className="w-full max-w-[1280px] px-6">
           <NoticeBar notices={notices} />
+          <div className="flex justify-center mt-2">
+            <Link 
+              to="/notices" 
+              className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-2"
+            >
+              <Bell className="w-4 h-4" />
+              View all announcements
+            </Link>
+          </div>
         </div>
 
         {/* Hero Section */}

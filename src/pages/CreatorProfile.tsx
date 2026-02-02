@@ -44,6 +44,11 @@ interface CreatorData {
   created_at: string | null;
 }
 
+interface TipSound {
+  trigger_amount: number;
+  display_name: string;
+}
+
 const tipAmounts = [50, 100, 200, 500, 1000];
 
 export default function CreatorProfile() {
@@ -62,12 +67,40 @@ export default function CreatorProfile() {
   const [customAmount, setCustomAmount] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [streamerTipOptions, setStreamerTipOptions] = useState<{
+    isStreamerEnabled: boolean;
+    tipSounds: TipSound[];
+  }>({ isStreamerEnabled: false, tipSounds: [] });
 
   useEffect(() => {
     if (username) {
       fetchCreator();
     }
   }, [username]);
+
+  // Fetch streamer options when creator is loaded
+  useEffect(() => {
+    const fetchStreamerOptions = async () => {
+      if (!creator?.id) return;
+      
+      // Check if streamer mode is enabled via tip_sounds RLS (it checks streamer_settings internally)
+      const { data: sounds } = await supabase
+        .from('tip_sounds')
+        .select('trigger_amount, display_name')
+        .eq('profile_id', creator.id)
+        .eq('is_enabled', true)
+        .order('trigger_amount', { ascending: true });
+      
+      if (sounds && sounds.length > 0) {
+        setStreamerTipOptions({
+          isStreamerEnabled: true,
+          tipSounds: sounds
+        });
+      }
+    };
+    
+    fetchStreamerOptions();
+  }, [creator?.id]);
 
   const fetchCreator = async () => {
     try {
@@ -194,8 +227,30 @@ export default function CreatorProfile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      <div className="min-h-screen bg-background">
+        <TopNavbar />
+        <div className="h-24" />
+        <main className="container max-w-5xl py-8 px-4 animate-fade-in">
+          {/* Skeleton Hero */}
+          <div className="tipkoro-card mb-8">
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+              <div className="h-24 w-24 rounded-full bg-muted animate-pulse" />
+              <div className="text-center md:text-left flex-1 space-y-3">
+                <div className="h-8 w-48 bg-muted animate-pulse rounded mx-auto md:mx-0" />
+                <div className="h-5 w-32 bg-muted animate-pulse rounded mx-auto md:mx-0" />
+                <div className="h-16 w-full max-w-xl bg-muted animate-pulse rounded mt-4" />
+              </div>
+            </div>
+          </div>
+          {/* Skeleton Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 tipkoro-card h-96 bg-muted/20 animate-pulse" />
+            <div className="space-y-6">
+              <div className="tipkoro-card h-32 bg-muted/20 animate-pulse" />
+              <div className="tipkoro-card h-48 bg-muted/20 animate-pulse" />
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
@@ -231,7 +286,7 @@ export default function CreatorProfile() {
         <TopNavbar />
         <div className="h-24" />
 
-        <main className="container max-w-5xl py-8 px-4">
+        <main className="container max-w-5xl py-8 px-4 animate-fade-in">
           {/* Hero Section */}
           <div className="tipkoro-card mb-8">
             <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
@@ -291,9 +346,41 @@ export default function CreatorProfile() {
                 <p className="text-muted-foreground text-sm mb-6">
                   Show your appreciation by sending a tip. 100% goes directly to the creator!
                 </p>
+
+                {/* Streamer Tip-to-Play Section */}
+                {streamerTipOptions.isStreamerEnabled && streamerTipOptions.tipSounds.length > 0 && (
+                  <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-semibold text-primary">Tip-to-Play Sounds</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      These amounts trigger special sounds & visuals on {creator?.first_name}'s stream!
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {streamerTipOptions.tipSounds.map((sound) => (
+                        <button
+                          key={sound.trigger_amount}
+                          onClick={() => {
+                            setSelectedAmount(sound.trigger_amount);
+                            setCustomAmount('');
+                          }}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border ${
+                            selectedAmount === sound.trigger_amount
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-secondary/50 hover:bg-primary/10 border-primary/30'
+                          }`}
+                        >
+                          <span className="block">৳{sound.trigger_amount}</span>
+                          <span className="text-[10px] opacity-80">{sound.display_name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 
                 {/* Amount Selection */}
-                <div className="grid grid-cols-5 gap-2 mb-4">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-4">
                   {tipAmounts.map((amount) => (
                     <button
                       key={amount}

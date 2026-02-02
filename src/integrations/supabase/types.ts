@@ -564,6 +564,7 @@ export type Database = {
           ends_at: string | null
           id: string
           is_active: boolean | null
+          is_public: boolean
           priority: number | null
           show_on_dashboard: boolean | null
           show_on_home: boolean | null
@@ -579,6 +580,7 @@ export type Database = {
           ends_at?: string | null
           id?: string
           is_active?: boolean | null
+          is_public?: boolean
           priority?: number | null
           show_on_dashboard?: boolean | null
           show_on_home?: boolean | null
@@ -594,6 +596,7 @@ export type Database = {
           ends_at?: string | null
           id?: string
           is_active?: boolean | null
+          is_public?: boolean
           priority?: number | null
           show_on_dashboard?: boolean | null
           show_on_home?: boolean | null
@@ -1086,13 +1089,13 @@ export type Database = {
           guest_email: string
           guest_name: string | null
           id: string
+          initial_message: string | null
           priority: string
           profile_id: string | null
           status: string
           subject: string
           ticket_number: string
           updated_at: string | null
-          initial_message?: string | null
         }
         Insert: {
           assigned_to?: string | null
@@ -1103,13 +1106,13 @@ export type Database = {
           guest_email: string
           guest_name?: string | null
           id?: string
+          initial_message?: string | null
           priority?: string
           profile_id?: string | null
           status?: string
           subject: string
           ticket_number: string
           updated_at?: string | null
-          initial_message?: string | null
         }
         Update: {
           assigned_to?: string | null
@@ -1120,6 +1123,7 @@ export type Database = {
           guest_email?: string
           guest_name?: string | null
           id?: string
+          initial_message?: string | null
           priority?: string
           profile_id?: string | null
           status?: string
@@ -1711,6 +1715,10 @@ export type Database = {
           message: string
         }[]
       }
+      grant_admin_role: {
+        Args: { permissions?: Json; target_user_id: string }
+        Returns: string
+      }
       increment_creator_stats: {
         Args: {
           creator_profile_id: string
@@ -1721,6 +1729,10 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_super_admin: { Args: { clerk_user_id: string }; Returns: boolean }
+      revoke_admin_role: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       account_type: "supporter" | "creator"

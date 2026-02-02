@@ -26,6 +26,7 @@ import StreamerAlert from "./pages/StreamerAlert";
 import Authenticity from "./pages/Authenticity";
 import Support from "./pages/Support";
 import SupportTickets from "./pages/SupportTickets";
+import Notices from "./pages/Notices";
 import SupportTicketDetail from "./pages/SupportTicketDetail";
 // Payment pages - separate flows for creator fee and tips
 import CreatorPaymentSuccess from "./pages/payments/CreatorPaymentSuccess";
@@ -83,6 +84,7 @@ const App = () => (
             <Route path="/status" element={<Status />} />
             <Route path="/cookie-policy" element={<CookiePolicy />} />
             <Route path="/authenticity" element={<Authenticity />} />
+            <Route path="/notices" element={<Notices />} />
             <Route path="/support" element={<Support />} />
             <Route path="/support/tickets" element={<SupportTickets />} />
             <Route path="/support/ticket/:ticketId" element={<SupportTicketDetail />} />

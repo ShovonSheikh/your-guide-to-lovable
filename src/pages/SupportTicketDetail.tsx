@@ -95,7 +95,8 @@ export default function SupportTicketDetail() {
   };
 
   const handleUpload = async (file: File) => {
-    return await uploadAttachment(file);
+    // Pass ticketId for ticket-based folder storage (RLS compliance)
+    return await uploadAttachment(file, ticketId);
   };
 
   if (loading) {
@@ -144,7 +145,7 @@ export default function SupportTicketDetail() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => navigate('/support/tickets')}
+                onClick={() => navigate('/settings?tab=my-tickets')}
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>

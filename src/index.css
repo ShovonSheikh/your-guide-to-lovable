@@ -104,6 +104,16 @@
     box-shadow: var(--tipkoro-card-shadow-hover);
   }
 
+  /* Interactive card variant with lift effect */
+  .tipkoro-card-interactive {
+    @apply tipkoro-card cursor-pointer;
+  }
+
+  .tipkoro-card-interactive:hover {
+    @apply -translate-y-0.5;
+    box-shadow: var(--tipkoro-card-shadow-hover);
+  }
+
   /* Timeline styles */
   .timeline-node {
     @apply w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300;
@@ -228,5 +238,15 @@
 
   .gradient-warm {
     background: var(--gradient-warm);
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }
