@@ -564,6 +564,7 @@ export type Database = {
           ends_at: string | null
           id: string
           is_active: boolean | null
+          is_public: boolean
           priority: number | null
           show_on_dashboard: boolean | null
           show_on_home: boolean | null
@@ -579,6 +580,7 @@ export type Database = {
           ends_at?: string | null
           id?: string
           is_active?: boolean | null
+          is_public?: boolean
           priority?: number | null
           show_on_dashboard?: boolean | null
           show_on_home?: boolean | null
@@ -594,6 +596,7 @@ export type Database = {
           ends_at?: string | null
           id?: string
           is_active?: boolean | null
+          is_public?: boolean
           priority?: number | null
           show_on_dashboard?: boolean | null
           show_on_home?: boolean | null

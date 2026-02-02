@@ -11,7 +11,17 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Link as LinkIcon, Shield, CreditCard, ArrowLeft, Info, Calendar, CheckCircle, Clock, BadgeCheck, Lock, ShieldCheck, Bell, Video, MessageSquare, Check, Sparkles, TicketIcon, Search, ExternalLink } from "lucide-react";
+import { User, Link as LinkIcon, Shield, CreditCard, ArrowLeft, Info, Calendar, CheckCircle, Clock, BadgeCheck, Lock, ShieldCheck, Bell, Video, MessageSquare, Check, Sparkles, TicketIcon, Search, ExternalLink, AlertTriangle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -378,14 +388,19 @@ function MyTicketsTab() {
 }
 
 // Billing Tab Component  
-function BillingTab({ profile, subscription, subscriptionLoading, formatDate, supabase }: { 
+function BillingTab({ profile, subscription, subscriptionLoading, formatDate, supabase, refetchProfile }: { 
   profile: any; 
   subscription: any; 
   subscriptionLoading: boolean;
   formatDate: (date: string | null) => string;
   supabase: any;
+  refetchProfile: () => void;
 }) {
+  const navigate = useNavigate();
   const [upgrading, setUpgrading] = useState(false);
+  const [downgradeDialogOpen, setDowngradeDialogOpen] = useState(false);
+  const [downgradeConfirmText, setDowngradeConfirmText] = useState('');
+  const [downgrading, setDowngrading] = useState(false);
 
   const creatorBenefits = [
     'Custom creator page (tipkoro.com/username)',
@@ -432,6 +447,43 @@ function BillingTab({ profile, subscription, subscriptionLoading, formatDate, su
       });
     }
     setUpgrading(false);
+  };
+
+  const handleDowngrade = async () => {
+    if (downgradeConfirmText !== 'DOWNGRADE') {
+      toast({
+        title: "Error",
+        description: 'Please type "DOWNGRADE" to confirm',
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setDowngrading(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ account_type: 'supporter' })
+        .eq('id', profile.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Account Downgraded",
+        description: "You've been switched to a Supporter account. You can upgrade again anytime.",
+      });
+      
+      setDowngradeDialogOpen(false);
+      refetchProfile();
+      navigate('/dashboard');
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to downgrade account",
+        variant: "destructive",
+      });
+    }
+    setDowngrading(false);
   };
 
   return (
@@ -503,6 +555,75 @@ function BillingTab({ profile, subscription, subscriptionLoading, formatDate, su
               <li>• View your earnings and request withdrawals in the Finance section</li>
             </ul>
           </div>
+
+          {/* Downgrade Section */}
+          <div className="pt-6 border-t border-border">
+            <div className="p-4 bg-destructive/5 rounded-xl border border-destructive/20">
+              <h4 className="font-medium mb-2 text-destructive flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                Downgrade Account
+              </h4>
+              <p className="text-sm text-muted-foreground mb-4">
+                Switch back to a free Supporter account. You will lose:
+              </p>
+              <ul className="text-sm text-muted-foreground space-y-1 mb-4">
+                <li>• Your creator page (tipkoro.com/{profile?.username})</li>
+                <li>• Ability to receive tips</li>
+                <li>• Access to earnings dashboard</li>
+                <li>• Streamer Mode features</li>
+              </ul>
+              <p className="text-xs text-muted-foreground mb-4">
+                Your tip history and withdrawal records will be preserved. You can upgrade again anytime.
+              </p>
+              <Button 
+                variant="outline" 
+                className="border-destructive text-destructive hover:bg-destructive/10"
+                onClick={() => setDowngradeDialogOpen(true)}
+              >
+                Downgrade to Supporter
+              </Button>
+            </div>
+          </div>
+
+          {/* Downgrade Confirmation Dialog */}
+          <AlertDialog open={downgradeDialogOpen} onOpenChange={setDowngradeDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-destructive flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5" />
+                  Confirm Downgrade
+                </AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-4">
+                    <p>
+                      This will switch your account to a free Supporter account. This action is reversible — you can upgrade again later.
+                    </p>
+                    <div className="p-3 bg-secondary/50 rounded-lg">
+                      <p className="text-sm font-medium mb-2">Type "DOWNGRADE" to confirm:</p>
+                      <Input
+                        value={downgradeConfirmText}
+                        onChange={(e) => setDowngradeConfirmText(e.target.value.toUpperCase())}
+                        placeholder="DOWNGRADE"
+                        className="font-mono"
+                      />
+                    </div>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setDowngradeConfirmText('')}>
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDowngrade}
+                  disabled={downgradeConfirmText !== 'DOWNGRADE' || downgrading}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {downgrading ? "Processing..." : "Confirm Downgrade"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       ) : (
         <div className="space-y-6">
@@ -562,7 +683,7 @@ function BillingTab({ profile, subscription, subscriptionLoading, formatDate, su
 export default function Settings() {
   usePageTitle("Settings");
   const { isSignedIn, isLoaded } = useUser();
-  const { profile, loading, updateProfile } = useProfile();
+  const { profile, loading, updateProfile, refetch } = useProfile();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentTab = searchParams.get('tab') || 'profile';
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -914,6 +1035,7 @@ export default function Settings() {
                 subscriptionLoading={subscriptionLoading}
                 formatDate={formatDate}
                 supabase={supabase}
+                refetchProfile={refetch}
               />
             )}
           </div>
