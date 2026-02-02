@@ -144,7 +144,7 @@ export default function SupportTicketDetail() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => navigate('/support/tickets')}
+                onClick={() => navigate('/settings?tab=my-tickets')}
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
