@@ -11,32 +11,73 @@ import { toast } from '@/hooks/use-toast';
 import { Code, Eye, RotateCcw, Save, Variable, Copy, ZoomIn, ZoomOut, Maximize2, Mail, Send } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useSupabaseWithAuth } from '@/hooks/useSupabaseWithAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { Json } from '@/integrations/supabase/types';
 
-// Email types
-const EMAIL_TYPES = [
-    { id: 'welcome_user', label: 'Welcome User', description: 'Welcome email for all new signups (supporters & creators)' },
-    { id: 'welcome_creator', label: 'Welcome Creator', description: 'Welcome email for new creators after onboarding' },
-    { id: 'tip_received', label: 'Tip Received', description: 'Sent to creator when they receive a tip' },
-    { id: 'tip_sent', label: 'Tip Sent', description: 'Sent to supporter after sending a tip' },
-    { id: 'withdrawal_submitted', label: 'Withdrawal Submitted', description: 'Confirmation when withdrawal is requested' },
-    { id: 'withdrawal_processing', label: 'Withdrawal Processing', description: 'When withdrawal is approved for processing' },
-    { id: 'withdrawal_completed', label: 'Withdrawal Completed', description: 'When withdrawal is successfully completed' },
-    { id: 'withdrawal_rejected', label: 'Withdrawal Rejected', description: 'When withdrawal request is rejected' },
-    { id: 'weekly_summary', label: 'Weekly Summary', description: 'Weekly earnings summary for creators' },
-    { id: 'withdrawal_otp', label: 'Withdrawal OTP', description: 'OTP code for withdrawal verification' },
-    { id: 'verification_approved', label: 'Verification Approved', description: 'Sent when creator verification is approved' },
-    { id: 'verification_rejected', label: 'Verification Rejected', description: 'Sent when creator verification is rejected' },
-    { id: 'goal_milestone_25', label: 'Goal 25% Reached', description: 'Sent when a funding goal hits 25%' },
-    { id: 'goal_milestone_50', label: 'Goal 50% Reached', description: 'Sent when a funding goal hits 50%' },
-    { id: 'goal_milestone_75', label: 'Goal 75% Reached', description: 'Sent when a funding goal hits 75%' },
-    { id: 'goal_milestone_100', label: 'Goal Completed', description: 'Sent when a funding goal is fully achieved' },
+// Email categories for organized dropdown
+const EMAIL_CATEGORIES = [
+    {
+        label: 'User & Creator',
+        types: [
+            { id: 'welcome_user', label: 'Welcome User', description: 'Welcome email for all new signups (supporters & creators)' },
+            { id: 'welcome_creator', label: 'Welcome Creator', description: 'Welcome email for new creators after onboarding' },
+        ]
+    },
+    {
+        label: 'Tips',
+        types: [
+            { id: 'tip_received', label: 'Tip Received', description: 'Sent to creator when they receive a tip' },
+            { id: 'tip_sent', label: 'Tip Sent', description: 'Sent to supporter after sending a tip' },
+        ]
+    },
+    {
+        label: 'Withdrawals',
+        types: [
+            { id: 'withdrawal_submitted', label: 'Withdrawal Submitted', description: 'Confirmation when withdrawal is requested' },
+            { id: 'withdrawal_processing', label: 'Withdrawal Processing', description: 'When withdrawal is approved for processing' },
+            { id: 'withdrawal_completed', label: 'Withdrawal Completed', description: 'When withdrawal is successfully completed' },
+            { id: 'withdrawal_rejected', label: 'Withdrawal Rejected', description: 'When withdrawal request is rejected' },
+            { id: 'withdrawal_otp', label: 'Withdrawal OTP', description: 'OTP code for withdrawal verification' },
+        ]
+    },
+    {
+        label: 'Verification',
+        types: [
+            { id: 'verification_approved', label: 'Verification Approved', description: 'Sent when creator verification is approved' },
+            { id: 'verification_rejected', label: 'Verification Rejected', description: 'Sent when creator verification is rejected' },
+        ]
+    },
+    {
+        label: 'Funding Goals',
+        types: [
+            { id: 'goal_milestone_25', label: 'Goal 25% Reached', description: 'Sent when a funding goal hits 25%' },
+            { id: 'goal_milestone_50', label: 'Goal 50% Reached', description: 'Sent when a funding goal hits 50%' },
+            { id: 'goal_milestone_75', label: 'Goal 75% Reached', description: 'Sent when a funding goal hits 75%' },
+            { id: 'goal_milestone_100', label: 'Goal Completed', description: 'Sent when a funding goal is fully achieved' },
+        ]
+    },
+    {
+        label: 'Support',
+        types: [
+            { id: 'support_ticket_created', label: 'Ticket Created', description: 'Sent when a support ticket is created' },
+            { id: 'support_new_reply', label: 'New Reply', description: 'Sent when admin replies to a ticket' },
+            { id: 'support_ticket_closed', label: 'Ticket Closed', description: 'Sent when a support ticket is closed' },
+        ]
+    },
+    {
+        label: 'Other',
+        types: [
+            { id: 'weekly_summary', label: 'Weekly Summary', description: 'Weekly earnings summary for creators' },
+        ]
+    }
 ];
+
+// Flatten for easy lookup
+const EMAIL_TYPES = EMAIL_CATEGORIES.flatMap(cat => cat.types);
 
 // Available dynamic variables per email type
 const DYNAMIC_VARIABLES: Record<string, Array<{ name: string; description: string; example: string }>> = {
@@ -112,6 +153,21 @@ const DYNAMIC_VARIABLES: Record<string, Array<{ name: string; description: strin
         { name: 'current_amount', description: 'Current amount raised', example: '10000' },
         { name: 'target_amount', description: 'Target amount', example: '10000' },
         { name: 'percentage', description: 'Current percentage', example: '100' },
+    ],
+    support_ticket_created: [
+        { name: 'name', description: 'User name', example: 'John' },
+        { name: 'ticket_number', description: 'Ticket reference', example: 'TK-20260202-A1B2' },
+        { name: 'subject', description: 'Ticket subject', example: 'Payment Issue' },
+        { name: 'ticket_url', description: 'Link to ticket', example: 'https://tipkoro.com/support/ticket/xxx' },
+    ],
+    support_new_reply: [
+        { name: 'ticket_number', description: 'Ticket reference', example: 'TK-20260202-A1B2' },
+        { name: 'message_preview', description: 'Preview of reply', example: 'Thank you for contacting us...' },
+        { name: 'ticket_url', description: 'Link to ticket', example: 'https://tipkoro.com/support/ticket/xxx' },
+    ],
+    support_ticket_closed: [
+        { name: 'ticket_number', description: 'Ticket reference', example: 'TK-20260202-A1B2' },
+        { name: 'subject', description: 'Ticket subject', example: 'Payment Issue' },
     ],
 };
 
@@ -456,6 +512,85 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
   </div>
 </div>`,
     },
+    support_ticket_created: {
+        subject: '🎫 Ticket {{ticket_number}} Created - {{subject}}',
+        html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+  <div style="max-width: 560px; margin: 0 auto;">
+    <div style="text-align: center; padding: 24px 0;">
+      <span style="font-size: 28px; font-weight: 700; color: #1F1C18;">💛 TipKoro</span>
+    </div>
+    <div style="background: #FEFDFB; border: 1px solid #E5E0D5; border-radius: 20px; padding: 44px 36px;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <span style="font-size: 48px;">🎫</span>
+      </div>
+      <h1 style="font-size: 26px; font-weight: 700; text-align: center; margin: 0 0 10px;">Support Ticket Created</h1>
+      <p style="color: #7A7469; text-align: center; margin: 0 0 28px;">Hi {{name}}, thank you for contacting TipKoro support.</p>
+      <div style="background: #F5F1E8; border-radius: 16px; padding: 24px; margin: 28px 0;">
+        <p style="margin: 0 0 8px;"><strong>Ticket Number:</strong> {{ticket_number}}</p>
+        <p style="margin: 0;"><strong>Subject:</strong> {{subject}}</p>
+      </div>
+      <p style="color: #4A453D; text-align: center;">We typically respond within 24 hours. You'll receive an email notification when we reply.</p>
+      <div style="text-align: center; margin-top: 28px;">
+        <a href="{{ticket_url}}" style="display: inline-block; background: #1F1C18; color: #fff; padding: 16px 40px; border-radius: 12px; text-decoration: none; font-weight: 600;">View Ticket</a>
+      </div>
+    </div>
+    <div style="text-align: center; padding: 24px 0; color: #7A7469; font-size: 14px;">
+      <p style="margin: 0;">Made with ❤️ in Bangladesh</p>
+    </div>
+  </div>
+</div>`,
+    },
+    support_new_reply: {
+        subject: '💬 New Reply on Ticket {{ticket_number}}',
+        html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+  <div style="max-width: 560px; margin: 0 auto;">
+    <div style="text-align: center; padding: 24px 0;">
+      <span style="font-size: 28px; font-weight: 700; color: #1F1C18;">💛 TipKoro</span>
+    </div>
+    <div style="background: #FEFDFB; border: 1px solid #E5E0D5; border-radius: 20px; padding: 44px 36px;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <span style="font-size: 48px;">💬</span>
+      </div>
+      <h1 style="font-size: 26px; font-weight: 700; text-align: center; margin: 0 0 10px;">New Reply on Your Ticket</h1>
+      <p style="color: #7A7469; text-align: center; margin: 0 0 28px;">Our support team has replied to ticket <strong>{{ticket_number}}</strong>.</p>
+      <div style="background: #F5F1E8; border-left: 4px solid #F9C23C; border-radius: 0 12px 12px 0; padding: 20px 24px; margin: 28px 0;">
+        <p style="margin: 0; color: #4A453D;">{{message_preview}}</p>
+      </div>
+      <div style="text-align: center; margin-top: 28px;">
+        <a href="{{ticket_url}}" style="display: inline-block; background: #1F1C18; color: #fff; padding: 16px 40px; border-radius: 12px; text-decoration: none; font-weight: 600;">View Full Reply</a>
+      </div>
+    </div>
+    <div style="text-align: center; padding: 24px 0; color: #7A7469; font-size: 14px;">
+      <p style="margin: 0;">TipKoro Support Team</p>
+    </div>
+  </div>
+</div>`,
+    },
+    support_ticket_closed: {
+        subject: '✅ Ticket {{ticket_number}} Closed',
+        html: `<div style="font-family: 'DM Sans', sans-serif; background: #F5F1E8; padding: 40px 20px;">
+  <div style="max-width: 560px; margin: 0 auto;">
+    <div style="text-align: center; padding: 24px 0;">
+      <span style="font-size: 28px; font-weight: 700; color: #1F1C18;">💛 TipKoro</span>
+    </div>
+    <div style="background: #FEFDFB; border: 1px solid #E5E0D5; border-radius: 20px; padding: 44px 36px;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <span style="font-size: 48px;">✅</span>
+      </div>
+      <h1 style="font-size: 26px; font-weight: 700; text-align: center; margin: 0 0 10px;">Ticket Closed</h1>
+      <p style="color: #7A7469; text-align: center; margin: 0 0 28px;">Your support ticket <strong>{{ticket_number}}</strong> regarding "{{subject}}" has been closed.</p>
+      <p style="color: #4A453D; text-align: center;">We hope we were able to help resolve your issue. If you need further assistance, feel free to create a new ticket.</p>
+      <div style="text-align: center; margin-top: 28px;">
+        <a href="https://tipkoro.com/support" style="display: inline-block; background: #1F1C18; color: #fff; padding: 16px 40px; border-radius: 12px; text-decoration: none; font-weight: 600;">Contact Support</a>
+      </div>
+      <p style="color: #7A7469; font-size: 14px; text-align: center; margin-top: 24px;">Thank you for using TipKoro. Your feedback helps us improve!</p>
+    </div>
+    <div style="text-align: center; padding: 24px 0; color: #7A7469; font-size: 14px;">
+      <p style="margin: 0;">Made with ❤️ in Bangladesh</p>
+    </div>
+  </div>
+</div>`,
+    },
 };
 
 export default function AdminEmailTemplates() {
@@ -500,384 +635,303 @@ export default function AdminEmailTemplates() {
 
                 setSavedTemplates(templates);
 
-                // Load current template
-                const currentTemplate = templates[selectedType] || DEFAULT_TEMPLATES[selectedType];
-                setSubjectCode(currentTemplate.subject);
-                setHtmlCode(currentTemplate.html);
+                // Load template for selected type
+                const current = templates[selectedType] || DEFAULT_TEMPLATES[selectedType];
+                setSubjectCode(current.subject);
+                setHtmlCode(current.html);
             } catch (error) {
                 console.error('Error fetching templates:', error);
-                toast({ title: "Error", description: "Failed to load templates", variant: "destructive" });
             } finally {
                 setLoading(false);
             }
         };
 
         fetchTemplates();
-    }, []);
+    }, [selectedType]);
 
-    // Load template when type changes
-    useEffect(() => {
-        const currentTemplate = savedTemplates[selectedType] || DEFAULT_TEMPLATES[selectedType];
-        setSubjectCode(currentTemplate.subject);
-        setHtmlCode(currentTemplate.html);
-        setHasChanges(false);
+    // Current template type info
+    const currentType = EMAIL_TYPES.find(t => t.id === selectedType);
+    const currentVariables = DYNAMIC_VARIABLES[selectedType] || [];
 
-        // Set default test values
-        const vars = DYNAMIC_VARIABLES[selectedType] || [];
-        const defaults: Record<string, string> = {};
-        vars.forEach(v => {
-            defaults[v.name] = v.example;
-        });
-        setTestValues(defaults);
-    }, [selectedType, savedTemplates]);
-
-    // Track changes
-    useEffect(() => {
-        const savedTemplate = savedTemplates[selectedType] || DEFAULT_TEMPLATES[selectedType];
-        setHasChanges(
-            subjectCode !== savedTemplate.subject ||
-            htmlCode !== savedTemplate.html
-        );
-    }, [subjectCode, htmlCode, selectedType, savedTemplates]);
-
-    // Render preview with variable replacement
+    // Replace variables with test values for preview
     const renderedHtml = useMemo(() => {
-        let rendered = htmlCode;
+        let html = htmlCode;
 
-        // Replace {{variable}} with test values
-        Object.entries(testValues).forEach(([key, value]) => {
-            const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-            rendered = rendered.replace(regex, value);
+        // Replace {{variable}} with test values or examples
+        currentVariables.forEach(v => {
+            const value = testValues[v.name] || v.example;
+            const regex = new RegExp(`{{${v.name}}}`, 'g');
+            html = html.replace(regex, value);
         });
 
-        // Handle simple {{#if var}}...{{/if}} blocks
-        const ifRegex = /\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g;
-        rendered = rendered.replace(ifRegex, (_, varName, content) => {
-            return testValues[varName] ? content : '';
+        // Handle simple conditionals {{#if variable}}...{{/if}}
+        html = html.replace(/{{#if (\w+)}}([\s\S]*?){{\/if}}/g, (_, varName, content) => {
+            const value = testValues[varName] || DYNAMIC_VARIABLES[selectedType]?.find(v => v.name === varName)?.example;
+            return value ? content : '';
         });
 
-        // Sanitize to prevent XSS from malicious template modifications
-        // Allow most HTML tags and styles needed for email templates
-        return DOMPurify.sanitize(rendered, {
-            ALLOWED_TAGS: ['div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'br', 'img', 'a', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'td', 'th', 'hr', 'center'],
-            ALLOWED_ATTR: ['class', 'style', 'src', 'alt', 'width', 'height', 'href', 'target', 'cellpadding', 'cellspacing', 'border', 'align', 'valign', 'bgcolor'],
-        });
-    }, [htmlCode, testValues]);
+        return DOMPurify.sanitize(html);
+    }, [htmlCode, testValues, currentVariables, selectedType]);
 
     const renderedSubject = useMemo(() => {
-        let rendered = subjectCode;
-        Object.entries(testValues).forEach(([key, value]) => {
-            const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-            rendered = rendered.replace(regex, value);
+        let subject = subjectCode;
+        currentVariables.forEach(v => {
+            const value = testValues[v.name] || v.example;
+            const regex = new RegExp(`{{${v.name}}}`, 'g');
+            subject = subject.replace(regex, value);
         });
-        return rendered;
-    }, [subjectCode, testValues]);
+        return subject;
+    }, [subjectCode, testValues, currentVariables]);
+
+    const handleTypeChange = (typeId: string) => {
+        const template = savedTemplates[typeId] || DEFAULT_TEMPLATES[typeId];
+        setSelectedType(typeId);
+        setSubjectCode(template.subject);
+        setHtmlCode(template.html);
+        setHasChanges(false);
+        setTestValues({});
+    };
 
     const handleSave = async () => {
         setSaving(true);
         try {
-            const key = `email_template_${selectedType}`;
-            const value: Json = { subject: subjectCode, html: htmlCode };
-
-            const { data: existing } = await supabase
+            const { error } = await supabaseAuth
                 .from('platform_config')
-                .select('id')
-                .eq('key', key)
-                .maybeSingle();
+                .upsert({
+                    key: `email_template_${selectedType}`,
+                    value: { subject: subjectCode, html: htmlCode } as unknown as Json,
+                    updated_at: new Date().toISOString(),
+                }, { onConflict: 'key' });
 
-            if (existing) {
-                const { error } = await supabaseAuth
-                    .from('platform_config')
-                    .update({ value, updated_at: new Date().toISOString() })
-                    .eq('key', key);
-                if (error) throw error;
-            } else {
-                const { error } = await supabaseAuth
-                    .from('platform_config')
-                    .insert([{ key, value, description: `Email template for ${selectedType}` }]);
-                if (error) throw error;
-            }
+            if (error) throw error;
 
             setSavedTemplates(prev => ({
                 ...prev,
-                [selectedType]: { subject: subjectCode, html: htmlCode },
+                [selectedType]: { subject: subjectCode, html: htmlCode }
             }));
             setHasChanges(false);
-
-            toast({ title: "Success", description: "Email template saved!" });
-        } catch (error) {
-            console.error('Error saving template:', error);
-            toast({ title: "Error", description: "Failed to save template", variant: "destructive" });
+            toast({ title: 'Saved!', description: `${currentType?.label} template updated.` });
+        } catch (error: any) {
+            toast({ title: 'Error', description: error.message, variant: 'destructive' });
         } finally {
             setSaving(false);
         }
     };
 
     const handleReset = () => {
-        // Load from savedTemplates (last saved in database), fallback to DEFAULT_TEMPLATES
-        const template = savedTemplates[selectedType] || DEFAULT_TEMPLATES[selectedType];
-        setSubjectCode(template.subject);
-        setHtmlCode(template.html);
+        const defaultTemplate = DEFAULT_TEMPLATES[selectedType];
+        setSubjectCode(defaultTemplate.subject);
+        setHtmlCode(defaultTemplate.html);
+        setHasChanges(true);
     };
 
-    const copyVariable = (varName: string) => {
-        navigator.clipboard.writeText(`{{${varName}}}`);
-        toast({ title: "Copied", description: `{{${varName}}} copied to clipboard` });
+    const copyVariable = (variable: string) => {
+        navigator.clipboard.writeText(`{{${variable}}}`);
+        toast({ title: 'Copied!', description: `{{${variable}}} copied to clipboard` });
     };
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-64">
-                <Spinner className="h-8 w-8" />
+            <div className="flex items-center justify-center min-h-[400px]">
+                <Spinner className="w-8 h-8" />
             </div>
         );
     }
 
-    const currentEmailType = EMAIL_TYPES.find(t => t.id === selectedType);
-    const currentVariables = DYNAMIC_VARIABLES[selectedType] || [];
-
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
-                        <Mail className="h-6 w-6" />
+                        <Mail className="w-6 h-6" />
                         Email Templates
                     </h1>
-                    <p className="text-muted-foreground">Customize email templates for notifications</p>
+                    <p className="text-muted-foreground">Customize transactional email templates</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    {hasChanges && (
-                        <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-                            Unsaved changes
-                        </Badge>
-                    )}
-                    <Button variant="outline" size="sm" onClick={handleReset}>
-                        <RotateCcw className="h-4 w-4 mr-2" />
-                        Reset
+                    <Button variant="outline" onClick={handleReset} disabled={saving}>
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        Reset to Default
                     </Button>
-                    <Button size="sm" onClick={handleSave} disabled={saving || !hasChanges}>
-                        {saving ? <Spinner className="h-4 w-4 mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                        Save
+                    <Button onClick={handleSave} disabled={saving || !hasChanges}>
+                        <Save className="w-4 h-4 mr-2" />
+                        {saving ? 'Saving...' : 'Save Template'}
                     </Button>
                 </div>
             </div>
 
-            {/* Email Type Selector */}
+            {/* Template Selector */}
             <Card>
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Select Email Type</CardTitle>
+                <CardHeader>
+                    <CardTitle className="text-lg">Select Template</CardTitle>
+                    <CardDescription>Choose which email template to edit</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Select value={selectedType} onValueChange={setSelectedType}>
-                        <SelectTrigger className="w-full sm:w-[300px]">
-                            <SelectValue />
+                    <Select value={selectedType} onValueChange={handleTypeChange}>
+                        <SelectTrigger className="w-full md:w-[400px]">
+                            <SelectValue placeholder="Select email type" />
                         </SelectTrigger>
-                        <SelectContent>
-                            {EMAIL_TYPES.map(type => (
-                                <SelectItem key={type.id} value={type.id}>
-                                    <div className="flex flex-col">
-                                        <span>{type.label}</span>
-                                        <span className="text-xs text-muted-foreground">{type.description}</span>
-                                    </div>
-                                </SelectItem>
+                        <SelectContent className="max-h-[400px]">
+                            {EMAIL_CATEGORIES.map((category) => (
+                                <SelectGroup key={category.label}>
+                                    <SelectLabel className="text-xs font-semibold text-muted-foreground bg-muted/50 px-2 py-1.5 -mx-1">
+                                        {category.label}
+                                    </SelectLabel>
+                                    {category.types.map(type => (
+                                        <SelectItem key={type.id} value={type.id}>
+                                            {type.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectGroup>
                             ))}
                         </SelectContent>
                     </Select>
+                    {currentType && (
+                        <p className="text-sm text-muted-foreground mt-2">{currentType.description}</p>
+                    )}
                 </CardContent>
             </Card>
 
-            {/* Dynamic Variables */}
+            {/* Available Variables */}
             <Card>
-                <CardHeader className="pb-3">
-                    <div className="flex items-center gap-2">
-                        <Variable className="h-5 w-5 text-muted-foreground" />
-                        <CardTitle className="text-base">Dynamic Variables</CardTitle>
-                    </div>
-                    <CardDescription>
-                        Use these placeholders in your template. They will be replaced with real data when the email is sent. Click a variable to copy it.
-                    </CardDescription>
+                <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <Variable className="w-5 h-5" />
+                        Available Variables
+                    </CardTitle>
+                    <CardDescription>Click to copy. Use {`{{variable}}`} in your template.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {currentVariables.map(variable => (
+                        {currentVariables.map(v => (
                             <div
-                                key={variable.name}
-                                className="group p-3 rounded-lg border bg-card hover:bg-accent/50 cursor-pointer transition-colors"
-                                onClick={() => copyVariable(variable.name)}
+                                key={v.name}
+                                onClick={() => copyVariable(v.name)}
+                                className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg cursor-pointer hover:bg-secondary transition-colors"
                             >
-                                <div className="flex items-center justify-between mb-1.5">
-                                    <Badge variant="secondary" className="font-mono text-xs">
-                                        {`{{${variable.name}}}`}
-                                    </Badge>
-                                    <Copy className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <div>
+                                    <Badge variant="outline" className="font-mono mb-1">{`{{${v.name}}}`}</Badge>
+                                    <p className="text-xs text-muted-foreground">{v.description}</p>
+                                    <p className="text-xs text-muted-foreground/70">e.g., {v.example}</p>
                                 </div>
-                                <p className="text-xs text-muted-foreground leading-relaxed">
-                                    {variable.description}
-                                </p>
-                                <p className="text-xs text-muted-foreground/70 mt-1 font-mono">
-                                    e.g. {variable.example}
-                                </p>
+                                <Copy className="w-4 h-4 text-muted-foreground" />
                             </div>
                         ))}
                     </div>
                 </CardContent>
             </Card>
 
-            {/* Editor & Preview Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Editor Column */}
-                <div className="space-y-4">
-                    {/* Subject Editor */}
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-base flex items-center gap-2">
-                                <Send className="h-4 w-4" />
-                                Subject Line
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
+            {/* Test Values */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-lg">Test Values</CardTitle>
+                    <CardDescription>Override example values for preview</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {currentVariables.map(v => (
+                            <div key={v.name}>
+                                <Label htmlFor={v.name} className="text-sm">{v.name}</Label>
+                                <Input
+                                    id={v.name}
+                                    placeholder={v.example}
+                                    value={testValues[v.name] || ''}
+                                    onChange={(e) => setTestValues(prev => ({ ...prev, [v.name]: e.target.value }))}
+                                    className="mt-1"
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Editor */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                {/* Code Editor */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <Code className="w-5 h-5" />
+                            Editor
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div>
+                            <Label>Subject Line</Label>
                             <Input
                                 value={subjectCode}
-                                onChange={(e) => setSubjectCode(e.target.value)}
-                                placeholder="Email subject..."
-                                className="font-mono text-sm"
+                                onChange={(e) => {
+                                    setSubjectCode(e.target.value);
+                                    setHasChanges(true);
+                                }}
+                                className="font-mono mt-1"
                             />
-                        </CardContent>
-                    </Card>
-
-                    {/* HTML Editor */}
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <div className="flex items-center gap-2">
-                                <Code className="h-4 w-4" />
-                                <span className="text-sm font-medium">HTML Template</span>
-                                <Badge variant="outline" className="text-xs">HTML</Badge>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            {isMobile ? (
-                                <Textarea
+                        </div>
+                        <div>
+                            <Label>HTML Body</Label>
+                            <div className="mt-1 border rounded-lg overflow-hidden">
+                                <Editor
+                                    height="400px"
+                                    defaultLanguage="html"
                                     value={htmlCode}
-                                    onChange={(e) => setHtmlCode(e.target.value)}
-                                    className="min-h-[400px] font-mono text-xs border-0 rounded-none resize-none focus-visible:ring-0"
-                                    placeholder="Enter HTML template..."
+                                    onChange={(value) => {
+                                        setHtmlCode(value || '');
+                                        setHasChanges(true);
+                                    }}
+                                    theme="vs-dark"
+                                    options={{
+                                        minimap: { enabled: false },
+                                        fontSize: 13,
+                                        lineNumbers: 'on',
+                                        wordWrap: 'on',
+                                        automaticLayout: true,
+                                    }}
                                 />
-                            ) : (
-                                <div className="h-[600px] border-t">
-                                    <Editor
-                                        height="100%"
-                                        language="html"
-                                        value={htmlCode}
-                                        onChange={(value) => setHtmlCode(value || '')}
-                                        theme="vs-dark"
-                                        options={{
-                                            minimap: { enabled: false },
-                                            fontSize: 13,
-                                            lineNumbers: 'on',
-                                            wordWrap: 'on',
-                                            scrollBeyondLastLine: false,
-                                            folding: true,
-                                            automaticLayout: true,
-                                        }}
-                                    />
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Preview Column */}
-                <div className="space-y-4">
-                    {/* Test Values */}
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-base">Test Values</CardTitle>
-                            <CardDescription>Modify these to preview different scenarios</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-2 gap-3">
-                                {currentVariables.map(variable => (
-                                    <div key={variable.name} className="space-y-1">
-                                        <Label className="text-xs">{variable.name}</Label>
-                                        <Input
-                                            value={testValues[variable.name] || ''}
-                                            onChange={(e) => setTestValues(prev => ({ ...prev, [variable.name]: e.target.value }))}
-                                            placeholder={variable.example}
-                                            className="h-8 text-sm"
-                                        />
-                                    </div>
-                                ))}
                             </div>
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </CardContent>
+                </Card>
 
-                    {/* Preview */}
-                    <Card className="flex-1">
-                        <CardHeader className="pb-3">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <Eye className="h-4 w-4" />
-                                    <CardTitle className="text-base">Live Preview</CardTitle>
-                                </div>
+                {/* Preview */}
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                                <Eye className="w-5 h-5" />
+                                Preview
+                            </CardTitle>
+                            <div className="flex items-center gap-2">
+                                <Button variant="ghost" size="icon" onClick={() => setZoomLevel(Math.max(0.3, zoomLevel - 0.1))}>
+                                    <ZoomOut className="w-4 h-4" />
+                                </Button>
+                                <span className="text-sm text-muted-foreground w-12 text-center">{Math.round(zoomLevel * 100)}%</span>
+                                <Button variant="ghost" size="icon" onClick={() => setZoomLevel(Math.min(1.5, zoomLevel + 0.1))}>
+                                    <ZoomIn className="w-4 h-4" />
+                                </Button>
                             </div>
-                            <CardDescription>Subject: {renderedSubject}</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {/* Zoom Controls */}
-                            <div className="flex items-center justify-between flex-wrap gap-2">
-                                <div className="flex items-center gap-2 sm:gap-3">
-                                    <ZoomOut className="w-4 h-4 text-muted-foreground hidden sm:block" />
-                                    <Slider
-                                        value={[zoomLevel * 100]}
-                                        onValueChange={(value) => setZoomLevel(value[0] / 100)}
-                                        min={30}
-                                        max={100}
-                                        step={5}
-                                        className="w-20 sm:w-32"
-                                    />
-                                    <ZoomIn className="w-4 h-4 text-muted-foreground hidden sm:block" />
-                                    <span className="text-xs text-muted-foreground">{Math.round(zoomLevel * 100)}%</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoomLevel(0.5)}>50%</Button>
-                                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs hidden sm:flex" onClick={() => setZoomLevel(0.75)}>75%</Button>
-                                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs hidden sm:flex" onClick={() => setZoomLevel(1)}>100%</Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 px-2 text-xs"
-                                        onClick={() => {
-                                            const containerWidth = previewContainerRef.current?.clientWidth || 480;
-                                            const fitScale = Math.min((containerWidth - 32) / 600, 1);
-                                            setZoomLevel(fitScale);
-                                        }}
-                                    >
-                                        <Maximize2 className="w-3 h-3 sm:mr-1" />
-                                        <span className="hidden sm:inline">Fit</span>
-                                    </Button>
-                                </div>
-                            </div>
-
-                            {/* Preview Container */}
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="bg-muted/30 p-3 rounded-lg mb-4">
+                            <p className="text-xs text-muted-foreground mb-1">Subject:</p>
+                            <p className="font-medium">{renderedSubject}</p>
+                        </div>
+                        <div
+                            ref={previewContainerRef}
+                            className="border rounded-lg overflow-auto bg-white"
+                            style={{ height: '450px' }}
+                        >
                             <div
-                                ref={previewContainerRef}
-                                className="overflow-auto rounded-xl border bg-muted/30 max-h-[500px]"
-                            >
-                                <div
-                                    className="transform origin-top-left p-4"
-                                    style={{ transform: `scale(${zoomLevel})` }}
-                                >
-                                    <div
-                                        dangerouslySetInnerHTML={{ __html: renderedHtml }}
-                                        className="min-w-[600px]"
-                                    />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                                style={{
+                                    transform: `scale(${zoomLevel})`,
+                                    transformOrigin: 'top left',
+                                    width: `${100 / zoomLevel}%`,
+                                }}
+                                dangerouslySetInnerHTML={{ __html: renderedHtml }}
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );

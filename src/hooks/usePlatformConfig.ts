@@ -11,6 +11,8 @@ interface PlatformConfig {
   promo_duration_months: { months: number };
   maintenance_mode: { enabled: boolean };
   maintenance_message: { message: string };
+  fee_model: { type: 'fixed' | 'percentage' };
+  percentage_fee: { rate: number; min_amount: number };
 }
 
 const DEFAULT_CONFIG: PlatformConfig = {
@@ -21,7 +23,9 @@ const DEFAULT_CONFIG: PlatformConfig = {
   promo_enabled: { enabled: false },
   promo_duration_months: { months: 0 },
   maintenance_mode: { enabled: false },
-  maintenance_message: { message: 'We are currently performing scheduled maintenance. Please check back soon!' }
+  maintenance_message: { message: 'We are currently performing scheduled maintenance. Please check back soon!' },
+  fee_model: { type: 'fixed' },
+  percentage_fee: { rate: 15, min_amount: 0 },
 };
 
 export function usePlatformConfig() {
@@ -61,6 +65,10 @@ export function usePlatformConfig() {
             configMap.maintenance_mode = item.value as { enabled: boolean };
           } else if (item.key === 'maintenance_message') {
             configMap.maintenance_message = item.value as { message: string };
+          } else if (item.key === 'fee_model') {
+            configMap.fee_model = item.value as { type: 'fixed' | 'percentage' };
+          } else if (item.key === 'percentage_fee') {
+            configMap.percentage_fee = item.value as { rate: number; min_amount: number };
           }
         });
 
