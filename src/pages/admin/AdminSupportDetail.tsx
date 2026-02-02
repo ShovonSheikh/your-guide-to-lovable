@@ -144,7 +144,8 @@ export default function AdminSupportDetail() {
   };
 
   const handleUpload = async (file: File) => {
-    return await uploadAttachment(file);
+    // Pass ticketId for ticket-based folder storage (RLS compliance)
+    return await uploadAttachment(file, ticketId);
   };
 
   const handleStatusChange = async (newStatus: string) => {
