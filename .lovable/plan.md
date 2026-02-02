@@ -1,150 +1,258 @@
 
-# Fix Plan: Email Duplication Issues, Missing Support Emails, and Site Cleanup
+# Implementation Plan: Creator Downgrade Option & Public Notices Page with Visibility Control
 
-## Issues Identified
+## Overview
 
-| # | Issue | Root Cause |
-|---|-------|------------|
-| 1 | Duplicate signup emails (custom + default) | The `send-email-notification` function sends emails with BOTH custom template styling and potentially falls back to default. Need to investigate template loading logic. |
-| 2 | Support ticket emails not received | `send-support-email` is **NOT registered** in `supabase/config.toml` - function may not be deployed |
-| 3 | Missing `welcome_user` template option | Admin Email Templates page doesn't include `welcome_user` as an editable template |
+This plan addresses two feature requests:
+1. **Creator-to-Supporter Downgrade**: Allow creators to downgrade their account back to a supporter account
+2. **Public Notices Page**: Create a dedicated `/notices` page showing all public announcements with admin-controlled visibility
 
 ---
 
-## Part 1: Fix Missing `send-support-email` Registration
+## Part 1: Creator Account Downgrade Feature
 
-**Problem:** The `send-support-email` edge function exists in `supabase/functions/send-support-email/` but is **NOT configured** in `supabase/config.toml`, which may prevent it from being properly deployed.
+### Current State
+- The Billing tab in Settings shows upgrade options for supporters
+- For creators, it only shows subscription details with no downgrade option
 
-**File: `supabase/config.toml`**
+### Changes Required
 
-Add the missing function configuration:
-```toml
-[functions.send-support-email]
-verify_jwt = false
+**File: `src/pages/Settings.tsx` - BillingTab Component (Lines 437-559)**
+
+Add a downgrade section for creators with:
+1. Clear warning about what they'll lose
+2. Confirmation dialog with double-confirmation
+3. Database update to change `account_type` from 'creator' to 'supporter'
+
+```tsx
+// Add inside the creator section of BillingTab
+<div className="pt-6 border-t border-border">
+  <div className="p-4 bg-destructive/5 rounded-xl border border-destructive/20">
+    <h4 className="font-medium mb-2 text-destructive">Downgrade Account</h4>
+    <p className="text-sm text-muted-foreground mb-4">
+      Switch back to a free Supporter account. You will lose:
+    </p>
+    <ul className="text-sm text-muted-foreground space-y-1 mb-4">
+      <li>• Your creator page</li>
+      <li>• Ability to receive tips</li>
+      <li>• Access to earnings dashboard</li>
+      <li>• Streamer Mode features</li>
+    </ul>
+    <Button 
+      variant="outline" 
+      className="border-destructive text-destructive hover:bg-destructive/10"
+      onClick={() => setDowngradeDialogOpen(true)}
+    >
+      Downgrade to Supporter
+    </Button>
+  </div>
+</div>
 ```
 
-This must be added to allow the function to be invoked from frontend code.
+**Downgrade Confirmation Dialog:**
+- Requires typing "DOWNGRADE" to confirm
+- Shows final warning about data retention
+- Updates profile `account_type` to 'supporter'
+- Redirects to dashboard with success message
+
+**Important Notes:**
+- Tips received and withdrawal history are preserved
+- Creator subscription record remains for billing history
+- User can upgrade again later if they choose
 
 ---
 
-## Part 2: Fix Duplicate Email Issue
+## Part 2: Public Notices Page
 
-**Problem Analysis:**
+### Database Schema Update
 
-Looking at the email logs, users receive:
-1. `welcome_user` email (triggered by Clerk webhook on `user.created`)
-2. `welcome_creator` email (triggered by Onboarding.tsx on profile completion)
+Add a new column `is_public` to the `notices` table to control visibility:
 
-These are **two different emails** and this is correct behavior. However, the user reported receiving "custom template AND default template" for the same email type.
+**SQL Migration:**
+```sql
+ALTER TABLE public.notices 
+ADD COLUMN is_public boolean NOT NULL DEFAULT false;
 
-**Root Cause Investigation:**
+-- Update RLS policy for public access
+DROP POLICY IF EXISTS "Public can view active notices" ON public.notices;
 
-The `send-email-notification` function at lines 1178-1242:
-1. Fetches custom template from `platform_config` using key `email_template_{type}`
-2. If found AND has both `subject` and `html`, uses custom template
-3. Otherwise, falls back to default template
+CREATE POLICY "Public can view active public notices" ON public.notices
+FOR SELECT
+USING (
+  is_active = true 
+  AND is_public = true 
+  AND starts_at <= now() 
+  AND (ends_at IS NULL OR ends_at > now())
+);
 
-**Potential Issue:** If the custom template exists but is malformed (missing `subject` or `html`), the function falls back to default. But this shouldn't send BOTH.
-
-**Real Issue Found:** Looking closer at the code:
-- The function correctly either uses custom OR default, not both
-- BUT there's no `email_template_welcome_user` in the database
-- The `welcome_user` uses the **default hardcoded template**
-
-The user might be experiencing a different issue - perhaps they're conflating `welcome_user` and `welcome_creator` as duplicates because they arrive close together.
-
-**Solution:** Add `welcome_user` template to both:
-1. The Admin Email Templates editor (so admins can customize it)
-2. Optionally create a default custom template in the database
-
-**Changes to `src/pages/admin/AdminEmailTemplates.tsx`:**
-
-Add `welcome_user` to the EMAIL_TYPES array:
-```typescript
-const EMAIL_TYPES = [
-  // ... existing types
-  { id: 'welcome_user', label: 'Welcome User', description: 'Welcome email for all new signups (supporters & creators)' },
-  { id: 'welcome_creator', label: 'Welcome Creator', description: 'Welcome email for new creators after onboarding' },
-  // ... rest
-];
+-- Also need policy for showing on home/dashboard (existing behavior)
+CREATE POLICY "Show notices on home and dashboard" ON public.notices
+FOR SELECT
+USING (
+  is_active = true 
+  AND (show_on_home = true OR show_on_dashboard = true)
+  AND starts_at <= now() 
+  AND (ends_at IS NULL OR ends_at > now())
+);
 ```
 
-Add variables for `welcome_user`:
-```typescript
-welcome_user: [
-  { name: 'first_name', description: 'User first name', example: 'John' },
-],
+### Frontend Changes
+
+**1. New Page: `src/pages/Notices.tsx`**
+
+A public page at `/notices` showing all notices marked as `is_public = true`:
+
+```tsx
+export default function Notices() {
+  usePageTitle('Announcements');
+  const [notices, setNotices] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch public notices (is_public = true)
+  useEffect(() => {
+    const fetchPublicNotices = async () => {
+      const { data, error } = await supabase
+        .from('notices')
+        .select('*')
+        .eq('is_public', true)
+        .eq('is_active', true)
+        .lte('starts_at', new Date().toISOString())
+        .order('created_at', { ascending: false });
+      
+      if (!error) {
+        const activeNotices = (data || []).filter(notice => 
+          !notice.ends_at || new Date(notice.ends_at) > new Date()
+        );
+        setNotices(activeNotices);
+      }
+      setLoading(false);
+    };
+    fetchPublicNotices();
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-background">
+      <TopNavbar />
+      <main className="container max-w-3xl py-12 px-4">
+        <h1 className="text-4xl font-display font-bold mb-2">Announcements</h1>
+        <p className="text-muted-foreground mb-8">
+          Stay updated with the latest news and updates from TipKoro
+        </p>
+        
+        {loading ? (
+          <Spinner />
+        ) : notices.length === 0 ? (
+          <EmptyState message="No announcements yet" />
+        ) : (
+          <div className="space-y-4">
+            {notices.map(notice => (
+              <NoticeCard key={notice.id} notice={notice} />
+            ))}
+          </div>
+        )}
+      </main>
+      <MainFooter />
+    </div>
+  );
+}
 ```
 
-Add default template:
-```typescript
-welcome_user: {
-  subject: '👋 Welcome to TipKoro, {{first_name}}!',
-  html: `<div>...welcome template...</div>`,
-},
+**2. Update Admin Notices UI: `src/pages/admin/AdminNotices.tsx`**
+
+Add the `is_public` toggle to the create/edit dialog:
+
+```tsx
+// In formData state
+const [formData, setFormData] = useState({
+  // ... existing fields
+  is_public: false,  // NEW
+});
+
+// In Dialog content
+<div className="flex items-center justify-between">
+  <div>
+    <Label htmlFor="is_public">Show on Public Notices Page</Label>
+    <p className="text-xs text-muted-foreground">
+      Make this visible on /notices page
+    </p>
+  </div>
+  <Switch
+    id="is_public"
+    checked={formData.is_public}
+    onCheckedChange={(v) => setFormData({ ...formData, is_public: v })}
+  />
+</div>
 ```
+
+**3. Add Route: `src/App.tsx`**
+
+```tsx
+import Notices from "./pages/Notices";
+
+// Add route
+<Route path="/notices" element={<Notices />} />
+```
+
+**4. Optional: Add link in Footer/Navbar**
+
+Add a link to `/notices` in the MainFooter under "Resources" section.
 
 ---
 
-## Part 3: Site Completeness Audit
-
-Based on my analysis, here's what remains or could be improved:
-
-### Already Implemented (Working)
-- User authentication (Clerk)
-- Creator/Supporter account types
-- Tipping system
-- Payment processing (RupantorPay)
-- Withdrawals with 2FA
-- Email notifications (tip, withdrawal, verification, goals)
-- Support ticket system (UI complete)
-- Admin panel (users, tips, withdrawals, verifications, notices, pages, mailbox, settings)
-- Streamer Mode (OBS alerts)
-- Funding Goals
-
-### Missing/Incomplete Features
-
-| Feature | Status | Action Needed |
-|---------|--------|---------------|
-| Support email notifications | Broken | Register `send-support-email` in config.toml |
-| `welcome_user` template editor | Missing | Add to AdminEmailTemplates.tsx |
-| `gif-duration` function config | Missing | Not in config.toml but exists in functions/ |
-
-### Optional Enhancements (Not Critical)
-- Push notifications (VAPID keys configured but implementation partial)
-- Real-time ticket updates (could add Supabase Realtime subscription)
-- Password change flow (handled by Clerk, no custom UI needed)
-- Account deletion self-service (handled by Clerk)
-
----
-
-## Files to Modify
+## Files to Modify/Create
 
 | File | Changes |
 |------|---------|
-| `supabase/config.toml` | Add `[functions.send-support-email]` and `[functions.gif-duration]` |
-| `src/pages/admin/AdminEmailTemplates.tsx` | Add `welcome_user` template type with variables and default template |
+| `src/pages/Settings.tsx` | Add downgrade section and confirmation dialog to BillingTab |
+| `src/pages/Notices.tsx` | **NEW** - Public notices page |
+| `src/pages/admin/AdminNotices.tsx` | Add `is_public` toggle in create/edit form |
+| `src/App.tsx` | Add `/notices` route |
+| `src/components/MainFooter.tsx` | Add link to /notices in Resources section |
+| `src/hooks/useNotices.ts` | Update to handle `is_public` filtering for public page |
+| **Database Migration** | Add `is_public` column and update RLS policies |
 
 ---
 
 ## Implementation Priority
 
-| Priority | Task | Impact |
-|----------|------|--------|
-| 1 | Register `send-support-email` in config.toml | Critical - Support emails not working |
-| 2 | Register `gif-duration` in config.toml | Minor - GIF duration detection |
-| 3 | Add `welcome_user` to Admin Email Templates | Low - Admin can customize welcome email |
+| Priority | Task | Complexity |
+|----------|------|------------|
+| 1 | Add `is_public` column to notices table | Low (migration) |
+| 2 | Update Admin Notices UI with toggle | Low |
+| 3 | Create public Notices page | Medium |
+| 4 | Add downgrade feature to BillingTab | Medium |
+| 5 | Add footer link to notices | Low |
 
 ---
 
-## Summary
+## Technical Notes
 
-The main issues are:
+### Downgrade Flow
+1. User clicks "Downgrade to Supporter" button
+2. Confirmation dialog opens with warning and input field
+3. User types "DOWNGRADE" to confirm
+4. Profile `account_type` updated from 'creator' to 'supporter'
+5. Toast notification shown
+6. Page reloads to reflect new account status
 
-1. **Support ticket emails not working** because the edge function isn't registered in config.toml
-2. **No duplicate email bug** - users receive `welcome_user` (on signup) and `welcome_creator` (on onboarding) as separate, intended emails
-3. **Missing `welcome_user` template** in admin editor - admins can't customize the signup welcome email
+### Notice Visibility Logic
 
-The fix is straightforward:
-- Add missing function registrations to config.toml
-- Add welcome_user template option to the admin email editor
+| Field | Purpose |
+|-------|---------|
+| `is_active` | Master toggle - notice is completely hidden if false |
+| `show_on_home` | Shows in NoticeBar on Home page |
+| `show_on_dashboard` | Shows in NoticeBar on Dashboard |
+| `is_public` **(NEW)** | Shows on dedicated /notices page |
+
+A notice can be:
+- Only on Home/Dashboard (like temporary alerts)
+- Only on /notices page (like blog-style announcements)
+- Both (important announcements everywhere)
+- Neither (draft/archived)
+
+### Data Preservation on Downgrade
+- Tips received remain in database
+- Withdrawal history preserved
+- Creator subscription record kept for audit
+- Profile data (bio, social links) preserved
+- User can re-upgrade anytime
