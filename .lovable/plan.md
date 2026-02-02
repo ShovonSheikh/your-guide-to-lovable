@@ -1,72 +1,120 @@
 
-# Fix Plan: Ticket Navigation and Cross-Account Visibility
+# Fix Plan: Email Duplication Issues, Missing Support Emails, and Site Cleanup
 
 ## Issues Identified
 
 | # | Issue | Root Cause |
 |---|-------|------------|
-| 1 | Back arrow navigates to `/support/tickets` instead of `/settings?tab=my-tickets` | Line 147 in `SupportTicketDetail.tsx` has wrong route |
-| 2 | Tickets from one account visible to another account (admin) | RLS policy "Admins can manage all tickets" with `is_admin()` allows all admins to see ALL tickets. The `useTickets` hook doesn't filter client-side. |
+| 1 | Duplicate signup emails (custom + default) | The `send-email-notification` function sends emails with BOTH custom template styling and potentially falls back to default. Need to investigate template loading logic. |
+| 2 | Support ticket emails not received | `send-support-email` is **NOT registered** in `supabase/config.toml` - function may not be deployed |
+| 3 | Missing `welcome_user` template option | Admin Email Templates page doesn't include `welcome_user` as an editable template |
 
 ---
 
-## Part 1: Fix Back Arrow Navigation
+## Part 1: Fix Missing `send-support-email` Registration
 
-**File: `src/pages/SupportTicketDetail.tsx` (Line 147)**
+**Problem:** The `send-support-email` edge function exists in `supabase/functions/send-support-email/` but is **NOT configured** in `supabase/config.toml`, which may prevent it from being properly deployed.
 
+**File: `supabase/config.toml`**
+
+Add the missing function configuration:
+```toml
+[functions.send-support-email]
+verify_jwt = false
+```
+
+This must be added to allow the function to be invoked from frontend code.
+
+---
+
+## Part 2: Fix Duplicate Email Issue
+
+**Problem Analysis:**
+
+Looking at the email logs, users receive:
+1. `welcome_user` email (triggered by Clerk webhook on `user.created`)
+2. `welcome_creator` email (triggered by Onboarding.tsx on profile completion)
+
+These are **two different emails** and this is correct behavior. However, the user reported receiving "custom template AND default template" for the same email type.
+
+**Root Cause Investigation:**
+
+The `send-email-notification` function at lines 1178-1242:
+1. Fetches custom template from `platform_config` using key `email_template_{type}`
+2. If found AND has both `subject` and `html`, uses custom template
+3. Otherwise, falls back to default template
+
+**Potential Issue:** If the custom template exists but is malformed (missing `subject` or `html`), the function falls back to default. But this shouldn't send BOTH.
+
+**Real Issue Found:** Looking closer at the code:
+- The function correctly either uses custom OR default, not both
+- BUT there's no `email_template_welcome_user` in the database
+- The `welcome_user` uses the **default hardcoded template**
+
+The user might be experiencing a different issue - perhaps they're conflating `welcome_user` and `welcome_creator` as duplicates because they arrive close together.
+
+**Solution:** Add `welcome_user` template to both:
+1. The Admin Email Templates editor (so admins can customize it)
+2. Optionally create a default custom template in the database
+
+**Changes to `src/pages/admin/AdminEmailTemplates.tsx`:**
+
+Add `welcome_user` to the EMAIL_TYPES array:
 ```typescript
-// Current (line 147):
-onClick={() => navigate('/support/tickets')}
+const EMAIL_TYPES = [
+  // ... existing types
+  { id: 'welcome_user', label: 'Welcome User', description: 'Welcome email for all new signups (supporters & creators)' },
+  { id: 'welcome_creator', label: 'Welcome Creator', description: 'Welcome email for new creators after onboarding' },
+  // ... rest
+];
+```
 
-// Fixed:
-onClick={() => navigate('/settings?tab=my-tickets')}
+Add variables for `welcome_user`:
+```typescript
+welcome_user: [
+  { name: 'first_name', description: 'User first name', example: 'John' },
+],
+```
+
+Add default template:
+```typescript
+welcome_user: {
+  subject: '👋 Welcome to TipKoro, {{first_name}}!',
+  html: `<div>...welcome template...</div>`,
+},
 ```
 
 ---
 
-## Part 2: Fix Cross-Account Ticket Visibility
+## Part 3: Site Completeness Audit
 
-The problem is architectural. The current RLS setup:
-- `is_admin()` returns `true` for any user with `is_admin = true` on their profile
-- This means creator-admin accounts can see ALL tickets, not just their own
+Based on my analysis, here's what remains or could be improved:
 
-### Solution: Client-Side Filtering in `useTickets` Hook
+### Already Implemented (Working)
+- User authentication (Clerk)
+- Creator/Supporter account types
+- Tipping system
+- Payment processing (RupantorPay)
+- Withdrawals with 2FA
+- Email notifications (tip, withdrawal, verification, goals)
+- Support ticket system (UI complete)
+- Admin panel (users, tips, withdrawals, verifications, notices, pages, mailbox, settings)
+- Streamer Mode (OBS alerts)
+- Funding Goals
 
-The RLS policies are working as designed (admins need full access for the admin panel). The issue is that the user-facing `useTickets` hook should only show tickets belonging to the current user.
+### Missing/Incomplete Features
 
-**File: `src/hooks/useTickets.ts` - Update `fetchTickets` function**
+| Feature | Status | Action Needed |
+|---------|--------|---------------|
+| Support email notifications | Broken | Register `send-support-email` in config.toml |
+| `welcome_user` template editor | Missing | Add to AdminEmailTemplates.tsx |
+| `gif-duration` function config | Missing | Not in config.toml but exists in functions/ |
 
-```typescript
-const fetchTickets = useCallback(async () => {
-  if (!profile) {
-    setLoading(false);
-    return;
-  }
-  
-  setLoading(true);
-  try {
-    // Explicitly filter by profile_id OR guest_email to only get user's own tickets
-    // This prevents admins from seeing other users' tickets in their personal dashboard
-    const { data, error } = await supabase
-      .from('support_tickets')
-      .select('*')
-      .or(`profile_id.eq.${profile.id},guest_email.eq.${profile.email}`)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    setTickets((data || []) as SupportTicket[]);
-  } catch (error) {
-    console.error('Error fetching tickets:', error);
-  } finally {
-    setLoading(false);
-  }
-}, [supabase, profile]);
-```
-
-This change:
-- Explicitly filters tickets by `profile_id` matching the current user's profile OR `guest_email` matching the current user's email
-- Even if the user is an admin (and RLS allows them to see all tickets), the query will only return their own tickets
-- The `useAdminTickets` hook (used in the admin panel) remains unchanged and continues to fetch all tickets
+### Optional Enhancements (Not Critical)
+- Push notifications (VAPID keys configured but implementation partial)
+- Real-time ticket updates (could add Supabase Realtime subscription)
+- Password change flow (handled by Clerk, no custom UI needed)
+- Account deletion self-service (handled by Clerk)
 
 ---
 
@@ -74,90 +122,29 @@ This change:
 
 | File | Changes |
 |------|---------|
-| `src/pages/SupportTicketDetail.tsx` | Update back button navigation from `/support/tickets` to `/settings?tab=my-tickets` |
-| `src/hooks/useTickets.ts` | Add explicit filter in `fetchTickets` to only get tickets matching the user's `profile_id` or `guest_email` |
+| `supabase/config.toml` | Add `[functions.send-support-email]` and `[functions.gif-duration]` |
+| `src/pages/admin/AdminEmailTemplates.tsx` | Add `welcome_user` template type with variables and default template |
 
 ---
 
-## Implementation Details
+## Implementation Priority
 
-### Navigation Fix (SupportTicketDetail.tsx)
-
-**Before:**
-```tsx
-<Button
-  variant="ghost"
-  size="icon"
-  onClick={() => navigate('/support/tickets')}
->
-  <ArrowLeft className="w-5 h-5" />
-</Button>
-```
-
-**After:**
-```tsx
-<Button
-  variant="ghost"
-  size="icon"
-  onClick={() => navigate('/settings?tab=my-tickets')}
->
-  <ArrowLeft className="w-5 h-5" />
-</Button>
-```
-
-### Query Filter Fix (useTickets.ts)
-
-**Before:**
-```typescript
-const fetchTickets = useCallback(async () => {
-  setLoading(true);
-  try {
-    const { data, error } = await supabase
-      .from('support_tickets')
-      .select('*')
-      .order('created_at', { ascending: false });
-    // ...
-  }
-}, [supabase]);
-```
-
-**After:**
-```typescript
-const fetchTickets = useCallback(async () => {
-  if (!profile) {
-    setLoading(false);
-    return;
-  }
-  
-  setLoading(true);
-  try {
-    // Filter to only return tickets belonging to the current user
-    const { data, error } = await supabase
-      .from('support_tickets')
-      .select('*')
-      .or(`profile_id.eq.${profile.id},guest_email.eq.${profile.email}`)
-      .order('created_at', { ascending: false });
-    // ...
-  }
-}, [supabase, profile]);
-```
-
----
-
-## Why This Approach?
-
-1. **RLS stays intact**: Admins still need full access via `is_admin()` for the admin panel (`/admin/support`)
-2. **User dashboard is secure**: The `useTickets` hook (for `/settings?tab=my-tickets`) explicitly queries only the user's tickets
-3. **No database migration needed**: This is purely a frontend fix
-4. **Two separate hooks for two purposes**:
-   - `useTickets` - For regular users viewing their own tickets
-   - `useAdminTickets` - For admins managing all tickets
+| Priority | Task | Impact |
+|----------|------|--------|
+| 1 | Register `send-support-email` in config.toml | Critical - Support emails not working |
+| 2 | Register `gif-duration` in config.toml | Minor - GIF duration detection |
+| 3 | Add `welcome_user` to Admin Email Templates | Low - Admin can customize welcome email |
 
 ---
 
 ## Summary
 
-| Priority | Task | Complexity |
-|----------|------|------------|
-| 1 | Fix back button navigation | Low (1 line change) |
-| 2 | Add explicit filter in `fetchTickets` | Low (add OR filter) |
+The main issues are:
+
+1. **Support ticket emails not working** because the edge function isn't registered in config.toml
+2. **No duplicate email bug** - users receive `welcome_user` (on signup) and `welcome_creator` (on onboarding) as separate, intended emails
+3. **Missing `welcome_user` template** in admin editor - admins can't customize the signup welcome email
+
+The fix is straightforward:
+- Add missing function registrations to config.toml
+- Add welcome_user template option to the admin email editor
