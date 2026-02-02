@@ -122,6 +122,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Add retry logic with delay as email may not be immediately available
     let htmlBody = emailData.html || null;
     let textBody = emailData.text || null;
+    let actualMessageId: string | null = null; // RFC 2822 Message-ID for threading
 
     const fetchEmailContent = async (retries = 3, delayMs = 2000): Promise<void> => {
       for (let attempt = 1; attempt <= retries; attempt++) {
@@ -138,9 +139,11 @@ const handler = async (req: Request): Promise<Response> => {
 
         if (emailContentResponse.ok) {
           const fullEmail = await emailContentResponse.json();
-          console.log("[Inbound Email] Full email fetched, has html:", !!fullEmail.html, "has text:", !!fullEmail.text);
+          console.log("[Inbound Email] Full email fetched, has html:", !!fullEmail.html, "has text:", !!fullEmail.text, "has message_id:", !!fullEmail.message_id);
           htmlBody = fullEmail.html || htmlBody;
           textBody = fullEmail.text || textBody;
+          // Extract the RFC 2822 Message-ID for proper email threading
+          actualMessageId = fullEmail.message_id || null;
           return; // Success, exit retry loop
         } else {
           const errorText = await emailContentResponse.text();
@@ -226,11 +229,15 @@ const handler = async (req: Request): Promise<Response> => {
     }) || null;
 
     // Insert the email
+    // Use RFC 2822 message_id for threading, fallback to formatted email_id
+    const threadingMessageId = actualMessageId || `<${emailData.email_id}@resend.dev>`;
+    
     const { error: insertError } = await supabase
       .from('inbound_emails')
       .insert({
         mailbox_id: mailbox.id,
-        message_id: emailData.email_id,
+        message_id: threadingMessageId, // RFC 2822 format for email threading
+        resend_email_id: emailData.email_id, // Resend's internal ID for API calls
         from_address: fromAddress,
         from_name: fromName,
         to_addresses: toAddresses,

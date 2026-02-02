@@ -458,6 +458,7 @@ export type Database = {
           mailbox_id: string
           message_id: string
           received_at: string
+          resend_email_id: string | null
           subject: string | null
           text_body: string | null
           to_addresses: Json
@@ -476,6 +477,7 @@ export type Database = {
           mailbox_id: string
           message_id: string
           received_at: string
+          resend_email_id?: string | null
           subject?: string | null
           text_body?: string | null
           to_addresses: Json
@@ -494,6 +496,7 @@ export type Database = {
           mailbox_id?: string
           message_id?: string
           received_at?: string
+          resend_email_id?: string | null
           subject?: string | null
           text_body?: string | null
           to_addresses?: Json
