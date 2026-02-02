@@ -1086,13 +1086,13 @@ export type Database = {
           guest_email: string
           guest_name: string | null
           id: string
+          initial_message: string | null
           priority: string
           profile_id: string | null
           status: string
           subject: string
           ticket_number: string
           updated_at: string | null
-          initial_message?: string | null
         }
         Insert: {
           assigned_to?: string | null
@@ -1103,13 +1103,13 @@ export type Database = {
           guest_email: string
           guest_name?: string | null
           id?: string
+          initial_message?: string | null
           priority?: string
           profile_id?: string | null
           status?: string
           subject: string
           ticket_number: string
           updated_at?: string | null
-          initial_message?: string | null
         }
         Update: {
           assigned_to?: string | null
@@ -1120,6 +1120,7 @@ export type Database = {
           guest_email?: string
           guest_name?: string | null
           id?: string
+          initial_message?: string | null
           priority?: string
           profile_id?: string | null
           status?: string
