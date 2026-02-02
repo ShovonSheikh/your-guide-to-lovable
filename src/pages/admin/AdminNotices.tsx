@@ -32,6 +32,7 @@ import {
   Info,
   Home,
   LayoutDashboard,
+  Globe,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -41,6 +42,7 @@ interface Notice {
   content: string;
   type: string;
   is_active: boolean;
+  is_public: boolean;
   show_on_home: boolean;
   show_on_dashboard: boolean;
   priority: number;
@@ -73,6 +75,7 @@ export default function AdminNotices() {
     content: '',
     type: 'info',
     is_active: true,
+    is_public: false,
     show_on_home: false,
     show_on_dashboard: false,
     priority: 0,
@@ -120,6 +123,7 @@ export default function AdminNotices() {
       content: '',
       type: 'info',
       is_active: true,
+      is_public: false,
       show_on_home: false,
       show_on_dashboard: false,
       priority: 0,
@@ -135,6 +139,7 @@ export default function AdminNotices() {
       content: notice.content,
       type: notice.type,
       is_active: notice.is_active,
+      is_public: notice.is_public ?? false,
       show_on_home: notice.show_on_home,
       show_on_dashboard: notice.show_on_dashboard,
       priority: notice.priority,
@@ -156,6 +161,7 @@ export default function AdminNotices() {
         content: formData.content,
         type: formData.type,
         is_active: formData.is_active,
+        is_public: formData.is_public,
         show_on_home: formData.show_on_home,
         show_on_dashboard: formData.show_on_dashboard,
         priority: formData.priority,
@@ -276,6 +282,11 @@ export default function AdminNotices() {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2 text-xs">
+                  {notice.is_public && (
+                    <Badge variant="outline" className="gap-1 bg-primary/10 border-primary/20">
+                      <Globe className="h-3 w-3" /> Public
+                    </Badge>
+                  )}
                   {notice.show_on_home && (
                     <Badge variant="outline" className="gap-1">
                       <Home className="h-3 w-3" /> Home
@@ -377,6 +388,17 @@ export default function AdminNotices() {
                   id="is_active"
                   checked={formData.is_active}
                   onCheckedChange={(v) => setFormData({ ...formData, is_active: v })}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="is_public">Show on Public Notices Page</Label>
+                  <p className="text-xs text-muted-foreground">Visible at /notices</p>
+                </div>
+                <Switch
+                  id="is_public"
+                  checked={formData.is_public}
+                  onCheckedChange={(v) => setFormData({ ...formData, is_public: v })}
                 />
               </div>
               <div className="flex items-center justify-between">
