@@ -1,4 +1,5 @@
 import { useState } from "react";
+import DOMPurify from "dompurify";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +12,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Copy, Check, Code2, ExternalLink } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+
+// Escape HTML special characters to prevent XSS
+const escapeHtml = (str: string): string =>
+  str.replace(/[&<>"']/g, (m) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  })[m] || m);
 
 interface EmbedCodeDialogProps {
   open: boolean;
@@ -26,9 +37,11 @@ export function EmbedCodeDialog({ open, onOpenChange, username, displayName }: E
   const [copied, setCopied] = useState(false);
 
   const baseUrl = window.location.origin;
-  const profileUrl = `${baseUrl}/${username}`;
-  const embedUrl = `${baseUrl}/embed/${username}`;
-  const name = displayName || username;
+  // Escape user-provided data to prevent XSS in embed templates
+  const safeUsername = escapeHtml(username);
+  const safeName = escapeHtml(displayName || username);
+  const profileUrl = `${baseUrl}/${safeUsername}`;
+  const embedUrl = `${baseUrl}/embed/${safeUsername}`;
 
   const embedCodes: Record<EmbedType, { code: string; description: string }> = {
     button: {
@@ -40,7 +53,7 @@ export function EmbedCodeDialog({ open, onOpenChange, username, displayName }: E
    style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; font-family: system-ui, sans-serif; font-weight: 600; font-size: 14px; text-decoration: none; border-radius: 12px; box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4); transition: transform 0.2s, box-shadow 0.2s;"
    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(245, 158, 11, 0.5)';"
    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 14px rgba(245, 158, 11, 0.4)';">
-  ❤️ Support ${name} on TipKoro
+  ❤️ Support ${safeName} on TipKoro
 </a>`,
     },
     widget: {
@@ -62,7 +75,7 @@ export function EmbedCodeDialog({ open, onOpenChange, username, displayName }: E
   <div style="display: flex; align-items: center; gap: 12px;">
     <span style="font-size: 32px;">☕</span>
     <div>
-      <p style="margin: 0; font-weight: 600; color: #92400e;">Support ${name}</p>
+      <p style="margin: 0; font-weight: 600; color: #92400e;">Support ${safeName}</p>
       <p style="margin: 4px 0 0; font-size: 14px; color: #a16207;">Your tips help me create more content!</p>
     </div>
   </div>
@@ -74,6 +87,14 @@ export function EmbedCodeDialog({ open, onOpenChange, username, displayName }: E
   </a>
 </div>`,
     },
+  };
+
+  // Sanitize HTML before rendering to prevent XSS
+  const sanitizeEmbedCode = (html: string): string => {
+    return DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: ['a', 'div', 'iframe', 'span', 'p'],
+      ALLOWED_ATTR: ['href', 'target', 'rel', 'style', 'class', 'src', 'width', 'height', 'frameborder', 'scrolling', 'onmouseover', 'onmouseout'],
+    });
   };
 
   const copyCode = () => {
@@ -114,7 +135,7 @@ export function EmbedCodeDialog({ open, onOpenChange, username, displayName }: E
                 <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wide">Preview</p>
                 <div 
                   className="flex justify-center"
-                  dangerouslySetInnerHTML={{ __html: embedCodes[type].code }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeEmbedCode(embedCodes[type].code) }}
                 />
               </Card>
 
