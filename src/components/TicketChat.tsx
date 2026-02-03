@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { format } from 'date-fns';
+import DOMPurify from 'dompurify';
 import { TicketMessage } from '@/hooks/useTickets';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -200,7 +201,7 @@ export function TicketChat({
                         : 'bg-secondary rounded-bl-md'
                     )}
                   >
-                    <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                    <p className="text-sm whitespace-pre-wrap">{DOMPurify.sanitize(msg.message)}</p>
                   </div>
                   {msg.attachments && msg.attachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-1">

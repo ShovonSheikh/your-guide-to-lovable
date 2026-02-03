@@ -1,4 +1,5 @@
 import React from 'react';
+import DOMPurify from 'dompurify';
 import { Avatar } from '@/components/Avatar';
 import { Heart, MessageCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -69,7 +70,7 @@ export function RecentTipsList({ tips, loading, emptyMessage = "No tips yet" }: 
               )}
             </div>
             {tip.message && (
-              <p className="text-xs text-muted-foreground mt-1 truncate">"{tip.message}"</p>
+              <p className="text-xs text-muted-foreground mt-1 truncate">"{DOMPurify.sanitize(tip.message)}"</p>
             )}
             <span className="text-xs text-muted-foreground/60">
               {formatDistanceToNow(new Date(tip.created_at), { addSuffix: true })}

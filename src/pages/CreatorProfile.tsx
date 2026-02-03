@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Navigate } from "react-router-dom";
+import DOMPurify from "dompurify";
 import { useUser } from "@clerk/clerk-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { TopNavbar } from "@/components/TopNavbar";
@@ -308,7 +309,7 @@ export default function CreatorProfile() {
                 <p className="text-muted-foreground">@{creator?.username}</p>
                 
                 {creator?.bio && (
-                  <p className="mt-4 text-foreground/80 max-w-xl">{creator.bio}</p>
+                  <p className="mt-4 text-foreground/80 max-w-xl">{DOMPurify.sanitize(creator.bio)}</p>
                 )}
                 
                 {/* Social Links */}

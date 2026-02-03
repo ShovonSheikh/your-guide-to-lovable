@@ -6,7 +6,14 @@ import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/clerk-re
 import { HeartIcon } from "./icons/PaymentIcons";
 import { useProfile } from "@/hooks/useProfile";
 import { useSupabase } from "@/hooks/useSupabase";
-import { Menu, X, LayoutGrid, Shield, Mail } from "lucide-react";
+import { Menu, X, Shield, ChevronDown, Users, Bell, Info, Mail, ShieldCheck } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function TopNavbar({ className }: { className?: string }) {
   const { isSignedIn, isLoaded } = useUser();
@@ -34,11 +41,9 @@ export function TopNavbar({ className }: { className?: string }) {
   }, [isAdmin, supabase]);
 
   const scrollToSection = (id: string) => {
-    // If we're on the home page, scroll directly
     if (location.pathname === '/') {
       document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
     } else {
-      // Navigate to home page with hash
       navigate(`/#${id}`);
     }
     setMobileMenuOpen(false);
@@ -56,7 +61,7 @@ export function TopNavbar({ className }: { className?: string }) {
             <span className="font-display font-bold text-xl">TipKoro</span>
           </Link>
 
-          {/* Desktop nav */}
+          {/* Desktop nav - 4 buttons: How it Works, Pricing, Support, More */}
           <nav className="hidden md:flex items-center gap-3">
             <button
               onClick={() => scrollToSection("how")}
@@ -71,17 +76,54 @@ export function TopNavbar({ className }: { className?: string }) {
               Pricing
             </button>
             <Link
-              to="/explore"
-              className="rounded-full bg-secondary/50 px-4 py-1.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
-            >
-              Explore
-            </Link>
-            <Link
               to="/support"
               className="rounded-full bg-secondary/50 px-4 py-1.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200"
             >
               Support
             </Link>
+            
+            {/* More Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="rounded-full bg-secondary/50 px-4 py-1.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 flex items-center gap-1">
+                  More
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem asChild>
+                  <Link to="/explore" className="flex items-center gap-2 cursor-pointer">
+                    <Users className="w-4 h-4" />
+                    Explore Creators
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/notices" className="flex items-center gap-2 cursor-pointer">
+                    <Bell className="w-4 h-4" />
+                    Notices
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/about" className="flex items-center gap-2 cursor-pointer">
+                    <Info className="w-4 h-4" />
+                    About
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/contact" className="flex items-center gap-2 cursor-pointer">
+                    <Mail className="w-4 h-4" />
+                    Contact
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/authenticity" className="flex items-center gap-2 cursor-pointer">
+                    <ShieldCheck className="w-4 h-4" />
+                    Trust & Security
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </nav>
 
           {/* Right-side actions */}
@@ -142,6 +184,7 @@ export function TopNavbar({ className }: { className?: string }) {
       {mobileMenuOpen && (
         <div className="md:hidden mt-2 mx-auto max-w-5xl rounded-2xl border border-border bg-background/95 p-4 shadow-tipkoro backdrop-blur-md animate-fade-in">
           <nav className="flex flex-col gap-2">
+            {/* Primary Nav */}
             <button
               onClick={() => scrollToSection("how")}
               className="rounded-xl bg-secondary/50 px-4 py-3.5 min-h-[48px] text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 text-left"
@@ -155,19 +198,57 @@ export function TopNavbar({ className }: { className?: string }) {
               Pricing
             </button>
             <Link
-              to="/explore"
-              onClick={() => setMobileMenuOpen(false)}
-              className="rounded-xl bg-secondary/50 px-4 py-3.5 min-h-[48px] text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 flex items-center"
-            >
-              Explore
-            </Link>
-            <Link
               to="/support"
               onClick={() => setMobileMenuOpen(false)}
               className="rounded-xl bg-secondary/50 px-4 py-3.5 min-h-[48px] text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 flex items-center"
             >
               Support
             </Link>
+            
+            {/* More Section */}
+            <div className="mt-2 pt-2 border-t border-border">
+              <p className="text-xs text-muted-foreground px-2 mb-2 font-medium">More</p>
+              <Link
+                to="/explore"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-xl bg-secondary/50 px-4 py-3.5 min-h-[48px] text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 flex items-center gap-2"
+              >
+                <Users className="w-4 h-4" />
+                Explore Creators
+              </Link>
+              <Link
+                to="/notices"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-xl bg-secondary/50 px-4 py-3.5 min-h-[48px] text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 flex items-center gap-2 mt-2"
+              >
+                <Bell className="w-4 h-4" />
+                Notices
+              </Link>
+              <Link
+                to="/about"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-xl bg-secondary/50 px-4 py-3.5 min-h-[48px] text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 flex items-center gap-2 mt-2"
+              >
+                <Info className="w-4 h-4" />
+                About
+              </Link>
+              <Link
+                to="/contact"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-xl bg-secondary/50 px-4 py-3.5 min-h-[48px] text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 flex items-center gap-2 mt-2"
+              >
+                <Mail className="w-4 h-4" />
+                Contact
+              </Link>
+              <Link
+                to="/authenticity"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-xl bg-secondary/50 px-4 py-3.5 min-h-[48px] text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 flex items-center gap-2 mt-2"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                Trust & Security
+              </Link>
+            </div>
 
             <div className="border-t border-border pt-3 mt-2">
               {isLoaded && (
