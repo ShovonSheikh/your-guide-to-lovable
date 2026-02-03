@@ -18,6 +18,9 @@
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.58.1",
+    "@fontsource/bricolage-grotesque": "^5.2.10",
+    "@fontsource/dm-sans": "^5.2.8",
+    "@fontsource/fredoka": "^5.2.10",
     "@hookform/resolvers": "^5.2.2",
     "@monaco-editor/react": "^4.7.0",
     "@prisma/client": "^7.1.0",

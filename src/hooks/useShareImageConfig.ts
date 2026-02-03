@@ -112,9 +112,7 @@ export const defaultJsxTemplate = `// TipKoro Share Image Template
 </div>`;
 
 // Default CSS template
-export const defaultCssTemplate = `@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap');
-
-/* Main wrapper */
+export const defaultCssTemplate = `/* Main wrapper */
 .tipkoro-card-wrapper {
   font-family: 'Fredoka', sans-serif;
   display: flex;
