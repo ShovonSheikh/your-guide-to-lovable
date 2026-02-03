@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { WithdrawalVerificationDialog } from "@/components/WithdrawalVerificationDialog";
+import { SecurityBadge } from "@/components/SecurityBadge";
 
 interface WithdrawalRequest {
   id: string;
@@ -447,10 +448,13 @@ export default function Finance() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Withdrawal Form */}
           <div className="tipkoro-card">
-            <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-              <ArrowDownToLine className="w-5 h-5" />
-              Request Withdrawal
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <ArrowDownToLine className="w-5 h-5" />
+                Request Withdrawal
+              </h2>
+              <SecurityBadge variant="compact" />
+            </div>
             
             {canWithdraw ? (
               <div className="space-y-4">

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { TopNavbar } from '@/components/TopNavbar';
 import { MainFooter } from '@/components/MainFooter';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -108,7 +109,7 @@ export default function Notices() {
                         </Badge>
                       </div>
                       <p className="text-muted-foreground whitespace-pre-wrap mb-3">
-                        {notice.content}
+                        {DOMPurify.sanitize(notice.content)}
                       </p>
                       <time className="text-xs text-muted-foreground">
                         {format(new Date(notice.starts_at || notice.created_at), 'MMMM d, yyyy')}
