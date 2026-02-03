@@ -1,143 +1,216 @@
 
-# Fix Email Threading: Use RFC 2822 Message-ID
+# Navbar Redesign + Comprehensive Security Enhancement Plan
 
-## Problem Identified
+## Overview
 
-Email replies are not threading properly because we're storing the wrong identifier:
+This plan covers two main areas:
+1. **Navbar Redesign** - Remap to 4 buttons (How it Works, Pricing, Support, More dropdown) + remove Announcements from footer
+2. **Security Hardening** - Add comprehensive security headers, input sanitization, and rate limiting indicators
 
-**Currently stored in `inbound_emails.message_id`:**
-```
-8a268355-93d5-4afe-a85f-805174321a06
-```
+---
 
-**What email clients expect for threading (RFC 2822 Message-ID):**
-```
-<CAEWTXuPfN=LzECjDJtgY9Vu03kgFvJnJUSHTt6TW@mail.gmail.com>
-```
+## Part 1: Navbar & Footer Redesign
 
-The `In-Reply-To` and `References` headers must contain the original email's RFC 2822 `Message-ID` (with angle brackets), not Resend's internal UUID.
+### Desktop Navbar Changes
 
-## Root Cause
+**Current layout (4 buttons):**
+- How it Works
+- Pricing
+- Explore
+- Support
 
-In `resend-inbound-webhook/index.ts`, we store:
-```typescript
-message_id: emailData.email_id,  // This is Resend's UUID, not the email's Message-ID
-```
+**New layout (4 buttons with dropdown):**
+- How it Works
+- Pricing  
+- Support
+- **More** (dropdown containing: Explore Creators, Notices, About, Contact, Trust & Security)
 
-But Resend's Receiving API returns the actual `message_id` separately:
+### Mobile Menu Changes
+
+The mobile menu will show all items in a flat list with a "More" section at the bottom containing the secondary links.
+
+### Footer Changes
+
+**Remove from Resources section:**
+- "Announcements" link (currently at line 77-78 in MainFooter.tsx)
+
+The footer will retain all other links (FAQs, Trust & Security, Support, Status).
+
+---
+
+## Part 2: Security Enhancements
+
+### A. Security Headers (vercel.json)
+
+Add comprehensive HTTP security headers that protect against common attacks:
+
 ```json
 {
-  "id": "4ef9a417-02e9-4d39-ad75-9611e0fcc33c",
-  "message_id": "<CAExample123@mail.gmail.com>",
-  ...
+  "headers": [
+    {
+      "source": "/((?!_next|api|payments|.*clerk.*).*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://challenges.cloudflare.com https://*.supabase.co https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.clerk.accounts.dev https://*.clerk.dev https://api.resend.com https://*.rupantor.com; frame-src https://*.clerk.accounts.dev https://challenges.cloudflare.com https://*.rupantor.com; frame-ancestors 'self';"
+        }
+      ]
+    }
+  ]
 }
 ```
 
-## Solution
+**Security headers explained:**
+| Header | Purpose |
+|--------|---------|
+| `X-Content-Type-Options: nosniff` | Prevents MIME-type sniffing attacks |
+| `X-Frame-Options: SAMEORIGIN` | Prevents clickjacking by disallowing embedding in iframes |
+| `X-XSS-Protection: 1; mode=block` | Enables browser's XSS filter |
+| `Referrer-Policy: strict-origin-when-cross-origin` | Controls referrer information leakage |
+| `Permissions-Policy` | Disables unnecessary browser features |
+| `Content-Security-Policy` | Controls which resources can be loaded |
 
-### 1. Update Inbound Webhook to Store Correct Message-ID
+**CSP Exclusions (as requested):**
+- Payment gateway redirects (RupantorPay) - allowed in `frame-src` and `connect-src`
+- Clerk authentication components - allowed in `script-src`, `connect-src`, `frame-src`
 
-**File:** `supabase/functions/resend-inbound-webhook/index.ts`
+### B. Input Sanitization Enhancement
 
-When fetching the full email content from Resend's API, also extract and store the actual `message_id`:
+Currently DOMPurify is used in:
+- `Authenticity.tsx` - Markdown rendering
+- `ComposeEmailSheet.tsx` - Email HTML content
+- `AdminEmailTemplates.tsx` - Template preview
+
+**Add DOMPurify to all user-generated content display:**
+
+1. **Support ticket messages** (`TicketChat.tsx`) - Sanitize message content before rendering
+2. **Creator bio/tagline display** (`CreatorProfile.tsx`) - Sanitize profile text
+3. **Tip messages display** (`RecentSupporters.tsx`, `RecentTipsList.tsx`) - Sanitize supporter messages
+4. **Notices content** (`Notices.tsx`) - Sanitize notice content
+
+### C. Rate Limiting UI Indicators
+
+Add visual feedback when users hit rate limits:
+
+1. **Withdrawal PIN attempts** - Show remaining attempts count
+2. **Tip creation** - Show "Too many requests, please wait" message
+3. **Support ticket creation** - Rate limit indicator
+
+**Implementation:**
+Create a reusable `RateLimitBanner` component:
 
 ```typescript
-// Current code fetches:
-htmlBody = fullEmail.html || htmlBody;
-textBody = fullEmail.text || textBody;
-
-// Add extraction of the RFC 2822 message_id:
-const actualMessageId = fullEmail.message_id || null;
-```
-
-Then store it properly:
-```typescript
-// Change this:
-message_id: emailData.email_id,
-
-// To this (prioritize RFC 2822 message_id, fallback to email_id):
-message_id: actualMessageId || `<${emailData.email_id}@resend.dev>`,
-```
-
-If `actualMessageId` is available (from the full email fetch), use it. If not available, wrap the UUID in angle brackets to at least follow RFC 2822 format.
-
-### 2. Update Database Schema (Optional but Recommended)
-
-Add a separate column to distinguish between Resend's internal ID and the email's Message-ID:
-
-```sql
--- Add column to store Resend's email_id separately
-ALTER TABLE inbound_emails ADD COLUMN IF NOT EXISTS resend_email_id text;
-```
-
-This allows us to:
-- Keep `message_id` for the RFC 2822 Message-ID (used for threading)
-- Store `resend_email_id` for Resend API calls (fetching content, etc.)
-
-### 3. Update send-reply-email to Handle Both Formats
-
-**File:** `supabase/functions/send-reply-email/index.ts`
-
-Add a helper to ensure proper format:
-```typescript
-function ensureMessageIdFormat(messageId: string): string {
-  // If already has angle brackets, return as-is
-  if (messageId.startsWith('<') && messageId.endsWith('>')) {
-    return messageId;
-  }
-  // Wrap in angle brackets for RFC 2822 compliance
-  return `<${messageId}>`;
+interface RateLimitBannerProps {
+  remaining: number;
+  total: number;
+  action: string;
 }
 ```
 
-Use it when setting headers:
-```typescript
-if (in_reply_to) {
-  headers["In-Reply-To"] = ensureMessageIdFormat(in_reply_to);
-  
-  const references: string[] = [];
-  if (originalEmail?.message_id) {
-    references.push(ensureMessageIdFormat(originalEmail.message_id));
-  }
-  // ...
-  if (references.length > 0) {
-    headers["References"] = references.join(" ");
-  }
-}
-```
+This will display warnings like:
+- "2 attempts remaining before temporary lockout"
+- "Rate limit exceeded. Please try again in X minutes."
+
+### D. Security Indicator Badge
+
+Add a small security badge/indicator to reassure users on sensitive pages:
+
+**Pages to add indicator:**
+- Finance page (withdrawal area)
+- Settings > Security tab
+- Tip payment page (before redirect)
+
+The badge will show: "🔒 Secured with encryption" with a tooltip explaining the security measures.
+
+---
 
 ## Files to Modify
 
-| File | Change |
-|------|--------|
-| `supabase/functions/resend-inbound-webhook/index.ts` | Extract and store actual `message_id` from Resend API response |
-| `supabase/functions/send-reply-email/index.ts` | Add helper to ensure RFC 2822 format with angle brackets |
-| Database migration | Add `resend_email_id` column (optional) |
+| File | Changes |
+|------|---------|
+| `src/components/TopNavbar.tsx` | Remap to 4 buttons with More dropdown |
+| `src/components/MainFooter.tsx` | Remove Announcements link |
+| `vercel.json` | Add security headers |
+| `src/components/TicketChat.tsx` | Add DOMPurify sanitization |
+| `src/pages/CreatorProfile.tsx` | Sanitize bio/tagline display |
+| `src/components/RecentSupporters.tsx` | Sanitize tip messages |
+| `src/components/RecentTipsList.tsx` | Sanitize tip messages |
+| `src/pages/Notices.tsx` | Sanitize notice content |
+| `src/components/WithdrawalVerificationDialog.tsx` | Add rate limit UI feedback |
+
+## New Components
+
+| File | Purpose |
+|------|---------|
+| `src/components/RateLimitBanner.tsx` | Reusable rate limit warning component |
+| `src/components/SecurityBadge.tsx` | Security indicator badge for sensitive areas |
+
+---
 
 ## Technical Details
 
-### Email Threading Standards (RFC 2822)
+### CSP Policy Breakdown
 
-Email clients thread messages using:
-1. **`Message-ID`** - Unique identifier for each email, format: `<unique-id@domain>`
-2. **`In-Reply-To`** - Contains the `Message-ID` of the email being replied to
-3. **`References`** - Contains chain of `Message-ID`s in the conversation thread
-4. **`Subject`** - Should start with `Re:` for replies
+```text
+default-src 'self'                     → Only load resources from same origin by default
+script-src 'self' 'unsafe-inline'...   → Allow scripts from self, inline (React needs this), 
+                                          Clerk, Cloudflare, Supabase, Google Analytics
+style-src 'self' 'unsafe-inline'       → Allow styles from self and inline (Tailwind needs this)
+img-src 'self' data: blob: https:      → Allow images from anywhere (creator avatars, external)
+font-src 'self' data:                  → Allow fonts from self and data URIs
+connect-src 'self' https://*.supabase.co wss://*.supabase.co...  
+                                        → Allow API calls to Supabase, Clerk, Resend, RupantorPay
+frame-src https://*.clerk.accounts.dev...  
+                                        → Allow iframes for Clerk auth and payment gateway
+frame-ancestors 'self'                 → Only allow embedding by same origin
+```
 
-All `Message-ID` values MUST be enclosed in angle brackets `<>`.
+### Dropdown Menu Structure
 
-### Why Current Implementation Fails
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  🧡 TipKoro  │ How it Works │ Pricing │ Support │ More ▼   │
+└─────────────────────────────────────────────────────────────┘
+                                                    │
+                                                    ▼
+                                          ┌──────────────────┐
+                                          │ Explore Creators │
+                                          │ Notices          │
+                                          │ ─────────────    │
+                                          │ About            │
+                                          │ Contact          │
+                                          │ Trust & Security │
+                                          └──────────────────┘
+```
 
-1. Resend's `email_id` is a UUID without angle brackets
-2. Email clients (Gmail, Outlook) look for `In-Reply-To` matching the original `Message-ID`
-3. Since we're sending a UUID instead of `<id@domain>` format, clients don't recognize it as a reply
-4. Result: Reply appears as a separate conversation instead of threading
+---
 
-## Testing
+## Testing Checklist
 
-After implementation:
-1. Receive a new test email in the mailbox
-2. Check database - `message_id` should have angle brackets format
-3. Reply to the email from admin panel
-4. Verify in sender's email client that reply appears in the same thread
-5. Check email headers in sender's client to confirm `In-Reply-To` and `References` are correct
+1. **Navbar**: Verify all 4 main buttons work, dropdown opens correctly on desktop
+2. **Mobile menu**: Verify all links accessible and touch-friendly (min 44x44px)
+3. **Footer**: Confirm Announcements link removed
+4. **Security headers**: Use [securityheaders.com](https://securityheaders.com) to verify headers are applied
+5. **CSP**: Test that Clerk auth, Supabase calls, and payment gateway still work
+6. **Input sanitization**: Try XSS payloads in tip messages - should be sanitized
+7. **Rate limit UI**: Trigger rate limit and verify warning displays
+
+---
+
+## Security Measures Summary
+
+| Layer | Protection |
+|-------|------------|
+| HTTP Headers | CSP, XSS Protection, Clickjacking prevention, MIME sniffing prevention |
+| Input Handling | DOMPurify sanitization on all user-generated content |
+| Rate Limiting | Visual feedback for remaining attempts, lockout warnings |
+| UI Indicators | Security badges on sensitive pages (Finance, Settings) |
+
+### What's NOT affected (as requested):
+- ✅ Payment gateway redirects (RupantorPay) - CSP allows frames and connections
+- ✅ Clerk authentication components - CSP allows scripts, styles, frames from Clerk domains
