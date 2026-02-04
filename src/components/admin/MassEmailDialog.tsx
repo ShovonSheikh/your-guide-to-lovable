@@ -25,7 +25,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { useSupabaseWithAuth } from '@/hooks/useSupabaseWithAuth';
 import { Send, Users, UserCheck, Heart, AlertTriangle } from 'lucide-react';
 
 interface MassEmailDialogProps {
@@ -37,6 +37,7 @@ type Audience = 'all' | 'creators' | 'supporters';
 
 export function MassEmailDialog({ open, onOpenChange }: MassEmailDialogProps) {
   const { user } = useUser();
+  const supabaseAuth = useSupabaseWithAuth();
   const [audience, setAudience] = useState<Audience>('all');
   const [subject, setSubject] = useState('');
   const [htmlBody, setHtmlBody] = useState('');
@@ -60,11 +61,11 @@ export function MassEmailDialog({ open, onOpenChange }: MassEmailDialogProps) {
     const fetchCount = async () => {
       setIsLoadingCount(true);
       try {
-        let totalQuery = supabase
+        let totalQuery = supabaseAuth
           .from('profiles')
           .select('id', { count: 'exact', head: true });
 
-        let deliverableQuery = supabase
+        let deliverableQuery = supabaseAuth
           .from('profiles')
           .select('id', { count: 'exact', head: true })
           .not('email', 'is', null);
@@ -118,7 +119,7 @@ export function MassEmailDialog({ open, onOpenChange }: MassEmailDialogProps) {
     setSendResult(null);
 
     try {
-      const response = await supabase.functions.invoke('send-mass-email', {
+      const response = await supabaseAuth.functions.invoke('send-mass-email', {
         body: { audience, subject, htmlBody },
         headers: {
           'x-clerk-user-id': user?.id || '',
