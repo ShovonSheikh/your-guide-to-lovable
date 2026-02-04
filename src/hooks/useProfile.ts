@@ -107,7 +107,23 @@ export function useProfile() {
       }
 
       if (existingProfile) {
-        setProfile(transformProfile(existingProfile));
+        let nextProfile = existingProfile;
+
+        const clerkEmail = user.primaryEmailAddress?.emailAddress || null;
+        if (clerkEmail && !existingProfile.email) {
+          const { data: updatedProfile, error: updateError } = await supabase
+            .from('profiles')
+            .update({ email: clerkEmail })
+            .eq('user_id', user.id)
+            .select('*')
+            .single();
+
+          if (!updateError && updatedProfile) {
+            nextProfile = updatedProfile;
+          }
+        }
+
+        setProfile(transformProfile(nextProfile));
         setError(null);
       } else if (retryCount < MAX_RETRIES) {
         // Profile not found - Clerk webhook might not have created it yet

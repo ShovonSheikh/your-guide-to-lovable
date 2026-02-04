@@ -31,9 +31,11 @@ import {
   Reply,
   Send,
   X,
-  PenSquare
+  PenSquare,
+  Users
 } from "lucide-react";
 import { ComposeEmailSheet } from "@/components/admin/ComposeEmailSheet";
+import { MassEmailDialog } from "@/components/admin/MassEmailDialog";
 import { formatDistanceToNow, format } from "date-fns";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -396,6 +398,7 @@ export default function AdminMailbox() {
   
   // Compose email state
   const [showComposeSheet, setShowComposeSheet] = useState(false);
+  const [massEmailOpen, setMassEmailOpen] = useState(false);
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -848,10 +851,16 @@ export default function AdminMailbox() {
               {totalUnread > 0 ? `${totalUnread} unread emails` : 'Manage inbound emails'}
             </p>
           </div>
-          <Button onClick={() => setShowComposeSheet(true)} className="gap-2">
-            <PenSquare className="h-4 w-4" />
-            Compose
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setMassEmailOpen(true)} className="gap-2">
+              <Users className="h-4 w-4" />
+              Mass Mail
+            </Button>
+            <Button onClick={() => setShowComposeSheet(true)} className="gap-2">
+              <PenSquare className="h-4 w-4" />
+              Compose
+            </Button>
+          </div>
         </div>
       )}
 
@@ -865,10 +874,16 @@ export default function AdminMailbox() {
               <Badge variant="default">{totalUnread}</Badge>
             )}
           </h1>
-          <Button size="sm" onClick={() => setShowComposeSheet(true)} className="gap-2">
-            <PenSquare className="h-4 w-4" />
-            Compose
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setMassEmailOpen(true)} className="gap-2">
+              <Users className="h-4 w-4" />
+              Mass Mail
+            </Button>
+            <Button size="sm" onClick={() => setShowComposeSheet(true)} className="gap-2">
+              <PenSquare className="h-4 w-4" />
+              Compose
+            </Button>
+          </div>
         </div>
       )}
 
@@ -951,6 +966,8 @@ export default function AdminMailbox() {
         mailboxes={mailboxes}
         defaultMailboxId={selectedMailbox?.id}
       />
+
+      <MassEmailDialog open={massEmailOpen} onOpenChange={setMassEmailOpen} />
     </div>
   );
 }

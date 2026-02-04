@@ -40,7 +40,9 @@ export function MassEmailDialog({ open, onOpenChange }: MassEmailDialogProps) {
   const [audience, setAudience] = useState<Audience>('all');
   const [subject, setSubject] = useState('');
   const [htmlBody, setHtmlBody] = useState('');
+  const [selectedCount, setSelectedCount] = useState<number | null>(null);
   const [recipientCount, setRecipientCount] = useState<number | null>(null);
+  const [missingEmailCount, setMissingEmailCount] = useState<number | null>(null);
   const [isLoadingCount, setIsLoadingCount] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -58,22 +60,37 @@ export function MassEmailDialog({ open, onOpenChange }: MassEmailDialogProps) {
     const fetchCount = async () => {
       setIsLoadingCount(true);
       try {
-        let query = supabase
+        let totalQuery = supabase
+          .from('profiles')
+          .select('id', { count: 'exact', head: true });
+
+        let deliverableQuery = supabase
           .from('profiles')
           .select('id', { count: 'exact', head: true })
           .not('email', 'is', null);
 
         if (audience === 'creators') {
-          query = query.eq('account_type', 'creator').eq('onboarding_status', 'completed');
+          totalQuery = totalQuery.eq('account_type', 'creator').eq('onboarding_status', 'completed');
+          deliverableQuery = deliverableQuery.eq('account_type', 'creator').eq('onboarding_status', 'completed');
         } else if (audience === 'supporters') {
-          query = query.eq('account_type', 'supporter');
+          totalQuery = totalQuery.eq('account_type', 'supporter');
+          deliverableQuery = deliverableQuery.eq('account_type', 'supporter');
         }
 
-        const { count } = await query;
-        setRecipientCount(count ?? 0);
+        const [{ count: total }, { count: deliverable }] = await Promise.all([totalQuery, deliverableQuery]);
+
+        const safeTotal = total ?? 0;
+        const safeDeliverable = deliverable ?? 0;
+        const safeMissing = Math.max(0, safeTotal - safeDeliverable);
+
+        setSelectedCount(safeTotal);
+        setRecipientCount(safeDeliverable);
+        setMissingEmailCount(safeMissing);
       } catch (error) {
         console.error('Failed to fetch recipient count:', error);
+        setSelectedCount(null);
         setRecipientCount(null);
+        setMissingEmailCount(null);
       } finally {
         setIsLoadingCount(false);
       }
@@ -204,7 +221,9 @@ export function MassEmailDialog({ open, onOpenChange }: MassEmailDialogProps) {
                   <Spinner className="w-4 h-4" />
                 ) : (
                   <span className="text-sm text-muted-foreground">
-                    <strong>{recipientCount?.toLocaleString() ?? '...'}</strong> recipients will receive this email
+                    <strong>{selectedCount?.toLocaleString() ?? '...'}</strong> selected •{' '}
+                    <strong>{recipientCount?.toLocaleString() ?? '...'}</strong> will receive
+                    {missingEmailCount ? ` • ${missingEmailCount.toLocaleString()} missing email` : ''}
                   </span>
                 )}
               </div>

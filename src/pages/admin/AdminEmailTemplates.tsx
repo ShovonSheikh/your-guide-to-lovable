@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { Code, Eye, RotateCcw, Save, Variable, Copy, ZoomIn, ZoomOut, Maximize2, Mail, Send, Users } from 'lucide-react';
+import { Code, Eye, RotateCcw, Save, Variable, Copy, ZoomIn, ZoomOut, Maximize2, Mail, Send } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
@@ -16,7 +16,6 @@ import { useSupabaseWithAuth } from '@/hooks/useSupabaseWithAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { MassEmailDialog } from '@/components/admin/MassEmailDialog';
 import type { Json } from '@/integrations/supabase/types';
 
 // Email categories for organized dropdown
@@ -608,7 +607,6 @@ export default function AdminEmailTemplates() {
     const [savedTemplates, setSavedTemplates] = useState<Record<string, { subject: string; html: string }>>({});
     const [zoomLevel, setZoomLevel] = useState(isMobile ? 0.4 : 0.6);
     const [testValues, setTestValues] = useState<Record<string, string>>({});
-    const [massEmailOpen, setMassEmailOpen] = useState(false);
 
     const previewContainerRef = useRef<HTMLDivElement>(null);
 
@@ -751,10 +749,6 @@ export default function AdminEmailTemplates() {
                     <p className="text-muted-foreground">Customize transactional email templates</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                    <Button variant="outline" onClick={() => setMassEmailOpen(true)}>
-                        <Users className="w-4 h-4 mr-2" />
-                        Mass Email
-                    </Button>
                     <Button variant="outline" onClick={handleReset} disabled={saving}>
                         <RotateCcw className="w-4 h-4 mr-2" />
                         Reset to Default
@@ -951,9 +945,6 @@ export default function AdminEmailTemplates() {
                     </CardContent>
                 </Card>
             </div>
-
-            {/* Mass Email Dialog */}
-            <MassEmailDialog open={massEmailOpen} onOpenChange={setMassEmailOpen} />
         </div>
     );
 }
