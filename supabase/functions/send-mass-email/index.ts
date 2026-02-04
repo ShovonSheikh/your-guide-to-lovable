@@ -15,6 +15,7 @@ interface MassEmailRequest {
 // Helper function to send email via Resend API
 async function sendEmail(
   apiKey: string,
+  from: string,
   to: string,
   subject: string,
   html: string
@@ -27,7 +28,7 @@ async function sendEmail(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "TipKoro <hello@mail.tipkoro.com>",
+        from,
         to: [to],
         subject,
         html,
@@ -36,7 +37,7 @@ async function sendEmail(
 
     if (!response.ok) {
       const errorData = await response.text();
-      return { success: false, error: errorData };
+      return { success: false, error: `${response.status} ${errorData}` };
     }
 
     const data = await response.json();
@@ -56,8 +57,13 @@ serve(async (req: Request): Promise<Response> => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const resendApiKey = Deno.env.get('RESEND_API_KEY')!;
+    const resendFrom = Deno.env.get('RESEND_FROM') || 'TipKoro <hello@tipkoro.com>';
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const getEmailDomain = (email: string) => {
+      const at = email.lastIndexOf('@');
+      return at >= 0 ? email.slice(at + 1) : '';
+    };
 
     // Verify admin status via Clerk user ID header
     const clerkUserId = req.headers.get('x-clerk-user-id');
@@ -128,51 +134,59 @@ serve(async (req: Request): Promise<Response> => {
 
     // Filter out invalid emails
     const validRecipients = recipients.filter(r => r.email && r.email.includes('@'));
+    console.info('Mass email recipients prepared', {
+      audience,
+      total: recipients.length,
+      valid: validRecipients.length,
+      skipped: recipients.length - validRecipients.length,
+      from: resendFrom,
+    });
     
     let sent = 0;
     let failed = 0;
     const skipped = recipients.length - validRecipients.length;
     const errors: string[] = [];
 
-    // Send emails in batches of 50 (Resend batch limit)
-    const batchSize = 50;
-    for (let i = 0; i < validRecipients.length; i += batchSize) {
-      const batch = validRecipients.slice(i, i + batchSize);
-      
-      const emailPromises = batch.map(async (recipient) => {
-        // Replace variables in subject and body
-        const personalizedSubject = subject
-          .replace(/\{\{first_name\}\}/g, recipient.first_name || 'there');
-        const personalizedBody = htmlBody
-          .replace(/\{\{first_name\}\}/g, recipient.first_name || 'there');
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const minDelayMs = 550;
 
-        const result = await sendEmail(
-          resendApiKey,
-          recipient.email,
-          personalizedSubject,
-          personalizedBody
-        );
+    for (let i = 0; i < validRecipients.length; i++) {
+      const recipient = validRecipients[i];
 
-        // Log result
-        await supabase.from('email_logs').insert({
-          recipient_email: recipient.email,
-          email_type: `mass_email_${audience}`,
-          status: result.success ? 'sent' : 'failed',
-          resend_id: result.id || null,
-          error_message: result.error || null,
+      const personalizedSubject = subject.replace(/\{\{first_name\}\}/g, recipient.first_name || 'there');
+      const personalizedBody = htmlBody.replace(/\{\{first_name\}\}/g, recipient.first_name || 'there');
+
+      const result = await sendEmail(
+        resendApiKey,
+        resendFrom,
+        recipient.email,
+        personalizedSubject,
+        personalizedBody
+      );
+
+      await supabase.from('email_logs').insert({
+        recipient_email: recipient.email,
+        email_type: `mass_email_${audience}`,
+        status: result.success ? 'sent' : 'failed',
+        resend_id: result.id || null,
+        error_message: result.error || null,
+      });
+
+      if (result.success) sent++;
+      else {
+        failed++;
+        if (result.error) errors.push(result.error);
+        console.warn('Mass email send failed', {
+          audience,
+          recipient_id: recipient.id,
+          recipient_domain: getEmailDomain(recipient.email),
+          error: result.error,
         });
+      }
 
-        return result;
-      });
-
-      const results = await Promise.all(emailPromises);
-      results.forEach(r => {
-        if (r.success) sent++;
-        else {
-          failed++;
-          if (r.error) errors.push(r.error);
-        }
-      });
+      if (i < validRecipients.length - 1) {
+        await sleep(minDelayMs);
+      }
     }
 
     return new Response(

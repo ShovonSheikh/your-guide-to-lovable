@@ -147,10 +147,34 @@ export function MassEmailDialog({ open, onOpenChange }: MassEmailDialogProps) {
       const result = response.data;
       setSendResult(result.summary);
 
-      toast({
-        title: 'Mass email sent',
-        description: result.message,
-      });
+      const summary = result.summary as {
+        sent: number;
+        failed: number;
+        skipped: number;
+        total: number;
+      };
+
+      const extraError = Array.isArray(result.errors) && result.errors.length > 0 ? String(result.errors[0]) : '';
+      const summaryLine = `${summary.sent} sent, ${summary.failed} failed, ${summary.skipped} skipped (total ${summary.total}).`;
+
+      if (summary.failed > 0 && summary.sent === 0) {
+        toast({
+          title: 'Mass email failed',
+          description: extraError ? `${summaryLine}\n${extraError}` : summaryLine,
+          variant: 'destructive',
+        });
+      } else if (summary.failed > 0) {
+        toast({
+          title: 'Mass email partially sent',
+          description: extraError ? `${summaryLine}\n${extraError}` : summaryLine,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Mass email sent',
+          description: result.message || summaryLine,
+        });
+      }
 
     } catch (error: any) {
       console.error('Mass email error:', error);
