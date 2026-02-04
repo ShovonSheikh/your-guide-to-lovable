@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import DOMPurify from 'dompurify';
+import { useMemo, useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import {
   Dialog,
@@ -41,6 +42,8 @@ export function MassEmailDialog({ open, onOpenChange }: MassEmailDialogProps) {
   const [audience, setAudience] = useState<Audience>('all');
   const [subject, setSubject] = useState('');
   const [htmlBody, setHtmlBody] = useState('');
+  const [previewFirstName, setPreviewFirstName] = useState('there');
+  const [showPreview, setShowPreview] = useState(false);
   const [selectedCount, setSelectedCount] = useState<number | null>(null);
   const [recipientCount, setRecipientCount] = useState<number | null>(null);
   const [missingEmailCount, setMissingEmailCount] = useState<number | null>(null);
@@ -100,6 +103,17 @@ export function MassEmailDialog({ open, onOpenChange }: MassEmailDialogProps) {
     fetchCount();
   }, [audience, open]);
 
+  const renderedSubject = useMemo(() => {
+    const name = previewFirstName.trim() || 'there';
+    return subject.replace(/\{\{first_name\}\}/g, name);
+  }, [previewFirstName, subject]);
+
+  const renderedHtml = useMemo(() => {
+    const name = previewFirstName.trim() || 'there';
+    const raw = htmlBody.replace(/\{\{first_name\}\}/g, name);
+    return DOMPurify.sanitize(raw);
+  }, [htmlBody, previewFirstName]);
+
   const handleSend = async () => {
     if (!subject.trim() || !htmlBody.trim()) {
       toast({
@@ -155,6 +169,8 @@ export function MassEmailDialog({ open, onOpenChange }: MassEmailDialogProps) {
     setHtmlBody('');
     setAudience('all');
     setSendResult(null);
+    setPreviewFirstName('there');
+    setShowPreview(false);
   };
 
   const handleClose = (isOpen: boolean) => {
@@ -258,6 +274,48 @@ export function MassEmailDialog({ open, onOpenChange }: MassEmailDialogProps) {
               <p className="text-xs text-muted-foreground">
                 Use <code className="bg-muted px-1 rounded">{'{{first_name}}'}</code> for personalization
               </p>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="previewFirstName">Preview Name</Label>
+                  <Input
+                    id="previewFirstName"
+                    value={previewFirstName}
+                    onChange={(e) => setPreviewFirstName(e.target.value)}
+                    placeholder="e.g., Shirin"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="sm:w-auto"
+                  onClick={() => setShowPreview((prev) => !prev)}
+                  disabled={!subject.trim() && !htmlBody.trim()}
+                >
+                  {showPreview ? 'Hide Preview' : 'Show Preview'}
+                </Button>
+              </div>
+
+              {showPreview && (
+                <div className="rounded-lg border bg-muted/20 overflow-hidden">
+                  <div className="p-3 border-b bg-background">
+                    <p className="text-xs text-muted-foreground mb-1">Subject preview</p>
+                    <p className="font-medium break-words">{renderedSubject || '(No subject)'}</p>
+                  </div>
+                  <div className="p-3">
+                    <div className="border rounded bg-white overflow-hidden" style={{ height: 420 }}>
+                      <iframe
+                        title="Mass mail preview"
+                        className="w-full h-full"
+                        sandbox="allow-same-origin"
+                        srcDoc={renderedHtml || '<div style=\"font-family: system-ui; padding: 16px; color: #444;\">(No HTML body)</div>'}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Result Summary */}

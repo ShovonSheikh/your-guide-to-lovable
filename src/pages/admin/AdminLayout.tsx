@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
 import { useUser } from "@clerk/clerk-react";
 import { useProfile } from "@/hooks/useProfile";
@@ -283,7 +283,15 @@ export default function AdminLayout() {
 
       {/* Main Content */}
       <main className="flex-1 md:p-6 p-4 pt-16 md:pt-6 overflow-auto">
-        <Outlet />
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center min-h-[60vh]">
+              <Spinner className="w-8 h-8" />
+            </div>
+          }
+        >
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   );
