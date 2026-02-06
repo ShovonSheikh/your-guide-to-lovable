@@ -16,7 +16,7 @@ jobs:
           echo "Triggering weekly summary at $(date -u)"
           
           response=$(curl -s -w "\n%{http_code}" -X POST \
-            'https://bwkrtkalxygmvlkuleoc.supabase.co/functions/v1/weekly-summary' \
+            'https://wwrkisbnpsmbkofqgndq.supabase.co/functions/v1/weekly-summary' \
             -H 'Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}' \
             -H 'Content-Type: application/json')
           
