@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import webpush from "https://esm.sh/web-push@3.6.7";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,33 +16,6 @@ interface PushRequest {
   tag?: string;
 }
 
-// Web Push implementation using fetch (no external dependencies)
-async function sendWebPush(
-  subscription: { endpoint: string; p256dh: string; auth: string },
-  payload: string,
-  vapidPublicKey: string,
-  vapidPrivateKey: string
-): Promise<boolean> {
-  try {
-    // For web push, we need to use the web-push protocol
-    // This is a simplified implementation - in production, consider using a library
-    const response = await fetch(subscription.endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/octet-stream",
-        "Content-Encoding": "aes128gcm",
-        "TTL": "86400",
-      },
-      body: payload,
-    });
-
-    return response.ok;
-  } catch (error) {
-    console.error("Push notification error:", error);
-    return false;
-  }
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -50,6 +24,7 @@ serve(async (req) => {
   try {
     const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY");
     const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
+    const vapidSubject = Deno.env.get("VAPID_SUBJECT") || "mailto:support@tipkoro.com";
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -61,6 +36,9 @@ serve(async (req) => {
       );
     }
 
+    // Configure web-push with VAPID details
+    webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { profile_id, title, body, url, icon, tag }: PushRequest = await req.json();
 
@@ -71,6 +49,8 @@ serve(async (req) => {
       );
     }
 
+    console.log(`[Push] Sending notification to profile: ${profile_id}, title: "${title}"`);
+
     // Fetch subscriptions for this profile
     const { data: subscriptions, error } = await supabase
       .from('push_subscriptions')
@@ -78,7 +58,7 @@ serve(async (req) => {
       .eq('profile_id', profile_id);
 
     if (error) {
-      console.error("Error fetching subscriptions:", error);
+      console.error("[Push] Error fetching subscriptions:", error);
       return new Response(
         JSON.stringify({ error: "Failed to fetch subscriptions" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -86,11 +66,14 @@ serve(async (req) => {
     }
 
     if (!subscriptions || subscriptions.length === 0) {
+      console.log("[Push] No push subscriptions found for profile:", profile_id);
       return new Response(
         JSON.stringify({ success: true, sent: 0, message: "No push subscriptions found" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log(`[Push] Found ${subscriptions.length} subscription(s) for profile`);
 
     const payload = JSON.stringify({
       title,
@@ -99,7 +82,7 @@ serve(async (req) => {
       badge: '/favicon.ico',
       url: url || '/dashboard',
       tag: tag || 'tipkoro-notification',
-      data: { 
+      data: {
         url: url || '/dashboard',
         type: tag || 'general',
       },
@@ -110,49 +93,54 @@ serve(async (req) => {
 
     for (const sub of subscriptions) {
       try {
-        // Use native fetch to send push notification
-        const response = await fetch(sub.endpoint, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "TTL": "86400",
+        // Create the proper Web Push subscription object
+        const pushSubscription = {
+          endpoint: sub.endpoint,
+          keys: {
+            p256dh: sub.p256dh,
+            auth: sub.auth,
           },
-          body: payload,
-        });
+        };
 
-        if (response.ok) {
-          sent++;
-        } else if (response.status === 410 || response.status === 404) {
-          // Subscription is no longer valid - remove it
+        console.log(`[Push] Sending to endpoint: ${sub.endpoint.substring(0, 50)}...`);
+
+        // Use web-push library for proper VAPID auth and encryption
+        await webpush.sendNotification(pushSubscription, payload);
+        sent++;
+        console.log(`[Push] Successfully sent to subscription ${sub.id}`);
+      } catch (err: any) {
+        console.error(`[Push] Error for ${sub.endpoint}:`, err.message || err);
+
+        // Check if subscription is expired/invalid (410 Gone or 404 Not Found)
+        if (err.statusCode === 410 || err.statusCode === 404) {
           failedEndpoints.push(sub.id);
-          console.log(`Removing invalid subscription: ${sub.endpoint}`);
-        } else {
-          console.error(`Push failed for ${sub.endpoint}: ${response.status}`);
+          console.log(`[Push] Marking subscription ${sub.id} for removal (status: ${err.statusCode})`);
         }
-      } catch (err) {
-        console.error(`Push error for ${sub.endpoint}:`, err);
       }
     }
 
     // Remove invalid subscriptions
     if (failedEndpoints.length > 0) {
+      console.log(`[Push] Removing ${failedEndpoints.length} invalid subscription(s)`);
       await supabase
         .from('push_subscriptions')
         .delete()
         .in('id', failedEndpoints);
     }
 
+    console.log(`[Push] Sent: ${sent}/${subscriptions.length}, Removed: ${failedEndpoints.length}`);
+
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        sent, 
+      JSON.stringify({
+        success: true,
+        sent,
         total: subscriptions.length,
-        removed: failedEndpoints.length 
+        removed: failedEndpoints.length
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
-    console.error("Error in send-push-notification:", error);
+    console.error("[Push] Error in send-push-notification:", error);
     return new Response(
       JSON.stringify({ error: error.message || "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
