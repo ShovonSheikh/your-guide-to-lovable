@@ -13,6 +13,7 @@ interface PlatformConfig {
   maintenance_message: { message: string };
   fee_model: { type: 'fixed' | 'percentage' };
   percentage_fee: { rate: number; min_amount: number };
+  dummy_payments: { enabled: boolean };
 }
 
 const DEFAULT_CONFIG: PlatformConfig = {
@@ -26,6 +27,7 @@ const DEFAULT_CONFIG: PlatformConfig = {
   maintenance_message: { message: 'We are currently performing scheduled maintenance. Please check back soon!' },
   fee_model: { type: 'fixed' },
   percentage_fee: { rate: 15, min_amount: 0 },
+  dummy_payments: { enabled: false },
 };
 
 export function usePlatformConfig() {
@@ -69,6 +71,8 @@ export function usePlatformConfig() {
             configMap.fee_model = item.value as { type: 'fixed' | 'percentage' };
           } else if (item.key === 'percentage_fee') {
             configMap.percentage_fee = item.value as { rate: number; min_amount: number };
+          } else if (item.key === 'dummy_payments') {
+            configMap.dummy_payments = item.value as { enabled: boolean };
           }
         });
 
