@@ -271,6 +271,67 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("[Inbound Email] Email saved successfully to mailbox:", mailboxAddress);
 
+    // ============================
+    // EMAIL ALERT RULES - Push Notifications
+    // ============================
+    try {
+      const { data: rules } = await supabase
+        .from('email_alert_rules')
+        .select('*')
+        .eq('is_active', true);
+
+      for (const rule of rules || []) {
+        let matches = false;
+        const value = rule.match_value.toLowerCase();
+        const isExact = rule.match_mode === 'exact';
+
+        const checkMatch = (field: string) => {
+          const lower = field.toLowerCase();
+          return isExact ? lower === value : lower.includes(value);
+        };
+
+        switch (rule.match_type) {
+          case 'from_address':
+            matches = checkMatch(fromAddress);
+            break;
+          case 'subject':
+            matches = checkMatch(emailData.subject || '');
+            break;
+          case 'body':
+            matches = checkMatch(textBody || '');
+            break;
+          case 'any':
+            matches = checkMatch(fromAddress) ||
+                      checkMatch(emailData.subject || '') ||
+                      checkMatch(textBody || '');
+            break;
+        }
+
+        if (matches) {
+          console.log(`[Inbound Email] Alert rule matched: "${rule.name}" for profile ${rule.profile_id}`);
+          // Fire-and-forget push notification
+          fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({
+              profile_id: rule.profile_id,
+              title: `Email Alert: ${rule.name}`,
+              body: `From: ${fromName || fromAddress} — ${emailData.subject || '(No Subject)'}`,
+              url: '/admin/mailbox',
+              tag: 'email_alert',
+            }),
+          }).catch(err => console.error('[Inbound Email] Push notification failed:', err));
+        }
+      }
+    } catch (alertError) {
+      console.error("[Inbound Email] Error checking alert rules:", alertError);
+      // Don't fail the webhook response for alert rule errors
+    }
+    // ============================
+
     return new Response(
       JSON.stringify({ success: true, message: "Email received and stored" }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

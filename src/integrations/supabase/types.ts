@@ -371,6 +371,54 @@ export type Database = {
           },
         ]
       }
+      email_alert_rules: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          match_mode: string
+          match_type: string
+          match_value: string
+          name: string
+          profile_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          match_mode?: string
+          match_type: string
+          match_value: string
+          name: string
+          profile_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          match_mode?: string
+          match_type?: string
+          match_value?: string
+          name?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_alert_rules_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_alert_rules_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_logs: {
         Row: {
           created_at: string | null

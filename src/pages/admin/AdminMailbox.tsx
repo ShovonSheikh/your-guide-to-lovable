@@ -32,10 +32,12 @@ import {
   Send,
   X,
   PenSquare,
-  Users
+  Users,
+  Bell
 } from "lucide-react";
 import { ComposeEmailSheet } from "@/components/admin/ComposeEmailSheet";
 import { MassEmailDialog } from "@/components/admin/MassEmailDialog";
+import { EmailAlertRulesDialog } from "@/components/admin/EmailAlertRulesDialog";
 import { formatDistanceToNow, format } from "date-fns";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -399,6 +401,7 @@ export default function AdminMailbox() {
   // Compose email state
   const [showComposeSheet, setShowComposeSheet] = useState(false);
   const [massEmailOpen, setMassEmailOpen] = useState(false);
+  const [alertRulesOpen, setAlertRulesOpen] = useState(false);
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -852,6 +855,9 @@ export default function AdminMailbox() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => setAlertRulesOpen(true)} title="Email Alerts">
+              <Bell className="h-4 w-4" />
+            </Button>
             <Button variant="outline" onClick={() => setMassEmailOpen(true)} className="gap-2">
               <Users className="h-4 w-4" />
               Mass Mail
@@ -875,6 +881,9 @@ export default function AdminMailbox() {
             )}
           </h1>
           <div className="flex items-center gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setAlertRulesOpen(true)} title="Email Alerts">
+              <Bell className="h-4 w-4" />
+            </Button>
             <Button size="sm" variant="outline" onClick={() => setMassEmailOpen(true)} className="gap-2">
               <Users className="h-4 w-4" />
               Mass Mail
@@ -968,6 +977,7 @@ export default function AdminMailbox() {
       />
 
       <MassEmailDialog open={massEmailOpen} onOpenChange={setMassEmailOpen} />
+      <EmailAlertRulesDialog open={alertRulesOpen} onOpenChange={setAlertRulesOpen} />
     </div>
   );
 }
