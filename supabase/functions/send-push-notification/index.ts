@@ -1,10 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import webpush from "https://esm.sh/web-push@3.6.7";
+import webpush from "npm:web-push@3.6.7";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, x-clerk-user-id",
 };
 
 interface PushRequest {
@@ -29,9 +29,9 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     if (!vapidPublicKey || !vapidPrivateKey) {
-      console.error("VAPID keys not configured");
+      console.error("VAPID keys not configured. PUBLIC set:", !!vapidPublicKey, "PRIVATE set:", !!vapidPrivateKey);
       return new Response(
-        JSON.stringify({ error: "Push notifications not configured" }),
+        JSON.stringify({ error: "Push notifications not configured (VAPID keys missing)" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -56,6 +56,8 @@ serve(async (req) => {
       .from('push_subscriptions')
       .select('id, endpoint, p256dh, auth')
       .eq('profile_id', profile_id);
+
+    console.log(`[Push] Query for subscriptions with profile_id=${profile_id} returned ${subscriptions?.length || 0} rows.`);
 
     if (error) {
       console.error("[Push] Error fetching subscriptions:", error);

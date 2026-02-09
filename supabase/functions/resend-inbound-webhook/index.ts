@@ -66,7 +66,7 @@ const handler = async (req: Request): Promise<Response> => {
     // WEBHOOK SIGNATURE VERIFICATION
     // ============================
     const rawPayload = await req.text();
-    
+
     if (webhookSecret) {
       const svixId = req.headers.get('svix-id');
       const svixTimestamp = req.headers.get('svix-timestamp');
@@ -231,7 +231,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Insert the email
     // Use RFC 2822 message_id for threading, fallback to formatted email_id
     const threadingMessageId = actualMessageId || `<${emailData.email_id}@resend.dev>`;
-    
+
     const { error: insertError } = await supabase
       .from('inbound_emails')
       .insert({
@@ -282,28 +282,32 @@ const handler = async (req: Request): Promise<Response> => {
 
       for (const rule of rules || []) {
         let matches = false;
-        const value = rule.match_value.toLowerCase();
+        const value = rule.match_value.toLowerCase().trim();
         const isExact = rule.match_mode === 'exact';
 
-        const checkMatch = (field: string) => {
-          const lower = field.toLowerCase();
-          return isExact ? lower === value : lower.includes(value);
+        console.log(`[Inbound Email] Checking rule "${rule.name}" (ID: ${rule.id}) - Type: ${rule.match_type}, Mode: ${rule.match_mode}, Value: "${value}"`);
+
+        const checkMatch = (field: string, fieldName: string) => {
+          const lower = (field || '').toLowerCase().trim();
+          const result = isExact ? lower === value : lower.includes(value);
+          console.log(`[Inbound Email]   - Matching against ${fieldName}: "${lower}" => ${result}`);
+          return result;
         };
 
         switch (rule.match_type) {
           case 'from_address':
-            matches = checkMatch(fromAddress);
+            matches = checkMatch(fromAddress, 'from_address');
             break;
           case 'subject':
-            matches = checkMatch(emailData.subject || '');
+            matches = checkMatch(emailData.subject || '', 'subject');
             break;
           case 'body':
-            matches = checkMatch(textBody || '');
+            matches = checkMatch(textBody || '', 'body');
             break;
           case 'any':
-            matches = checkMatch(fromAddress) ||
-                      checkMatch(emailData.subject || '') ||
-                      checkMatch(textBody || '');
+            matches = checkMatch(fromAddress, 'from_address') ||
+              checkMatch(emailData.subject || '', 'subject') ||
+              checkMatch(textBody || '', 'body');
             break;
         }
 
@@ -320,9 +324,14 @@ const handler = async (req: Request): Promise<Response> => {
               profile_id: rule.profile_id,
               title: `Email Alert: ${rule.name}`,
               body: `From: ${fromName || fromAddress} — ${emailData.subject || '(No Subject)'}`,
-              url: '/admin/mailbox',
+              url: '/dashboard', // Fixed URL to dashboard as per previous issues with deep linking
               tag: 'email_alert',
             }),
+          }).then(res => {
+            if (!res.ok) {
+              return res.text().then(text => console.error(`[Inbound Email] Push notification request failed: ${res.status} ${text}`));
+            }
+            console.log(`[Inbound Email] Push notification request sent successfully for rule "${rule.name}"`);
           }).catch(err => console.error('[Inbound Email] Push notification failed:', err));
         }
       }
