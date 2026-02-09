@@ -16,7 +16,7 @@ export function usePushNotifications() {
     const checkSupport = async () => {
       const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
       setIsSupported(supported);
-      
+
       if (supported) {
         setPermission(Notification.permission);
         await checkSubscription();
@@ -24,7 +24,7 @@ export function usePushNotifications() {
         setIsLoading(false);
       }
     };
-    
+
     checkSupport();
   }, [profile?.id]);
 
@@ -37,7 +37,7 @@ export function usePushNotifications() {
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
-      
+
       if (subscription) {
         // Verify subscription exists in database
         const { data } = await supabase
@@ -46,7 +46,7 @@ export function usePushNotifications() {
           .eq('profile_id', profile.id)
           .eq('endpoint', subscription.endpoint)
           .maybeSingle();
-        
+
         setIsSubscribed(!!data);
       } else {
         setIsSubscribed(false);
@@ -83,7 +83,7 @@ export function usePushNotifications() {
       // Request permission
       const permissionResult = await Notification.requestPermission();
       setPermission(permissionResult);
-      
+
       if (permissionResult !== 'granted') {
         toast({
           title: "Permission Denied",
@@ -98,7 +98,7 @@ export function usePushNotifications() {
       if (!registration) {
         registration = await navigator.serviceWorker.register('/sw.js');
       }
-      
+
       await navigator.serviceWorker.ready;
 
       // Subscribe to push
@@ -108,7 +108,7 @@ export function usePushNotifications() {
       });
 
       const subscriptionJson = subscription.toJSON();
-      
+
       if (!subscriptionJson.endpoint || !subscriptionJson.keys?.p256dh || !subscriptionJson.keys?.auth) {
         throw new Error('Invalid subscription data');
       }
@@ -119,7 +119,7 @@ export function usePushNotifications() {
         endpoint: subscriptionJson.endpoint,
         p256dh: subscriptionJson.keys.p256dh,
         auth: subscriptionJson.keys.auth,
-      }, { onConflict: 'endpoint' });
+      }, { onConflict: 'profile_id, endpoint' });
 
       if (error) throw error;
 
@@ -144,10 +144,10 @@ export function usePushNotifications() {
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
-      
+
       if (subscription) {
         await subscription.unsubscribe();
-        
+
         // Remove from database
         await supabase
           .from('push_subscriptions')
@@ -172,12 +172,12 @@ export function usePushNotifications() {
     }
   }, []);
 
-  return { 
-    isSupported, 
-    isSubscribed, 
-    isLoading, 
+  return {
+    isSupported,
+    isSubscribed,
+    isLoading,
     permission,
-    subscribe, 
+    subscribe,
     unsubscribe,
     checkSubscription,
   };
