@@ -14,27 +14,29 @@ export function GlobalLoader() {
                 "fixed inset-0 z-[9999] flex items-center justify-center",
 
                 // --- GLASS STYLING ---
-                "bg-white/10 dark:bg-black/10", // Subtle tint
-                "backdrop-blur-md",             // Premium blur
-                "backdrop-saturate-150",        // Color boost
+                "bg-white/10 dark:bg-black/10",
+                "backdrop-blur-md",
+                "backdrop-saturate-150",
 
-                // --- CINEMATIC FADE ANIMATION ---
-                // Matches the 1200ms timer in your Context
-                "transition-all duration-1000 ease-in-out",
-
-                // Logic:
-                // 1. Loading: Fully visible.
-                // 2. Exiting: Fade opacity to 0 AND blur the whole screen out (blur-xl)
-                //    We also scale up slightly (scale-105) so it feels like it dissipates into the air.
-                isExiting
-                    ? "opacity-0 scale-105 blur-2xl pointer-events-none"
-                    : "opacity-100 scale-100 blur-0 pointer-events-auto"
+                // --- POINTER EVENTS ---
+                isExiting ? "pointer-events-none" : "pointer-events-auto"
             )}
+            style={{
+                // Explicit CSS transitions for better cross-platform consistency
+                // PC browsers optimize transition-all too aggressively
+                opacity: isExiting ? 0 : 1,
+                transform: isExiting ? 'scale(1.05)' : 'scale(1)',
+                filter: isExiting ? 'blur(32px)' : 'blur(0px)',
+                transition: 'opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1), transform 1.2s cubic-bezier(0.4, 0, 0.2, 1), filter 1.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
         >
-            {/* Spinner is now standalone. 
-               Increased size slightly (w-12) so it doesn't look lost without the card.
-            */}
-            <Spinner className="w-12 h-12 text-primary drop-shadow-md" />
+            <Spinner
+                className="w-12 h-12 text-primary drop-shadow-md"
+                style={{
+                    opacity: isExiting ? 0 : 1,
+                    transition: 'opacity 0.8s ease-out',
+                }}
+            />
         </div>
     );
 }

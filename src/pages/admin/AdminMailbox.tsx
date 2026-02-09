@@ -33,7 +33,11 @@ import {
   X,
   PenSquare,
   Users,
-  Bell
+  Bell,
+  SendHorizonal,
+  FileEdit,
+  Clock,
+  Archive
 } from "lucide-react";
 import { ComposeEmailSheet } from "@/components/admin/ComposeEmailSheet";
 import { MassEmailDialog } from "@/components/admin/MassEmailDialog";
@@ -85,6 +89,23 @@ interface Email {
 
 type MobileView = 'list' | 'email';
 
+type FolderType = 'inbox' | 'sent' | 'drafts' | 'outbox' | 'trash';
+
+interface FolderConfig {
+  id: FolderType;
+  label: string;
+  icon: React.ElementType;
+  filter?: (email: Email) => boolean;
+}
+
+const FOLDERS: FolderConfig[] = [
+  { id: 'inbox', label: 'Inbox', icon: Inbox },
+  { id: 'sent', label: 'Sent', icon: SendHorizonal },
+  { id: 'drafts', label: 'Drafts', icon: FileEdit },
+  { id: 'outbox', label: 'Outbox', icon: Clock },
+  { id: 'trash', label: 'Trash', icon: Trash2 },
+];
+
 // ============= Extracted Memoized Components =============
 
 interface EmailListProps {
@@ -94,9 +115,11 @@ interface EmailListProps {
   selectedEmailId: string | null;
   isRefreshing: boolean;
   emailsLoading: boolean;
+  selectedFolder: FolderType;
   onMailboxChange: (mailboxId: string) => void;
   onSelectEmail: (email: Email) => void;
   onRefresh: () => void;
+  onFolderChange: (folder: FolderType) => void;
 }
 
 const EmailListComponent = memo(function EmailList({
@@ -106,13 +129,15 @@ const EmailListComponent = memo(function EmailList({
   selectedEmailId,
   isRefreshing,
   emailsLoading,
+  selectedFolder,
   onMailboxChange,
   onSelectEmail,
   onRefresh,
+  onFolderChange,
 }: EmailListProps) {
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="py-3 px-4 border-b flex-shrink-0">
+      <CardHeader className="py-3 px-4 border-b flex-shrink-0 space-y-3">
         <div className="flex items-center justify-between gap-2">
           {/* Mailbox Dropdown */}
           <Select
@@ -121,7 +146,7 @@ const EmailListComponent = memo(function EmailList({
           >
             <SelectTrigger className="w-full max-w-[200px]">
               <div className="flex items-center gap-2 truncate">
-                <Inbox className="h-4 w-4 flex-shrink-0" />
+                <Mail className="h-4 w-4 flex-shrink-0" />
                 <SelectValue placeholder="Select mailbox" />
               </div>
             </SelectTrigger>
@@ -151,6 +176,29 @@ const EmailListComponent = memo(function EmailList({
             <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
           </Button>
         </div>
+
+        {/* Folder Pills */}
+        <div className="flex items-center gap-1 flex-wrap">
+          {FOLDERS.map((folder) => {
+            const IconComponent = folder.icon;
+            const isActive = selectedFolder === folder.id;
+            return (
+              <button
+                key={folder.id}
+                onClick={() => onFolderChange(folder.id)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                )}
+              >
+                <IconComponent className="h-3.5 w-3.5" />
+                {folder.label}
+              </button>
+            );
+          })}
+        </div>
       </CardHeader>
       <ScrollArea className="flex-1">
         {emailsLoading ? (
@@ -160,7 +208,7 @@ const EmailListComponent = memo(function EmailList({
         ) : emails.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Mail className="h-12 w-12 mx-auto mb-3 opacity-30" />
-            <p>No emails in this mailbox</p>
+            <p>No emails in {FOLDERS.find(f => f.id === selectedFolder)?.label || 'this folder'}</p>
           </div>
         ) : (
           <div className="divide-y">
@@ -388,6 +436,7 @@ export default function AdminMailbox() {
   const [showHtml, setShowHtml] = useState(true);
   const [mobileView, setMobileView] = useState<MobileView>('list');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedFolder, setSelectedFolder] = useState<FolderType>('inbox');
 
   // Ref to avoid stale closure in real-time subscription
   const selectedMailboxRef = useRef<Mailbox | null>(null);
@@ -904,9 +953,11 @@ export default function AdminMailbox() {
                 selectedEmailId={selectedEmail?.id || null}
                 isRefreshing={isRefreshing}
                 emailsLoading={emailsLoading}
+                selectedFolder={selectedFolder}
                 onMailboxChange={handleMailboxChange}
                 onSelectEmail={handleSelectEmail}
                 onRefresh={handleManualRefresh}
+                onFolderChange={setSelectedFolder}
               />
             </div>
             <div className="col-span-7 h-full">
@@ -935,9 +986,11 @@ export default function AdminMailbox() {
                 selectedEmailId={selectedEmail?.id || null}
                 isRefreshing={isRefreshing}
                 emailsLoading={emailsLoading}
+                selectedFolder={selectedFolder}
                 onMailboxChange={handleMailboxChange}
                 onSelectEmail={handleSelectEmail}
                 onRefresh={handleManualRefresh}
+                onFolderChange={setSelectedFolder}
               />
             ) : (
               <EmailViewerComponent

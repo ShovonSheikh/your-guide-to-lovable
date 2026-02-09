@@ -33,19 +33,19 @@ export function GlobalLoaderProvider({ children }: { children: ReactNode }) {
     }, [location.pathname]);
 
     const finishLoading = useCallback(() => {
-        // 1. Wait a moment so user sees the liquid (Calm Phase)
+        // 1. Wait a moment so user sees content loading (Calm Phase)
         timers.current.push(setTimeout(() => {
 
-            // 2. Trigger the CSS Fade (This starts the 1000ms transition)
+            // 2. Trigger the CSS Fade (This starts the 1200ms transition)
             setIsExiting(true);
 
-            // 3. Unmount ONLY after the CSS is 100% done + 200ms safety buffer
+            // 3. Unmount ONLY after the CSS is 100% done + 300ms safety buffer
             timers.current.push(setTimeout(() => {
                 setIsLoading(false);
                 setIsExiting(false);
-            }, 1200)); // <--- 1200ms (Must be > duration-1000)
+            }, 1500)); // 1200ms animation + 300ms buffer
 
-        }, 1000));
+        }, 800)); // Reduced calm phase to feel snappier
     }, []);
 
     return (
