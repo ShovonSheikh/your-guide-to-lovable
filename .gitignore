@@ -25,3 +25,5 @@ dist-ssr
 
 /generated/prisma
 .vercel
+
+liquid-glass-react

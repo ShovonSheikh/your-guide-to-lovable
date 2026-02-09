@@ -3,86 +3,60 @@ import { useLocation } from "react-router-dom";
 
 interface GlobalLoaderContextType {
     isLoading: boolean;
-    setIsLoading: (loading: boolean) => void; // Expose this so pages can control it
+    isExiting: boolean;
+    setIsLoading: (loading: boolean) => void;
 }
 
 const GlobalLoaderContext = createContext<GlobalLoaderContextType | undefined>(undefined);
 
 export function GlobalLoaderProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(false);
-    const [shouldRender, setShouldRender] = useState(false); // Controls existence in DOM
+    const [isExiting, setIsExiting] = useState(false);
     const location = useLocation();
 
-    // We use a ref to track if we are inside the "minimum display time" window
-    const minTimeRef = useRef<NodeJS.Timeout | null>(null);
+    const timers = useRef<NodeJS.Timeout[]>([]);
 
-    // 1. Trigger Loader on Route Change
+    const clearTimers = () => {
+        timers.current.forEach(clearTimeout);
+        timers.current = [];
+    };
+
     useEffect(() => {
+        clearTimers();
         setIsLoading(true);
-        setShouldRender(true);
+        setIsExiting(false);
 
-        // Optional: If you want to force a clear after 5 seconds just in case data hangs
-        const safetyTimer = setTimeout(() => {
-            handleLoadingComplete();
-        }, 5000);
+        // Fake Data Load Simulation (Remove this if you have real data triggers)
+        timers.current.push(setTimeout(() => finishLoading(), 1500));
 
-        return () => clearTimeout(safetyTimer);
+        return () => clearTimers();
     }, [location.pathname]);
 
-    // 2. The Smart "Fade Out" Logic
-    const handleLoadingComplete = useCallback(() => {
-        // Wait for the "calm" delay (e.g., 1 second) BEFORE starting the fade
-        const calmTimer = setTimeout(() => {
-            setIsLoading(false); // Triggers the opacity-0 transition
+    const finishLoading = useCallback(() => {
+        // 1. Wait a moment so user sees the liquid (Calm Phase)
+        timers.current.push(setTimeout(() => {
 
-            // Wait for the CSS transition (300ms) to finish before unmounting
-            const removeTimer = setTimeout(() => {
-                setShouldRender(false);
-            }, 300); // Must match duration-300 in CSS
+            // 2. Trigger the CSS Fade (This starts the 1000ms transition)
+            setIsExiting(true);
 
-        }, 1000); // The "1 second wait" you asked for
+            // 3. Unmount ONLY after the CSS is 100% done + 200ms safety buffer
+            timers.current.push(setTimeout(() => {
+                setIsLoading(false);
+                setIsExiting(false);
+            }, 1200)); // <--- 1200ms (Must be > duration-1000)
 
-        return () => {
-            clearTimeout(calmTimer);
-        };
+        }, 1000));
     }, []);
 
-    // 3. Manual Control (For data fetching)
-    // If you want to manually turn it off after data fetch:
-    // const { setIsLoading } = useGlobalLoader();
-    // useEffect(() => { if(data) setIsLoading(false) }, [data]);
-
-    // BUT, for the auto-route behavior you currently have:
-    useEffect(() => {
-        if (isLoading) {
-            // In your current logic, you just want a fixed timer. 
-            // If you want to keep it simple (Fixed Timer):
-            const timer = setTimeout(() => {
-                handleLoadingComplete();
-            }, 800); // Minimum time the loader stays up
-            return () => clearTimeout(timer);
-        }
-    }, [isLoading, handleLoadingComplete]);
-
     return (
-        <GlobalLoaderContext.Provider
-            value={{
-                // We pass the internal logic so the UI knows to fade
-                isLoading: isLoading,
-                setIsLoading
-            }}
-        >
-            {/* We only render the component if it should be there, 
-                but we use CSS opacity for the visual fade */}
-            {shouldRender && children}
+        <GlobalLoaderContext.Provider value={{ isLoading, isExiting, setIsLoading }}>
+            {children}
         </GlobalLoaderContext.Provider>
     );
 }
 
 export function useGlobalLoader() {
     const context = useContext(GlobalLoaderContext);
-    if (context === undefined) {
-        throw new Error("useGlobalLoader must be used within a GlobalLoaderProvider");
-    }
+    if (!context) throw new Error("useGlobalLoader must be used within GlobalLoaderProvider");
     return context;
 }
