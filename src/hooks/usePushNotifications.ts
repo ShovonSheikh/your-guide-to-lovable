@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useProfile } from './useProfile';
-import { supabase } from '@/integrations/supabase/client';
+import { useSupabase } from './useSupabase';
 import { toast } from '@/hooks/use-toast';
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
 export function usePushNotifications() {
   const { profile } = useProfile();
+  const supabase = useSupabase();
   const [isSupported, setIsSupported] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { AlertTriangle, CreditCard, Lock, Mail, ShieldCheck } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { toast } from "sonner";
 
@@ -27,6 +27,7 @@ interface DummyPaymentToggleProps {
 
 export function DummyPaymentToggle({ currentValue, onToggled }: DummyPaymentToggleProps) {
   const { profile } = useProfile();
+  const supabase = useSupabaseWithAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [step, setStep] = useState<Step>("idle");
   const [pin, setPin] = useState("");
