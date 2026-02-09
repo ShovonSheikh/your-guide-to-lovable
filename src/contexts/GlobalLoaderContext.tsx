@@ -19,7 +19,7 @@ export function GlobalLoaderProvider({ children }: { children: ReactNode }) {
         setIsLoading(true);
         setIsExiting(false);
 
-        // Hide after short delay (allows Suspense content to render)
+        // Hide after longer delay so users can see content loading behind the blur
         const timer = setTimeout(() => {
             setIsExiting(true);
             // Remove from DOM after fade animation completes
@@ -28,7 +28,7 @@ export function GlobalLoaderProvider({ children }: { children: ReactNode }) {
                 setIsExiting(false);
             }, 300);
             return () => clearTimeout(exitTimer);
-        }, 200);
+        }, 800); // Increased delay to let users see content loading
 
         return () => clearTimeout(timer);
     }, [location.pathname]);

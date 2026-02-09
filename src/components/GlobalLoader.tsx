@@ -19,18 +19,8 @@ export function GlobalLoader() {
             role="progressbar"
             aria-label="Loading page"
         >
-            <div
-                className={cn(
-                    "flex flex-col items-center gap-4",
-                    "transition-transform duration-300 ease-out",
-                    isLoading ? "scale-100" : "scale-95"
-                )}
-            >
-                <Spinner className="w-10 h-10 text-primary" />
-                <span className="text-sm text-muted-foreground font-medium">
-                    Loading...
-                </span>
-            </div>
+            <Spinner className="w-10 h-10 text-primary" />
         </div>
     );
 }
+
