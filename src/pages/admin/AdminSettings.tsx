@@ -9,10 +9,11 @@ import { toast } from "@/hooks/use-toast";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import MaintenanceSettings from "@/components/admin/MaintenanceSettings";
+import { DummyPaymentToggle } from "@/components/admin/DummyPaymentToggle";
 
 export default function AdminSettings() {
   usePageTitle("Admin - Settings");
-  const { config, loading, updateConfig } = usePlatformConfig();
+  const { config, loading, updateConfig, refetch } = usePlatformConfig();
   
   const [creatorFee, setCreatorFee] = useState(150);
   const [minWithdraw, setMinWithdraw] = useState(100);
@@ -72,6 +73,12 @@ export default function AdminSettings() {
 
       {/* Maintenance Mode Section */}
       <MaintenanceSettings />
+
+      {/* Payment Mode Toggle (secured) */}
+      <DummyPaymentToggle
+        currentValue={config.dummy_payments?.enabled || false}
+        onToggled={refetch}
+      />
 
       <div className="grid gap-6">
         {/* Platform Fees */}

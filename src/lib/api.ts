@@ -1,7 +1,34 @@
 import { supabase } from "@/integrations/supabase/client";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const DUMMY_PAYMENTS = (import.meta.env.VITE_DUMMY_PAYMENTS as string) === "true";
+
+// Cached dummy payments flag - fetched from platform_config DB
+let _dummyPaymentsCache: boolean | null = null;
+let _dummyCacheExpiry = 0;
+const CACHE_TTL_MS = 30_000; // 30 seconds
+
+async function isDummyPayments(): Promise<boolean> {
+  const now = Date.now();
+  if (_dummyPaymentsCache !== null && now < _dummyCacheExpiry) {
+    return _dummyPaymentsCache;
+  }
+
+  try {
+    const { data } = await supabase
+      .from('platform_config')
+      .select('value')
+      .eq('key', 'dummy_payments')
+      .maybeSingle();
+
+    const enabled = !!(data?.value as any)?.enabled;
+    _dummyPaymentsCache = enabled;
+    _dummyCacheExpiry = now + CACHE_TTL_MS;
+    return enabled;
+  } catch {
+    // Fallback to cached value or false
+    return _dummyPaymentsCache ?? false;
+  }
+}
 
 // Platform fee is always 150 BDT
 export const PLATFORM_FEE = 150;
@@ -85,7 +112,7 @@ export async function createCreatorCheckout(params: {
 }): Promise<CheckoutResponse> {
   const { successUrl, cancelUrl } = getPaymentUrls('creator_fee');
 
-  if (DUMMY_PAYMENTS) {
+  if (await isDummyPayments()) {
     const txn = `dummy_creator_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const url = `${successUrl}?transactionId=${encodeURIComponent(txn)}&paymentMethod=Dummy&paymentAmount=${PLATFORM_FEE}`;
     return { payment_url: url };
@@ -122,7 +149,7 @@ export async function createTipCheckout(params: {
 }): Promise<CheckoutResponse> {
   const { successUrl, cancelUrl } = getPaymentUrls('tip');
 
-  if (DUMMY_PAYMENTS) {
+  if (await isDummyPayments()) {
     const txn = `dummy_tip_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const url = `${successUrl}?transactionId=${encodeURIComponent(txn)}&paymentMethod=Dummy&paymentAmount=${params.amount}`;
     return { payment_url: url };
@@ -173,7 +200,7 @@ export async function createCheckout(params: {
 }
 
 export async function verifyPayment(params: VerifyParams): Promise<VerifyResponse> {
-  if (DUMMY_PAYMENTS) {
+  if (await isDummyPayments()) {
     return {
       verified: true,
       transaction_id: params.transaction_id,
@@ -202,7 +229,7 @@ export async function verifyPayment(params: VerifyParams): Promise<VerifyRespons
 }
 
 export async function completeSignup(profileData: ProfileData): Promise<CompleteSignupResponse> {
-  if (DUMMY_PAYMENTS) {
+  if (await isDummyPayments()) {
     return {
       success: true,
       username: profileData.username,
