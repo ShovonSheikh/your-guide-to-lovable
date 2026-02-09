@@ -8,12 +8,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { 
-  BadgeCheck, 
-  User, 
-  ImageIcon, 
-  CheckCircle, 
-  XCircle, 
+import {
+  BadgeCheck,
+  User,
+  ImageIcon,
+  CheckCircle,
+  XCircle,
   Clock,
   Eye,
   ExternalLink
@@ -46,7 +46,7 @@ interface VerificationRequest {
 export default function AdminVerifications() {
   usePageTitle("Admin - Verifications");
   const supabase = useSupabaseWithAuth();
-  
+
   const [requests, setRequests] = useState<VerificationRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('pending');
@@ -231,14 +231,6 @@ export default function AdminVerifications() {
   const filteredRequests = requests.filter(r => r.status === activeTab);
   const pendingCount = requests.filter(r => r.status === 'pending').length;
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Spinner className="h-8 w-8" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div>
@@ -302,7 +294,7 @@ export default function AdminVerifications() {
                           </p>
                         </div>
                       </div>
-                      
+
                       {/* Action buttons - stacked on mobile, row on desktop */}
                       <div className="flex flex-col sm:flex-row gap-2">
                         <Button
@@ -338,7 +330,7 @@ export default function AdminVerifications() {
                         )}
                       </div>
                     </div>
-                    
+
                     {request.admin_notes && (
                       <div className="mt-3 p-3 bg-muted/50 rounded-lg">
                         <p className="text-sm text-muted-foreground">
@@ -371,7 +363,7 @@ export default function AdminVerifications() {
             <div className="grid grid-cols-3 gap-4 mt-4">
               <div>
                 <p className="text-sm font-medium mb-2">ID Card Front</p>
-                <div 
+                <div
                   className="aspect-[4/3] bg-muted rounded-lg overflow-hidden cursor-pointer hover:ring-2 ring-primary transition-all"
                   onClick={() => setImagePreview(documentUrls.id_front)}
                 >
@@ -386,7 +378,7 @@ export default function AdminVerifications() {
               </div>
               <div>
                 <p className="text-sm font-medium mb-2">ID Card Back</p>
-                <div 
+                <div
                   className="aspect-[4/3] bg-muted rounded-lg overflow-hidden cursor-pointer hover:ring-2 ring-primary transition-all"
                   onClick={() => setImagePreview(documentUrls.id_back)}
                 >
@@ -401,7 +393,7 @@ export default function AdminVerifications() {
               </div>
               <div>
                 <p className="text-sm font-medium mb-2">Selfie</p>
-                <div 
+                <div
                   className="aspect-[4/3] bg-muted rounded-lg overflow-hidden cursor-pointer hover:ring-2 ring-primary transition-all"
                   onClick={() => setImagePreview(documentUrls.selfie)}
                 >
@@ -430,7 +422,7 @@ export default function AdminVerifications() {
               {action === 'approve' ? 'Approve Verification' : 'Reject Verification'}
             </DialogTitle>
             <DialogDescription>
-              {action === 'approve' 
+              {action === 'approve'
                 ? 'This will mark the creator as verified. This action cannot be undone.'
                 : 'Please provide a reason for rejecting this verification request.'}
             </DialogDescription>

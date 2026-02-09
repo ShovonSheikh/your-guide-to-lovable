@@ -391,13 +391,13 @@ export default function AdminMailbox() {
 
   // Ref to avoid stale closure in real-time subscription
   const selectedMailboxRef = useRef<Mailbox | null>(null);
-  
+
   // Stable ref for the displayed email - prevents re-renders during auto-refresh
   const displayedEmailRef = useRef<Email | null>(null);
 
   // Reply composer state
   const [showReplySheet, setShowReplySheet] = useState(false);
-  
+
   // Compose email state
   const [showComposeSheet, setShowComposeSheet] = useState(false);
   const [massEmailOpen, setMassEmailOpen] = useState(false);
@@ -489,7 +489,7 @@ export default function AdminMailbox() {
         if (prevJson === newJson) return prev;
         return typedEmails;
       });
-      
+
       // Update displayed email's read status if it changed (for toggle read button sync)
       // But don't trigger a re-render of the email content
       if (displayedEmailRef.current) {
@@ -604,7 +604,7 @@ export default function AdminMailbox() {
       prev.map(e => e.id === email.id ? { ...e, is_read: newReadState } : e)
     );
 
-    setSelectedEmail(prev => 
+    setSelectedEmail(prev =>
       prev?.id === email.id ? { ...prev, is_read: newReadState } : prev
     );
 
@@ -690,14 +690,6 @@ export default function AdminMailbox() {
   }, []);
 
   const totalUnread = mailboxes.reduce((sum, mb) => sum + mb.unread_count, 0);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Spinner className="h-8 w-8" />
-      </div>
-    );
-  }
 
   // Reply Sheet Component with local state to prevent parent re-renders
   const ReplySheetContent = () => {

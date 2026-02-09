@@ -42,7 +42,7 @@ export default function SupportTicketDetail() {
   const { ticketId } = useParams<{ ticketId: string }>();
   const navigate = useNavigate();
   const { getTicket, getMessages, sendMessage, uploadAttachment } = useTickets();
-  
+
   const [ticket, setTicket] = useState<SupportTicket | null>(null);
   const [messages, setMessages] = useState<TicketMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +56,7 @@ export default function SupportTicketDetail() {
 
       setLoading(true);
       const ticketResult = await getTicket(ticketId);
-      
+
       if (ticketResult.data) {
         setTicket(ticketResult.data);
       }
@@ -85,9 +85,9 @@ export default function SupportTicketDetail() {
 
   const handleSendMessage = async (message: string, attachments?: TicketMessage['attachments']) => {
     if (!ticketId) return;
-    
+
     const { error } = await sendMessage(ticketId, message, attachments);
-    
+
     if (!error) {
       const result = await getMessages(ticketId);
       setMessages(result.data);
@@ -98,17 +98,6 @@ export default function SupportTicketDetail() {
     // Pass ticketId for ticket-based folder storage (RLS compliance)
     return await uploadAttachment(file, ticketId);
   };
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen flex-col bg-background">
-        <TopNavbar />
-        <div className="flex-1 flex items-center justify-center">
-          <Spinner className="w-8 h-8" />
-        </div>
-      </div>
-    );
-  }
 
   if (!ticket) {
     return (

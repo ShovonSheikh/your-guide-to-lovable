@@ -283,13 +283,7 @@ export default function AdminLayout() {
 
       {/* Main Content */}
       <main className="flex-1 md:p-6 p-4 pt-16 md:pt-6 overflow-auto">
-        <Suspense
-          fallback={
-            <div className="flex items-center justify-center min-h-[60vh]">
-              <Spinner className="w-8 h-8" />
-            </div>
-          }
-        >
+        <Suspense fallback={null}>
           <Outlet />
         </Suspense>
       </main>

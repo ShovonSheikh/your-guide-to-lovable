@@ -17,11 +17,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { createTipCheckout } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import SEO from "@/components/SEO";
-import { 
-  Heart, 
-  Twitter, 
-  Instagram, 
-  Youtube, 
+import {
+  Heart,
+  Twitter,
+  Instagram,
+  Youtube,
   Facebook,
   Link as LinkIcon,
   BadgeCheck,
@@ -60,10 +60,10 @@ export default function CreatorProfile() {
   const [notFound, setNotFound] = useState(false);
 
   usePageTitle(creator ? `${creator.first_name || creator.username} - Creator` : "Creator Profile");
-  
+
   // Fetch public funding goals for this creator
   const { goals: fundingGoals } = usePublicFundingGoals(creator?.id);
-  
+
   const [selectedAmount, setSelectedAmount] = useState<number | null>(100);
   const [customAmount, setCustomAmount] = useState('');
   const [message, setMessage] = useState('');
@@ -83,7 +83,7 @@ export default function CreatorProfile() {
   useEffect(() => {
     const fetchStreamerOptions = async () => {
       if (!creator?.id) return;
-      
+
       // Check if streamer mode is enabled via tip_sounds RLS (it checks streamer_settings internally)
       const { data: sounds } = await supabase
         .from('tip_sounds')
@@ -91,7 +91,7 @@ export default function CreatorProfile() {
         .eq('profile_id', creator.id)
         .eq('is_enabled', true)
         .order('trigger_amount', { ascending: true });
-      
+
       if (sounds && sounds.length > 0) {
         setStreamerTipOptions({
           isStreamerEnabled: true,
@@ -99,7 +99,7 @@ export default function CreatorProfile() {
         });
       }
     };
-    
+
     fetchStreamerOptions();
   }, [creator?.id]);
 
@@ -130,7 +130,7 @@ export default function CreatorProfile() {
 
   const handleTip = async () => {
     const amount = selectedAmount || parseFloat(customAmount);
-    
+
     if (!amount || amount < 10) {
       toast({
         title: "Minimum amount is ৳10",
@@ -149,7 +149,7 @@ export default function CreatorProfile() {
       return;
     }
 
-    const fullName = user 
+    const fullName = user
       ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Anonymous'
       : 'Anonymous';
     const email = user?.primaryEmailAddress?.emailAddress || '';
@@ -172,7 +172,7 @@ export default function CreatorProfile() {
           .select('id')
           .eq('user_id', user.id)
           .maybeSingle();
-        
+
         if (userProfile && userProfile.id === creator?.id) {
           toast({
             title: "Cannot tip yourself",
@@ -226,36 +226,6 @@ export default function CreatorProfile() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <TopNavbar />
-        <div className="h-24" />
-        <main className="container max-w-5xl py-8 px-4 animate-fade-in">
-          {/* Skeleton Hero */}
-          <div className="tipkoro-card mb-8">
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-              <div className="h-24 w-24 rounded-full bg-muted animate-pulse" />
-              <div className="text-center md:text-left flex-1 space-y-3">
-                <div className="h-8 w-48 bg-muted animate-pulse rounded mx-auto md:mx-0" />
-                <div className="h-5 w-32 bg-muted animate-pulse rounded mx-auto md:mx-0" />
-                <div className="h-16 w-full max-w-xl bg-muted animate-pulse rounded mt-4" />
-              </div>
-            </div>
-          </div>
-          {/* Skeleton Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 tipkoro-card h-96 bg-muted/20 animate-pulse" />
-            <div className="space-y-6">
-              <div className="tipkoro-card h-32 bg-muted/20 animate-pulse" />
-              <div className="tipkoro-card h-48 bg-muted/20 animate-pulse" />
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
   if (notFound) {
     return <Navigate to="/explore" replace />;
   }
@@ -268,13 +238,13 @@ export default function CreatorProfile() {
     { key: 'other', icon: LinkIcon, url: creator?.other_link },
   ].filter(link => link.url);
 
-  const creatorName = creator?.first_name 
+  const creatorName = creator?.first_name
     ? `${creator.first_name} ${creator.last_name || ''}`.trim()
     : creator?.username || 'Creator';
 
   return (
     <>
-      <SEO 
+      <SEO
         title={`Support ${creatorName} on TipKoro`}
         description={creator?.bio || `Send tips to ${creatorName} via bKash, Nagad, Rocket on TipKoro. Support your favorite Bangladeshi creator!`}
         keywords={`${creatorName}, support creator, bKash tips, Nagad tips, TipKoro, Bangladeshi creator`}
@@ -301,17 +271,17 @@ export default function CreatorProfile() {
                   </div>
                 )}
               </div>
-              
+
               <div className="text-center md:text-left flex-1">
                 <h1 className="text-2xl md:text-3xl font-display font-bold">
                   {creator?.first_name} {creator?.last_name}
                 </h1>
                 <p className="text-muted-foreground">@{creator?.username}</p>
-                
+
                 {creator?.bio && (
                   <p className="mt-4 text-foreground/80 max-w-xl">{DOMPurify.sanitize(creator.bio)}</p>
                 )}
-                
+
                 {/* Social Links */}
                 {socialLinks.length > 0 && (
                   <div className="flex items-center justify-center md:justify-start gap-3 mt-4">
@@ -343,7 +313,7 @@ export default function CreatorProfile() {
                   </div>
                   <h2 className="text-lg font-semibold">Support {creator?.first_name || 'this creator'}</h2>
                 </div>
-                
+
                 <p className="text-muted-foreground text-sm mb-6">
                   Show your appreciation by sending a tip. 100% goes directly to the creator!
                 </p>
@@ -366,11 +336,10 @@ export default function CreatorProfile() {
                             setSelectedAmount(sound.trigger_amount);
                             setCustomAmount('');
                           }}
-                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border ${
-                            selectedAmount === sound.trigger_amount
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border ${selectedAmount === sound.trigger_amount
                               ? 'bg-primary text-primary-foreground border-primary'
                               : 'bg-secondary/50 hover:bg-primary/10 border-primary/30'
-                          }`}
+                            }`}
                         >
                           <span className="block">৳{sound.trigger_amount}</span>
                           <span className="text-[10px] opacity-80">{sound.display_name}</span>
@@ -379,7 +348,7 @@ export default function CreatorProfile() {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Amount Selection */}
                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-4">
                   {tipAmounts.map((amount) => (
@@ -389,17 +358,16 @@ export default function CreatorProfile() {
                         setSelectedAmount(amount);
                         setCustomAmount('');
                       }}
-                      className={`py-3 px-2 rounded-xl font-medium text-sm transition-all ${
-                        selectedAmount === amount
+                      className={`py-3 px-2 rounded-xl font-medium text-sm transition-all ${selectedAmount === amount
                           ? 'bg-accent text-accent-foreground shadow-md scale-105'
                           : 'bg-secondary hover:bg-secondary/80'
-                      }`}
+                        }`}
                     >
                       ৳{amount}
                     </button>
                   ))}
                 </div>
-                
+
                 {/* Custom Amount */}
                 <div className="mb-4">
                   <Input
@@ -414,7 +382,7 @@ export default function CreatorProfile() {
                     min={10}
                   />
                 </div>
-                
+
                 {/* Message */}
                 <div className="mb-6">
                   <Textarea
@@ -428,7 +396,7 @@ export default function CreatorProfile() {
                     {message.length}/200
                   </p>
                 </div>
-                
+
                 {/* Send Button */}
                 <Button
                   onClick={handleTip}
@@ -457,12 +425,12 @@ export default function CreatorProfile() {
                   ))}
                 </div>
               )}
-              
-              <CreatorStats 
+
+              <CreatorStats
                 totalSupporters={creator?.total_supporters || 0}
                 createdAt={creator?.created_at || null}
               />
-              
+
               {creator?.id && (
                 <RecentSupporters creatorId={creator.id} />
               )}

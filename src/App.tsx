@@ -6,14 +6,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import MaintenanceGuard from "@/components/MaintenanceGuard";
-import { Spinner } from "@/components/ui/spinner";
+import { GlobalLoaderProvider } from "@/contexts/GlobalLoaderContext";
+import { GlobalLoader } from "@/components/GlobalLoader";
 
-// Page loading fallback
-const PageLoader = () => (
-  <div className="flex items-center justify-center min-h-[60vh]">
-    <Spinner className="w-8 h-8" />
-  </div>
-);
+// Empty fallback - global loader handles all loading visuals
+const PageLoader = () => null;
 
 // Lazy load all pages
 const Home = lazy(() => import("./pages/Home"));
@@ -85,62 +82,65 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <MaintenanceGuard>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/explore" element={<Explore />} />
-                {/* Creator fee payment routes */}
-                <Route path="/payments/creator/success" element={<CreatorPaymentSuccess />} />
-                <Route path="/payments/creator/failed" element={<CreatorPaymentFailed />} />
-                {/* Tips payment routes */}
-                <Route path="/payments/tips/success" element={<TipPaymentSuccess />} />
-                <Route path="/payments/tips/failed" element={<TipPaymentFailed />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/finance" element={<Finance />} />
-                <Route path="/complete-profile" element={<CompleteProfile />} />
-                <Route path="/donation-image" element={<DonationImage />} />
-                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                <Route path="/terms-of-service" element={<TermsOfService />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/status" element={<Status />} />
-                <Route path="/cookie-policy" element={<CookiePolicy />} />
-                <Route path="/authenticity" element={<Authenticity />} />
-                <Route path="/notices" element={<Notices />} />
-                <Route path="/support" element={<Support />} />
-                <Route path="/support/tickets" element={<SupportTickets />} />
-                <Route path="/support/ticket/:ticketId" element={<SupportTicketDetail />} />
-                {/* Admin routes */}
-                <Route path="/admin" element={<AdminLayout />}>
-                  <Route index element={<AdminDashboard />} />
-                  <Route path="users" element={<AdminUsers />} />
-                  <Route path="creators" element={<AdminCreators />} />
-                  <Route path="verifications" element={<AdminVerifications />} />
-                  <Route path="withdrawals" element={<AdminWithdrawals />} />
-                  <Route path="withdrawals/:withdrawalId" element={<AdminWithdrawalDetail />} />
-                  <Route path="tips" element={<AdminTips />} />
-                  <Route path="tips/:tipId" element={<AdminTipDetail />} />
-                  <Route path="mailbox" element={<AdminMailbox />} />
-                  <Route path="share-image" element={<AdminShareImage />} />
-                  <Route path="email-templates" element={<AdminEmailTemplates />} />
-                  <Route path="settings" element={<AdminSettings />} />
-                  <Route path="admins" element={<AdminAdmins />} />
-                  <Route path="notices" element={<AdminNotices />} />
-                  <Route path="pages" element={<AdminPages />} />
-                  <Route path="support" element={<AdminSupport />} />
-                  <Route path="support/:ticketId" element={<AdminSupportDetail />} />
-                </Route>
-                <Route path="/embed/:username" element={<Embed />} />
-                <Route path="/alerts/:token" element={<StreamerAlert />} />
-                <Route path="/:username" element={<CreatorProfile />} />
-                <Route path="/components" element={<Components />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </MaintenanceGuard>
+          <GlobalLoaderProvider>
+            <GlobalLoader />
+            <MaintenanceGuard>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/explore" element={<Explore />} />
+                  {/* Creator fee payment routes */}
+                  <Route path="/payments/creator/success" element={<CreatorPaymentSuccess />} />
+                  <Route path="/payments/creator/failed" element={<CreatorPaymentFailed />} />
+                  {/* Tips payment routes */}
+                  <Route path="/payments/tips/success" element={<TipPaymentSuccess />} />
+                  <Route path="/payments/tips/failed" element={<TipPaymentFailed />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/finance" element={<Finance />} />
+                  <Route path="/complete-profile" element={<CompleteProfile />} />
+                  <Route path="/donation-image" element={<DonationImage />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                  <Route path="/terms-of-service" element={<TermsOfService />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/status" element={<Status />} />
+                  <Route path="/cookie-policy" element={<CookiePolicy />} />
+                  <Route path="/authenticity" element={<Authenticity />} />
+                  <Route path="/notices" element={<Notices />} />
+                  <Route path="/support" element={<Support />} />
+                  <Route path="/support/tickets" element={<SupportTickets />} />
+                  <Route path="/support/ticket/:ticketId" element={<SupportTicketDetail />} />
+                  {/* Admin routes */}
+                  <Route path="/admin" element={<AdminLayout />}>
+                    <Route index element={<AdminDashboard />} />
+                    <Route path="users" element={<AdminUsers />} />
+                    <Route path="creators" element={<AdminCreators />} />
+                    <Route path="verifications" element={<AdminVerifications />} />
+                    <Route path="withdrawals" element={<AdminWithdrawals />} />
+                    <Route path="withdrawals/:withdrawalId" element={<AdminWithdrawalDetail />} />
+                    <Route path="tips" element={<AdminTips />} />
+                    <Route path="tips/:tipId" element={<AdminTipDetail />} />
+                    <Route path="mailbox" element={<AdminMailbox />} />
+                    <Route path="share-image" element={<AdminShareImage />} />
+                    <Route path="email-templates" element={<AdminEmailTemplates />} />
+                    <Route path="settings" element={<AdminSettings />} />
+                    <Route path="admins" element={<AdminAdmins />} />
+                    <Route path="notices" element={<AdminNotices />} />
+                    <Route path="pages" element={<AdminPages />} />
+                    <Route path="support" element={<AdminSupport />} />
+                    <Route path="support/:ticketId" element={<AdminSupportDetail />} />
+                  </Route>
+                  <Route path="/embed/:username" element={<Embed />} />
+                  <Route path="/alerts/:token" element={<StreamerAlert />} />
+                  <Route path="/:username" element={<CreatorProfile />} />
+                  <Route path="/components" element={<Components />} />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </MaintenanceGuard>
+          </GlobalLoaderProvider>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

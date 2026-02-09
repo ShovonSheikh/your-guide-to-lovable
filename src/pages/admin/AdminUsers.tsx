@@ -145,14 +145,6 @@ export default function AdminUsers() {
     </div>
   );
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Spinner className="h-8 w-8" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4 md:space-y-6">
       <div>
@@ -185,8 +177,8 @@ export default function AdminUsers() {
               <p className="text-center text-muted-foreground py-8">No users found</p>
             ) : (
               filteredUsers.map((user) => (
-                <div 
-                  key={user.id} 
+                <div
+                  key={user.id}
                   className="border rounded-lg p-3 space-y-2"
                   onClick={() => openUserDetails(user)}
                 >

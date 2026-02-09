@@ -366,7 +366,7 @@ export default function AdminShareImage() {
           .maybeSingle();
 
         if (error) throw error;
-        
+
         if (data?.value) {
           const template = data.value as { jsx?: string; css?: string };
           if (template.jsx) {
@@ -398,22 +398,22 @@ export default function AdminShareImage() {
   // Replace variables in template for preview (with XSS sanitization)
   const renderedHtml = useMemo(() => {
     let html = jsxCode;
-    
+
     // Remove comment lines for rendering
     html = html.replace(/\/\/.*$/gm, '');
-    
+
     // Replace {{variable}} with actual values
     Object.entries(previewValues).forEach(([key, value]) => {
       const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
       html = html.replace(regex, value);
     });
-    
+
     // Convert JSX className to class for HTML
     html = html.replace(/className=/g, 'class=');
-    
+
     // Remove JSX comments
     html = html.replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
-    
+
     // Sanitize to prevent XSS from malicious template modifications
     return DOMPurify.sanitize(html, {
       ALLOWED_TAGS: ['div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'br', 'img', 'svg', 'path', 'circle', 'rect', 'line', 'polyline', 'polygon', 'a', 'strong', 'em', 'ul', 'ol', 'li'],
@@ -469,14 +469,6 @@ export default function AdminShareImage() {
       description: `${variable} copied to clipboard. Paste it in the editor.`,
     });
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Spinner className="h-8 w-8" />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6 overflow-hidden">
@@ -658,9 +650,9 @@ export default function AdminShareImage() {
                   <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoomLevel(0.5)}>50%</Button>
                   <Button variant="outline" size="sm" className="h-7 px-2 text-xs hidden sm:flex" onClick={() => setZoomLevel(0.75)}>75%</Button>
                   <Button variant="outline" size="sm" className="h-7 px-2 text-xs hidden sm:flex" onClick={() => setZoomLevel(1)}>100%</Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="h-7 px-2 text-xs"
                     onClick={() => {
                       // Fit to container (600px card into ~480px container)
@@ -677,19 +669,19 @@ export default function AdminShareImage() {
 
               {/* Inject CSS and render HTML */}
               <style>{cssCode}</style>
-              <div 
+              <div
                 ref={previewContainerRef}
                 className="flex justify-center overflow-hidden rounded-xl border border-border bg-muted/30 max-h-[500px] w-full"
               >
-                <div 
+                <div
                   className="transform origin-top p-4 max-w-full"
-                  style={{ 
+                  style={{
                     transform: `scale(${zoomLevel})`,
                     width: `${100 / zoomLevel}%`,
                     maxWidth: `${100 / zoomLevel}%`
                   }}
                 >
-                  <div 
+                  <div
                     ref={previewRef}
                     dangerouslySetInnerHTML={{ __html: renderedHtml }}
                   />

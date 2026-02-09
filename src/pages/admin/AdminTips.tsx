@@ -97,14 +97,6 @@ export default function AdminTips() {
   const totalAmount = tips.filter(t => t.payment_status === 'completed').reduce((sum, t) => sum + t.amount, 0);
   const completedTipsCount = tips.filter(t => t.payment_status === 'completed').length;
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Spinner className="h-8 w-8" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div>
@@ -188,8 +180,8 @@ export default function AdminTips() {
                   </TableRow>
                 ) : (
                   filteredTips.map((tip) => (
-                    <TableRow 
-                      key={tip.id} 
+                    <TableRow
+                      key={tip.id}
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => navigate(`/admin/tips/${tip.id}`)}
                     >
@@ -229,9 +221,9 @@ export default function AdminTips() {
                         {format(new Date(tip.created_at), 'MMM d, yyyy HH:mm')}
                       </TableCell>
                       <TableCell>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-8 w-8"
                           onClick={(e) => {
                             e.stopPropagation();

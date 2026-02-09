@@ -70,7 +70,7 @@ export default function AdminWithdrawalDetail() {
 
   const fetchWithdrawal = async () => {
     if (!withdrawalId) return;
-    
+
     try {
       const { data, error } = await supabase
         .from('withdrawal_requests')
@@ -151,7 +151,7 @@ export default function AdminWithdrawalDetail() {
         if (!profileError && profile) {
           const currentTotal = profile.total_received || 0;
           const newTotal = Math.max(0, currentTotal - withdrawal.amount);
-          
+
           await supabase
             .from('profiles')
             .update({ total_received: newTotal })
@@ -161,12 +161,12 @@ export default function AdminWithdrawalDetail() {
 
       // Send notification email
       try {
-        const notificationType = newStatus === 'processing' 
-          ? 'withdrawal_processing' 
-          : newStatus === 'completed' 
-            ? 'withdrawal_completed' 
+        const notificationType = newStatus === 'processing'
+          ? 'withdrawal_processing'
+          : newStatus === 'completed'
+            ? 'withdrawal_completed'
             : 'withdrawal_rejected';
-        
+
         await supabase.functions.invoke('send-email-notification', {
           body: {
             profile_id: withdrawal.profile_id,
@@ -183,11 +183,11 @@ export default function AdminWithdrawalDetail() {
         console.log('Notification failed (non-critical):', notifError);
       }
 
-      setWithdrawal(prev => prev ? { 
-        ...prev, 
-        status: newStatus, 
-        notes: adminNotes, 
-        processed_at: new Date().toISOString() 
+      setWithdrawal(prev => prev ? {
+        ...prev,
+        status: newStatus,
+        notes: adminNotes,
+        processed_at: new Date().toISOString()
       } : null);
 
       toast({
@@ -229,14 +229,6 @@ export default function AdminWithdrawalDetail() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Spinner className="h-8 w-8" />
-      </div>
-    );
-  }
-
   if (!withdrawal) {
     return (
       <div className="text-center py-12">
@@ -261,7 +253,7 @@ export default function AdminWithdrawalDetail() {
             <p className="text-muted-foreground">Request #{withdrawal.id.slice(0, 8).toUpperCase()}</p>
           </div>
         </div>
-        
+
         {/* Action Buttons */}
         {withdrawal.status === 'pending' && (
           <div className="flex items-center gap-2">
@@ -350,9 +342,9 @@ export default function AdminWithdrawalDetail() {
                     <code className="font-mono bg-secondary px-2 py-1 rounded text-sm">
                       {formatPayoutDetails(withdrawal.payout_details)}
                     </code>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="h-6 w-6"
                       onClick={() => copyToClipboard(formatPayoutDetails(withdrawal.payout_details), 'Account number')}
                     >
@@ -397,9 +389,9 @@ export default function AdminWithdrawalDetail() {
                   <code className="text-xs bg-secondary px-2 py-1 rounded font-mono">
                     {withdrawal.id.slice(0, 8).toUpperCase()}
                   </code>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="h-6 w-6"
                     onClick={() => copyToClipboard(withdrawal.id, 'Request ID')}
                   >
@@ -498,8 +490,8 @@ export default function AdminWithdrawalDetail() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setActionOpen(false)}>Cancel</Button>
-            <Button 
-              onClick={processAction} 
+            <Button
+              onClick={processAction}
               disabled={processing || (actionType === 'reject' && !adminNotes.trim())}
               variant={actionType === 'reject' ? 'destructive' : 'default'}
             >

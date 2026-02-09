@@ -156,7 +156,7 @@ export default function AdminWithdrawals() {
         if (!profileError && profile) {
           const currentTotal = profile.total_received || 0;
           const newTotal = Math.max(0, currentTotal - selectedWithdrawal.amount);
-          
+
           await supabase
             .from('profiles')
             .update({ total_received: newTotal })
@@ -165,12 +165,12 @@ export default function AdminWithdrawals() {
       }
 
       try {
-        const notificationType = newStatus === 'processing' 
-          ? 'withdrawal_processing' 
-          : newStatus === 'completed' 
-            ? 'withdrawal_completed' 
+        const notificationType = newStatus === 'processing'
+          ? 'withdrawal_processing'
+          : newStatus === 'completed'
+            ? 'withdrawal_completed'
             : 'withdrawal_rejected';
-        
+
         await supabase.functions.invoke('send-email-notification', {
           body: {
             profile_id: selectedWithdrawal.profile_id,
@@ -229,8 +229,8 @@ export default function AdminWithdrawals() {
     }
   };
 
-  const filteredWithdrawals = activeTab === 'all' 
-    ? withdrawals 
+  const filteredWithdrawals = activeTab === 'all'
+    ? withdrawals
     : withdrawals.filter(w => w.status === activeTab);
 
   const pendingCount = withdrawals.filter(w => w.status === 'pending').length;
@@ -277,14 +277,6 @@ export default function AdminWithdrawals() {
       )}
     </>
   );
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Spinner className="h-8 w-8" />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -336,8 +328,8 @@ export default function AdminWithdrawals() {
                   </div>
                 ) : (
                   filteredWithdrawals.map((withdrawal) => (
-                    <div 
-                      key={withdrawal.id} 
+                    <div
+                      key={withdrawal.id}
                       className="border rounded-lg p-3 space-y-3 cursor-pointer hover:bg-muted/50"
                       onClick={() => navigate(`/admin/withdrawals/${withdrawal.id}`)}
                     >
@@ -352,7 +344,7 @@ export default function AdminWithdrawals() {
                         </div>
                         <p className="font-bold text-sm">৳{withdrawal.amount.toLocaleString()}</p>
                       </div>
-                      
+
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <Badge variant="secondary" className="text-[10px]">{withdrawal.payout_method}</Badge>
@@ -362,12 +354,12 @@ export default function AdminWithdrawals() {
                         </div>
                         {getStatusBadge(withdrawal.status)}
                       </div>
-                      
+
                       <div className="flex items-center justify-between gap-2 pt-2 border-t">
                         <span className="text-[10px] text-muted-foreground">
                           {format(new Date(withdrawal.created_at), 'MMM d, yyyy')}
                         </span>
-                        
+
                         <div className="flex items-center gap-2">
                           {withdrawal.status !== 'completed' && withdrawal.status !== 'rejected' && (
                             <Select
@@ -382,7 +374,7 @@ export default function AdminWithdrawals() {
                                 }
                               }}
                             >
-                              <SelectTrigger 
+                              <SelectTrigger
                                 className="w-[110px] h-8 text-xs"
                                 onClick={(e) => e.stopPropagation()}
                               >
@@ -398,9 +390,9 @@ export default function AdminWithdrawals() {
                               </SelectContent>
                             </Select>
                           )}
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="h-8 w-8"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -439,8 +431,8 @@ export default function AdminWithdrawals() {
                       </tr>
                     ) : (
                       filteredWithdrawals.map((withdrawal) => (
-                        <tr 
-                          key={withdrawal.id} 
+                        <tr
+                          key={withdrawal.id}
                           className="border-b last:border-0 cursor-pointer hover:bg-muted/50"
                           onClick={() => navigate(`/admin/withdrawals/${withdrawal.id}`)}
                         >
@@ -484,7 +476,7 @@ export default function AdminWithdrawals() {
                                     }
                                   }}
                                 >
-                                  <SelectTrigger 
+                                  <SelectTrigger
                                     className="w-[130px]"
                                     onClick={(e) => e.stopPropagation()}
                                   >
@@ -500,9 +492,9 @@ export default function AdminWithdrawals() {
                                   </SelectContent>
                                 </Select>
                               )}
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
+                              <Button
+                                variant="ghost"
+                                size="icon"
                                 className="h-8 w-8"
                                 onClick={(e) => {
                                   e.stopPropagation();

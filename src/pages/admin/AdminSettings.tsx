@@ -14,7 +14,7 @@ import { DummyPaymentToggle } from "@/components/admin/DummyPaymentToggle";
 export default function AdminSettings() {
   usePageTitle("Admin - Settings");
   const { config, loading, updateConfig, refetch } = usePlatformConfig();
-  
+
   const [creatorFee, setCreatorFee] = useState(150);
   const [minWithdraw, setMinWithdraw] = useState(100);
   const [maxWithdraw, setMaxWithdraw] = useState(50000);
@@ -31,7 +31,7 @@ export default function AdminSettings() {
       setPromoDuration(config.promo_duration_months?.months || 0);
     }
   }, [config]);
-  
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -40,7 +40,7 @@ export default function AdminSettings() {
       await updateConfig('max_withdrawal', { amount: maxWithdraw, currency: 'BDT' });
       await updateConfig('promo_enabled', { enabled: promoEnabled });
       await updateConfig('promo_duration_months', { months: promoDuration });
-      
+
       toast({
         title: "Settings saved",
         description: "Platform settings have been updated",
@@ -55,14 +55,6 @@ export default function AdminSettings() {
       setSaving(false);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -94,9 +86,9 @@ export default function AdminSettings() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="monthlyFee">Creator Fee (৳)</Label>
-                <Input 
-                  id="monthlyFee" 
-                  type="number" 
+                <Input
+                  id="monthlyFee"
+                  type="number"
                   value={creatorFee}
                   onChange={(e) => setCreatorFee(Number(e.target.value))}
                 />
@@ -135,9 +127,9 @@ export default function AdminSettings() {
             {promoEnabled && (
               <div className="space-y-2 pt-2">
                 <Label htmlFor="promoDuration">Promo Duration (months)</Label>
-                <Input 
-                  id="promoDuration" 
-                  type="number" 
+                <Input
+                  id="promoDuration"
+                  type="number"
                   value={promoDuration}
                   onChange={(e) => setPromoDuration(Number(e.target.value))}
                   min={0}
@@ -165,18 +157,18 @@ export default function AdminSettings() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="minWithdraw">Minimum Withdrawal (৳)</Label>
-                <Input 
-                  id="minWithdraw" 
-                  type="number" 
+                <Input
+                  id="minWithdraw"
+                  type="number"
                   value={minWithdraw}
                   onChange={(e) => setMinWithdraw(Number(e.target.value))}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="maxWithdraw">Maximum Withdrawal (৳)</Label>
-                <Input 
-                  id="maxWithdraw" 
-                  type="number" 
+                <Input
+                  id="maxWithdraw"
+                  type="number"
                   value={maxWithdraw}
                   onChange={(e) => setMaxWithdraw(Number(e.target.value))}
                 />

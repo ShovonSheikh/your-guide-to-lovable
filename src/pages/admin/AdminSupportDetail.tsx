@@ -66,7 +66,7 @@ export default function AdminSupportDetail() {
   const { profile } = useProfile();
   const { getTicket, uploadAttachment } = useTickets();
   const { updateTicketStatus, sendAdminMessage, closeTicket } = useAdminTickets();
-  
+
   const [ticket, setTicket] = useState<SupportTicket | null>(null);
   const [messages, setMessages] = useState<TicketMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,7 +80,7 @@ export default function AdminSupportDetail() {
 
     setLoading(true);
     const ticketResult = await getTicket(ticketId);
-    
+
     if (ticketResult.data) {
       setTicket(ticketResult.data);
     }
@@ -93,7 +93,7 @@ export default function AdminSupportDetail() {
       .select('*')
       .eq('ticket_id', ticketId)
       .order('created_at', { ascending: true });
-    
+
     if (messagesError) {
       console.error('Error fetching ticket messages:', messagesError);
     }
@@ -115,7 +115,7 @@ export default function AdminSupportDetail() {
         .select('*')
         .eq('ticket_id', ticketId)
         .order('created_at', { ascending: true });
-      
+
       if (messagesError) {
         console.error('Error fetching ticket messages:', messagesError);
         return;
@@ -128,7 +128,7 @@ export default function AdminSupportDetail() {
 
   const handleSendMessage = async (message: string, attachments?: TicketMessage['attachments']) => {
     if (!ticketId || !profile) return;
-    
+
     const senderName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Admin';
     const { error } = await sendAdminMessage(
       ticketId,
@@ -137,7 +137,7 @@ export default function AdminSupportDetail() {
       isInternal,
       attachments
     );
-    
+
     if (!error) {
       await fetchData();
     }
@@ -159,14 +159,6 @@ export default function AdminSupportDetail() {
     await closeTicket(ticketId, profile.id);
     await fetchData();
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Spinner className="w-8 h-8" />
-      </div>
-    );
-  }
 
   if (!ticket) {
     return (

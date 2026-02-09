@@ -48,7 +48,7 @@ export default function AdminTipDetail() {
 
   const fetchTip = async () => {
     if (!tipId) return;
-    
+
     try {
       const { data, error } = await supabase
         .from('tips')
@@ -98,14 +98,6 @@ export default function AdminTipDetail() {
         return <Badge variant="outline">{status}</Badge>;
     }
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Spinner className="h-8 w-8" />
-      </div>
-    );
-  }
 
   if (!tip) {
     return (
@@ -242,9 +234,9 @@ export default function AdminTipDetail() {
                   <code className="text-xs bg-secondary px-2 py-1 rounded font-mono">
                     {tip.id.slice(0, 8).toUpperCase()}
                   </code>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="h-6 w-6"
                     onClick={() => copyToClipboard(tip.id, 'Transaction ID')}
                   >
@@ -252,7 +244,7 @@ export default function AdminTipDetail() {
                   </Button>
                 </div>
               </div>
-              
+
               {tip.transaction_id && (
                 <div>
                   <p className="text-sm text-muted-foreground">Payment Gateway ID</p>
@@ -260,9 +252,9 @@ export default function AdminTipDetail() {
                     <code className="text-xs bg-secondary px-2 py-1 rounded font-mono truncate max-w-[150px]">
                       {tip.transaction_id}
                     </code>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="h-6 w-6"
                       onClick={() => copyToClipboard(tip.transaction_id!, 'Gateway ID')}
                     >

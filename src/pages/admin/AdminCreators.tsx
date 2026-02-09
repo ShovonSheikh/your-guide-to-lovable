@@ -74,14 +74,6 @@ export default function AdminCreators() {
   const verifiedCount = creators.filter(c => c.is_verified).length;
   const unverifiedCount = creators.filter(c => !c.is_verified).length;
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Spinner className="h-8 w-8" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div>
