@@ -1,106 +1,180 @@
 
 
-# Email Alert Rules with Browser Push Notifications
+# Implement Mailbox Backend + Token Economy System
 
 ## Overview
 
-Add a system where you (the admin) can define rules that trigger browser push notifications when inbound emails match specific criteria. For example: "Notify me when an email arrives from `payments@rupantor.com`" or "Notify me when the subject contains `urgent`".
+This plan implements both features from `MAILBOX_TODO.md`:
+1. **Mailbox Backend** -- Outbound emails table, Sent/Drafts/Outbox/Trash folder functionality
+2. **Token Economy** -- Token balances, deposits, token-based tipping, and withdrawal from token balance
 
 ---
 
-## How It Works
+## Part 1: Mailbox Backend
 
-```text
-Inbound Email Arrives (Resend webhook)
-         |
-         v
-  resend-inbound-webhook saves email to DB
-         |
-         v
-  Check email against alert rules in "email_alert_rules" table
-         |
-         v
-  For each matching rule, call send-push-notification
-  for the admin who created the rule
-         |
-         v
-  Admin gets browser push notification with email subject/sender
-```
+### 1A. Database: `outbound_emails` table
 
----
+Create a new table to store composed/sent/draft emails:
 
-## Part 1: Database Table
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | default gen_random_uuid() |
+| mailbox_id | uuid FK | references mailboxes(id) |
+| to_addresses | text | recipient email |
+| cc_addresses | text | nullable |
+| bcc_addresses | text | nullable |
+| subject | text | |
+| html_body | text | nullable |
+| text_body | text | nullable |
+| status | text | `draft`, `queued`, `sent`, `failed` |
+| is_deleted | boolean | default false (for trash) |
+| scheduled_at | timestamptz | nullable, for future send |
+| sent_at | timestamptz | nullable |
+| created_at / updated_at | timestamptz | auto |
+| created_by | uuid | profile_id of admin who composed |
 
-### New table: `email_alert_rules`
+RLS: Admin-only for all operations. Indexes on `(mailbox_id, status, is_deleted)`.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | uuid (PK) | Auto-generated |
-| `profile_id` | uuid (FK to profiles) | Admin who created the rule |
-| `name` | text | Human-readable label (e.g., "Payment alerts") |
-| `match_type` | text | One of: `from_address`, `subject`, `body`, `any` |
-| `match_value` | text | The string to match (e.g., "payments@rupantor.com" or "urgent") |
-| `match_mode` | text | One of: `exact`, `contains` (default: `contains`) |
-| `is_active` | boolean | Enable/disable without deleting |
-| `created_at` | timestamptz | Auto-generated |
+### 1B. Update `send-email` Edge Function
 
-This table will be created via a migration SQL statement executed through the Supabase dashboard or a migration file.
+After successfully sending via Resend, insert a record into `outbound_emails` with `status = 'sent'` and `sent_at = now()`. This makes all sent emails appear in the Sent folder automatically.
 
----
+### 1C. Update `send-reply-email` Edge Function
 
-## Part 2: Backend Changes
+Same as above -- log outbound replies into `outbound_emails` with `status = 'sent'`.
 
-### Modify: `supabase/functions/resend-inbound-webhook/index.ts`
+### 1D. Frontend: Folder Switching Logic
 
-After successfully inserting the email (line 272), add logic to:
+Currently `AdminMailbox.tsx` has folder pills (Inbox/Sent/Drafts/Outbox/Trash) but all folders just show inbound emails. Update:
 
-1. Query all active rules from `email_alert_rules`
-2. For each rule, check if the email matches:
-   - `from_address` -- match against `fromAddress`
-   - `subject` -- match against `emailData.subject`
-   - `body` -- match against `textBody`
-   - `any` -- match against all three fields
-3. For matching rules, call the existing `send-push-notification` edge function internally (via Supabase function invoke or direct HTTP call) with:
-   - `profile_id` from the rule
-   - `title`: "New Email Alert: [rule name]"
-   - `body`: "From: [sender] - [subject]"
-   - `url`: "/admin/mailbox"
-   - `tag`: "email_alert"
+- **Inbox**: `inbound_emails` where `is_deleted = false` (already works)
+- **Sent**: `outbound_emails` where `status = 'sent'` and `is_deleted = false`
+- **Drafts**: `outbound_emails` where `status = 'draft'` and `is_deleted = false`
+- **Outbox**: `outbound_emails` where `status = 'queued'` and `is_deleted = false`
+- **Trash**: Both `inbound_emails` and `outbound_emails` where `is_deleted = true`
 
-This keeps the logic self-contained -- no new edge function needed.
+### 1E. Compose Sheet: Save as Draft
+
+Add a "Save Draft" button to `ComposeEmailSheet.tsx`. When clicked, insert/update a record in `outbound_emails` with `status = 'draft'`. When sending, if editing a draft, update the existing record to `status = 'sent'`.
+
+### 1F. Trash Actions
+
+- **Move to Trash**: Set `is_deleted = true` on inbound or outbound email (already works for inbound)
+- **Restore**: Set `is_deleted = false`
+- **Empty Trash**: Bulk delete all `is_deleted = true` records (hard delete)
+
+### 1G. Email Viewer for Outbound
+
+Adapt the `EmailViewerComponent` to display outbound emails (show "To" instead of "From" as primary, show sent date, etc.)
 
 ---
 
-## Part 3: Admin UI
+## Part 2: Token Economy System
 
-### New section in Admin Mailbox: "Email Alerts" tab or button
+### 2A. Database Tables
 
-**File: `src/components/admin/EmailAlertRulesDialog.tsx`** (new)
+**`token_balances`**
 
-A dialog/sheet accessible from the Admin Mailbox page with:
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | |
+| profile_id | uuid | unique, FK to profiles |
+| balance | numeric | default 0, CHECK >= 0 |
+| created_at / updated_at | timestamptz | |
 
-- **List of existing rules** with toggle switches (active/inactive)
-- **"Add Rule" form** with:
-  - **Name** -- text input (e.g., "Payment notifications")
-  - **Match Type** -- dropdown: "Sender Email", "Subject", "Body Content", "Any Field"
-  - **Match Mode** -- dropdown: "Contains" (default), "Exact Match"
-  - **Match Value** -- text input (e.g., "payments@rupantor.com" or "urgent")
-- **Delete button** per rule
-- **Push notification subscription prompt** -- if the admin hasn't enabled push notifications yet, show a button to subscribe (using the existing `usePushNotifications` hook)
+RLS: Users can read their own balance. Service role manages updates.
 
-### Modify: `src/pages/admin/AdminMailbox.tsx`
+**`token_transactions`**
 
-Add a "Bell" icon button in the mailbox header (next to Compose and Mass Email) that opens the EmailAlertRulesDialog.
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | |
+| profile_id | uuid | FK to profiles |
+| type | text | `deposit`, `tip_sent`, `tip_received`, `withdrawal`, `refund` |
+| amount | numeric | positive for credits, negative for debits |
+| balance_before | numeric | |
+| balance_after | numeric | |
+| reference_id | text | tip_id, withdrawal_id, or payment transaction_id |
+| description | text | human-readable note |
+| created_at | timestamptz | |
 
----
+RLS: Users can read their own transactions.
 
-## Part 4: Push Notification Prerequisite
+### 2B. Database Function: `process_token_transfer`
 
-The existing `usePushNotifications` hook and service worker (`sw.js`) handle subscription and display. The EmailAlertRulesDialog will:
+A `SECURITY DEFINER` function that atomically:
+1. Checks supporter has sufficient balance
+2. Deducts from supporter's `token_balances`
+3. Credits to creator's `token_balances`
+4. Inserts two `token_transactions` records (debit + credit)
+5. Returns success/failure
 
-1. Check if push notifications are supported and subscribed
-2. If not, show a prominent "Enable Push Notifications" button before allowing rule creation
-3. Use the existing `subscribe()` function from the hook
+This prevents race conditions and ensures consistency.
+
+### 2C. Database Function: `process_token_deposit`
+
+A `SECURITY DEFINER` function that:
+1. Creates or updates `token_balances` for the user
+2. Adds the deposit amount
+3. Inserts a `token_transactions` record
+
+### 2D. Database Function: `process_token_withdrawal`
+
+A `SECURITY DEFINER` function that:
+1. Checks creator has sufficient balance
+2. Deducts from creator's `token_balances`
+3. Inserts a `token_transactions` record
+4. Called when admin approves a withdrawal
+
+### 2E. Edge Function: `deposit-tokens`
+
+New edge function that:
+1. Accepts amount and payment method
+2. Creates a RupantorPay checkout for token purchase
+3. Returns payment URL
+
+### 2F. Edge Function: `deposit-webhook` (or update `rupantor-webhook`)
+
+On successful payment verification for a deposit:
+1. Call `process_token_deposit` RPC
+2. Send confirmation email
+3. Send push notification
+
+### 2G. Update `create-tip` Edge Function
+
+Add a new flow path for token-based tipping:
+- If supporter is logged in and has token balance, use `process_token_transfer` instead of RupantorPay
+- If insufficient balance, return error with balance info so frontend can prompt deposit
+- Keep existing RupantorPay flow as fallback for anonymous/guest tips
+
+### 2H. Update Withdrawal Flow
+
+When admin marks withdrawal as "completed":
+- Call `process_token_withdrawal` to deduct from creator's token balance
+- This fixes the existing balance accuracy gap
+
+### 2I. New Page: `/deposit`
+
+A deposit page where supporters/creators can:
+- See current token balance
+- Choose deposit amount (preset buttons: 100, 500, 1000, custom)
+- Select payment method
+- Proceed to RupantorPay checkout
+
+### 2J. New Page: `/transactions`
+
+Transaction history page showing:
+- Filterable list of all token transactions
+- Type badges (deposit, tip sent, tip received, withdrawal)
+- Running balance column
+- Date range filter
+
+### 2K. UI Updates
+
+- **Navbar**: Show token balance badge next to user avatar (for logged-in users)
+- **Tip Form** (`CreatorProfile.tsx`): Add "Pay with Tokens" option for logged-in supporters with sufficient balance
+- **Dashboard**: Show token balance card
+- **Finance Page**: Replace gross `total_received` with actual token balance from `token_balances`
 
 ---
 
@@ -108,107 +182,57 @@ The existing `usePushNotifications` hook and service worker (`sw.js`) handle sub
 
 | File | Purpose |
 |------|---------|
-| `src/components/admin/EmailAlertRulesDialog.tsx` | UI for managing email alert rules |
+| `src/pages/Deposit.tsx` | Token deposit page |
+| `src/pages/Transactions.tsx` | Transaction history page |
+| `src/hooks/useTokenBalance.ts` | Hook to fetch/subscribe to token balance |
+| `supabase/functions/deposit-tokens/index.ts` | Create deposit checkout |
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `supabase/functions/resend-inbound-webhook/index.ts` | Add rule-matching and push notification trigger after email insert |
-| `src/pages/admin/AdminMailbox.tsx` | Add "Email Alerts" button in header |
+| `supabase/functions/send-email/index.ts` | Log sent emails to `outbound_emails` |
+| `supabase/functions/send-reply-email/index.ts` | Log replies to `outbound_emails` |
+| `supabase/functions/create-tip/index.ts` | Add token-based tipping path |
+| `supabase/functions/rupantor-webhook/index.ts` | Handle deposit payment confirmations |
+| `src/pages/admin/AdminMailbox.tsx` | Folder-aware fetching from both tables |
+| `src/components/admin/ComposeEmailSheet.tsx` | Add Save Draft button, draft editing |
+| `src/pages/CreatorProfile.tsx` | Add "Pay with Tokens" option |
+| `src/pages/Finance.tsx` | Show token balance, link to transactions |
+| `src/pages/Dashboard.tsx` | Show token balance card |
+| `src/components/TopNavbar.tsx` | Show token balance in navbar |
+| `src/App.tsx` | Add routes for `/deposit` and `/transactions` |
 
 ## Database Changes
 
 | Change | Details |
 |--------|---------|
-| New table `email_alert_rules` | Created via SQL migration with RLS policies allowing admin access |
+| New table `outbound_emails` | Stores sent/draft/queued/failed outbound emails |
+| New table `token_balances` | One row per user with current balance |
+| New table `token_transactions` | Full audit trail of all token movements |
+| New function `process_token_transfer` | Atomic tip transfer between balances |
+| New function `process_token_deposit` | Credit tokens after payment |
+| New function `process_token_withdrawal` | Deduct tokens on withdrawal approval |
+| Indexes | On mailbox_id/status/is_deleted and profile_id/type/created_at |
 
 ---
 
-## Technical Details
+## Implementation Order
 
-### Rule Matching Logic (in resend-inbound-webhook)
-
-```typescript
-// After email is saved successfully...
-const { data: rules } = await supabase
-  .from('email_alert_rules')
-  .select('*')
-  .eq('is_active', true);
-
-for (const rule of rules || []) {
-  let matches = false;
-  const value = rule.match_value.toLowerCase();
-  const isExact = rule.match_mode === 'exact';
-
-  const checkMatch = (field: string) => {
-    const lower = field.toLowerCase();
-    return isExact ? lower === value : lower.includes(value);
-  };
-
-  switch (rule.match_type) {
-    case 'from_address':
-      matches = checkMatch(fromAddress);
-      break;
-    case 'subject':
-      matches = checkMatch(emailData.subject || '');
-      break;
-    case 'body':
-      matches = checkMatch(textBody || '');
-      break;
-    case 'any':
-      matches = checkMatch(fromAddress) ||
-                checkMatch(emailData.subject || '') ||
-                checkMatch(textBody || '');
-      break;
-  }
-
-  if (matches) {
-    // Fire push notification (fire-and-forget)
-    await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseServiceKey}`,
-      },
-      body: JSON.stringify({
-        profile_id: rule.profile_id,
-        title: `Email Alert: ${rule.name}`,
-        body: `From: ${fromName || fromAddress} — ${emailData.subject || '(No Subject)'}`,
-        url: '/admin/mailbox',
-        tag: 'email_alert',
-      }),
-    });
-  }
-}
-```
-
-### RLS Policy for `email_alert_rules`
-
-```sql
--- Only admins can manage their own alert rules
-CREATE POLICY "Admins can manage own alert rules"
-ON email_alert_rules
-FOR ALL
-USING (
-  EXISTS (
-    SELECT 1 FROM profiles
-    WHERE profiles.id = email_alert_rules.profile_id
-    AND profiles.is_admin = true
-    AND profiles.clerk_user_id = current_setting('request.headers')::json->>'x-clerk-user-id'
-  )
-);
-```
+1. Database migrations (all 3 tables + 3 functions + indexes + RLS)
+2. Mailbox backend (outbound_emails logging in send-email/send-reply-email)
+3. Mailbox frontend (folder switching, draft saving, trash actions)
+4. Token balance hook + deposit edge function
+5. Token deposit page + webhook handling
+6. Token-based tipping (create-tip update + CreatorProfile UI)
+7. Token withdrawal integration
+8. Transaction history page
+9. Navbar/Dashboard balance display
+10. Fix the build error (send-push-notification web-push import)
 
 ---
 
-## Testing Checklist
+## Build Error Fix
 
-1. Create an alert rule for a specific sender address
-2. Send a test email from that address to a TipKoro mailbox
-3. Verify browser push notification appears
-4. Test "contains" vs "exact" matching
-5. Test subject and body matching
-6. Toggle rule inactive and verify no notification fires
-7. Delete a rule and verify it's removed
+The current build error with `npm:web-push@3.6.7` in `send-push-notification/index.ts` will also be fixed by adding the import to the Deno config or switching to an esm.sh import.
 
