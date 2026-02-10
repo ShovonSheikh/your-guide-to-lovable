@@ -4,6 +4,7 @@ import { Navigate, Link } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { useCreatorStats } from "@/hooks/useCreatorStats";
 import { useSupabase } from "@/hooks/useSupabase";
+import { useTokenBalance } from "@/hooks/useTokenBalance";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { TopNavbar } from "@/components/TopNavbar";
@@ -11,7 +12,7 @@ import { EarningsChart } from "@/components/EarningsChart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -25,9 +26,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { 
-  DollarSign, 
-  TrendingUp, 
+import {
+  DollarSign,
+  TrendingUp,
   Wallet,
   ArrowDownToLine,
   Calendar,
@@ -40,7 +41,8 @@ import {
   ShieldAlert,
   ArrowLeft,
   ShieldCheck,
-  Download
+  Download,
+  Coins
 } from "lucide-react";
 import { format } from "date-fns";
 import { WithdrawalVerificationDialog } from "@/components/WithdrawalVerificationDialog";
@@ -62,6 +64,7 @@ export default function Finance() {
   const { isSignedIn, isLoaded } = useUser();
   const { profile, loading: profileLoading } = useProfile();
   const { stats, loading: statsLoading } = useCreatorStats();
+  const { balance: tokenBalance, loading: tokenLoading } = useTokenBalance();
   const { config } = usePlatformConfig();
   const supabase = useSupabase();
   const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -82,7 +85,7 @@ export default function Finance() {
   useEffect(() => {
     const savedMethod = localStorage.getItem('lastPayoutMethod');
     const savedNumber = localStorage.getItem('lastPayoutNumber');
-    
+
     if (savedMethod && savedNumber) {
       setPayoutMethod(savedMethod);
       setPayoutDetails(savedNumber);
@@ -94,7 +97,7 @@ export default function Finance() {
   useEffect(() => {
     async function fetchWithdrawals() {
       if (!profile?.id) return;
-      
+
       try {
         const { data, error } = await supabase
           .from('withdrawal_requests')
@@ -181,7 +184,7 @@ export default function Finance() {
   // Calculate fee based on model (fixed or percentage)
   const totalReceived = stats?.totalReceived || profile?.total_received || 0;
   let creatorFee = 150; // Default fixed fee
-  
+
   if (config.fee_model.type === 'percentage') {
     creatorFee = Math.max(
       config.percentage_fee.min_amount,
@@ -190,12 +193,12 @@ export default function Finance() {
   } else {
     creatorFee = config.creator_account_fee.amount;
   }
-  
+
   // Calculate pending/processing withdrawals total - prevents multiple withdrawal requests
   const pendingWithdrawalsTotal = withdrawals
     .filter(w => w.status === 'pending' || w.status === 'processing')
     .reduce((sum, w) => sum + w.amount, 0);
-  
+
   // Available balance = Total - Fee - Pending Withdrawals
   const availableBalance = Math.max(0, totalReceived - creatorFee - pendingWithdrawalsTotal);
   const canWithdraw = availableBalance > 0;
@@ -204,7 +207,7 @@ export default function Finance() {
   const handleExportCSV = async () => {
     if (!profile?.id) return;
     setExporting(true);
-    
+
     try {
       const { data: tips, error } = await supabase
         .from('tips')
@@ -212,13 +215,13 @@ export default function Finance() {
         .eq('creator_id', profile.id)
         .eq('payment_status', 'completed')
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
       if (!tips || tips.length === 0) {
         toast({ title: 'No Data', description: 'No tips to export yet.' });
         return;
       }
-      
+
       // Build CSV
       const headers = ['Date', 'Supporter Name', 'Amount', 'Currency', 'Message', 'Payment Method', 'Transaction ID'];
       const rows = tips.map(tip => [
@@ -230,12 +233,12 @@ export default function Finance() {
         tip.payment_method || '',
         tip.transaction_id || '',
       ]);
-      
+
       const csvContent = [
         headers.join(','),
         ...rows.map(row => row.join(','))
       ].join('\n');
-      
+
       // Download
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -244,7 +247,7 @@ export default function Finance() {
       link.download = `tipkoro-earnings-${format(new Date(), 'yyyy-MM-dd')}.csv`;
       link.click();
       URL.revokeObjectURL(url);
-      
+
       toast({ title: 'Exported!', description: `${tips.length} tips exported to CSV.` });
     } catch (err) {
       console.error('Export error:', err);
@@ -333,7 +336,7 @@ export default function Finance() {
         .select('*')
         .eq('profile_id', profile?.id)
         .order('created_at', { ascending: false });
-      
+
       if (newWithdrawals) setWithdrawals(newWithdrawals);
 
       // Send email notification
@@ -412,7 +415,7 @@ export default function Finance() {
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="tipkoro-card">
             <div className="flex items-center gap-3 mb-3">
               <div className="p-2 rounded-lg bg-accent/20">
@@ -422,7 +425,7 @@ export default function Finance() {
             </div>
             <p className="text-2xl font-display font-bold">৳{totalReceived}</p>
           </div>
-          
+
           <div className="tipkoro-card">
             <div className="flex items-center gap-3 mb-3">
               <div className="p-2 rounded-lg bg-success/20">
@@ -433,7 +436,7 @@ export default function Finance() {
             <p className="text-2xl font-display font-bold">৳{availableBalance}</p>
             <p className="text-xs text-muted-foreground mt-1">After ৳{creatorFee} Creator Fee</p>
           </div>
-          
+
           <div className="tipkoro-card">
             <div className="flex items-center gap-3 mb-3">
               <div className="p-2 rounded-lg bg-primary/10">
@@ -443,6 +446,17 @@ export default function Finance() {
             </div>
             <p className="text-2xl font-display font-bold">৳{stats?.thisMonth || 0}</p>
           </div>
+
+          <Link to="/transactions" className="tipkoro-card hover:shadow-lg transition-shadow">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 rounded-lg bg-amber-500/20">
+                <Coins className="w-5 h-5 text-amber-600" />
+              </div>
+              <span className="text-sm text-muted-foreground">Token Balance</span>
+            </div>
+            <p className="text-2xl font-display font-bold">৳{tokenLoading ? '...' : tokenBalance.toLocaleString()}</p>
+            <p className="text-xs text-primary mt-1">View Transactions →</p>
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -455,7 +469,7 @@ export default function Finance() {
               </h2>
               <SecurityBadge variant="compact" />
             </div>
-            
+
             {canWithdraw ? (
               <div className="space-y-4">
                 <div>
@@ -510,7 +524,7 @@ export default function Finance() {
                   />
                 </div>
 
-                <Button 
+                <Button
                   onClick={initiateWithdraw}
                   disabled={isSubmitting}
                   className="w-full bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover"
@@ -546,10 +560,10 @@ export default function Finance() {
                 Export CSV
               </Button>
             </div>
-            
-            <EarningsChart 
-              data={stats?.monthlyEarnings || []} 
-              loading={statsLoading} 
+
+            <EarningsChart
+              data={stats?.monthlyEarnings || []}
+              loading={statsLoading}
             />
           </div>
         </div>
@@ -560,7 +574,7 @@ export default function Finance() {
             <History className="w-5 h-5" />
             Withdrawal History
           </h2>
-          
+
           {withdrawalsLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -576,8 +590,8 @@ export default function Finance() {
           ) : (
             <div className="space-y-3">
               {withdrawals.map((withdrawal) => (
-                <div 
-                  key={withdrawal.id} 
+                <div
+                  key={withdrawal.id}
                   onClick={() => openDetails(withdrawal)}
                   className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl cursor-pointer hover:bg-secondary/50 transition-colors"
                 >
@@ -608,7 +622,7 @@ export default function Finance() {
             <div>
               <h3 className="font-semibold mb-1">Creator Fee</h3>
               <p className="text-sm text-muted-foreground">
-                A ৳{creatorFee}/month Creator Fee is automatically deducted from your earnings. 
+                A ৳{creatorFee}/month Creator Fee is automatically deducted from your earnings.
                 This covers payment processing, hosting, and platform maintenance.
               </p>
             </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Navigate } from "react-router-dom";
+import { useParams, Navigate, Link } from "react-router-dom";
 import DOMPurify from "dompurify";
 import { useUser } from "@clerk/clerk-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -13,6 +13,9 @@ import { CreatorStats } from "@/components/CreatorStats";
 import { RecentSupporters } from "@/components/RecentSupporters";
 import { FundingGoalCard } from "@/components/FundingGoalCard";
 import { usePublicFundingGoals } from "@/hooks/useFundingGoals";
+import { useProfile } from "@/hooks/useProfile";
+import { useTokenBalance } from "@/hooks/useTokenBalance";
+import { useSupabase } from "@/hooks/useSupabase";
 import { supabase } from "@/integrations/supabase/client";
 import { createTipCheckout } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
@@ -25,7 +28,9 @@ import {
   Facebook,
   Link as LinkIcon,
   BadgeCheck,
-  Sparkles
+  Sparkles,
+  Coins,
+  Wallet
 } from "lucide-react";
 
 interface CreatorData {
@@ -54,7 +59,7 @@ const tipAmounts = [50, 100, 200, 500, 1000];
 
 export default function CreatorProfile() {
   const { username } = useParams<{ username: string }>();
-  const { user, isLoaded } = useUser();
+  const { user, isLoaded, isSignedIn } = useUser();
   const [creator, setCreator] = useState<CreatorData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -64,10 +69,15 @@ export default function CreatorProfile() {
   // Fetch public funding goals for this creator
   const { goals: fundingGoals } = usePublicFundingGoals(creator?.id);
 
+  const { profile: userProfile } = useProfile();
+  const { balance: tokenBalance, refetch: refetchBalance } = useTokenBalance();
+  const supabaseAuth = useSupabase();
+
   const [selectedAmount, setSelectedAmount] = useState<number | null>(100);
   const [customAmount, setCustomAmount] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [payWithTokens, setPayWithTokens] = useState(false);
   const [streamerTipOptions, setStreamerTipOptions] = useState<{
     isStreamerEnabled: boolean;
     tipSounds: TipSound[];
@@ -163,33 +173,74 @@ export default function CreatorProfile() {
       return;
     }
 
-    // Prevent self-tipping: check if the logged-in user's email matches the creator's email
-    // or if their user_id matches via a profile lookup
-    if (user) {
-      try {
-        const { data: userProfile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (userProfile && userProfile.id === creator?.id) {
-          toast({
-            title: "Cannot tip yourself",
-            description: "You cannot send a tip to your own account.",
-            variant: "destructive",
-          });
-          return;
-        }
-      } catch (err) {
-        // If profile check fails, continue anyway (non-blocking)
-        console.log("Profile check failed:", err);
-      }
+    // Prevent self-tipping
+    if (userProfile && userProfile.id === creator?.id) {
+      toast({
+        title: "Cannot tip yourself",
+        description: "You cannot send a tip to your own account.",
+        variant: "destructive",
+      });
+      return;
     }
 
     setIsSubmitting(true);
 
     try {
+      // Token-based tipping path
+      if (payWithTokens && userProfile?.id && creator?.id) {
+        if (tokenBalance < amount) {
+          toast({
+            title: "Insufficient token balance",
+            description: `You need ৳${amount} but have ৳${tokenBalance}. Please deposit more tokens.`,
+            variant: "destructive",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+
+        const tokenTxnId = `token_tip_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+        // Atomic token transfer via RPC
+        const { data: transferResult, error: transferError } = await supabaseAuth.rpc('process_token_transfer', {
+          p_sender_profile_id: userProfile.id,
+          p_receiver_profile_id: creator.id,
+          p_amount: amount,
+          p_reference_id: tokenTxnId,
+          p_description: `Tip to ${creator.first_name || creator.username}${message ? ': ' + message.substring(0, 50) : ''}`,
+        });
+
+        if (transferError || !(transferResult as any)?.success) {
+          const errorMsg = (transferResult as any)?.error || transferError?.message || 'Transfer failed';
+          toast({ title: "Transfer failed", description: errorMsg, variant: "destructive" });
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Record the tip via create-tip edge function
+        await supabase.functions.invoke('create-tip', {
+          body: {
+            transaction_id: tokenTxnId,
+            creator_id: creator.id,
+            supporter_name: fullName,
+            supporter_email: email,
+            amount,
+            message: message || null,
+            is_anonymous: false,
+            payment_method: 'tokens',
+          },
+        });
+
+        refetchBalance();
+        toast({
+          title: "Tip sent! 🎉",
+          description: `৳${amount} sent to ${creator.first_name || creator.username} from your token balance.`,
+        });
+        setMessage('');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Standard payment gateway path
       localStorage.setItem('tipkoro_tip_data', JSON.stringify({
         creator_id: creator?.id,
         amount,
@@ -337,8 +388,8 @@ export default function CreatorProfile() {
                             setCustomAmount('');
                           }}
                           className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border ${selectedAmount === sound.trigger_amount
-                              ? 'bg-primary text-primary-foreground border-primary'
-                              : 'bg-secondary/50 hover:bg-primary/10 border-primary/30'
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-secondary/50 hover:bg-primary/10 border-primary/30'
                             }`}
                         >
                           <span className="block">৳{sound.trigger_amount}</span>
@@ -359,8 +410,8 @@ export default function CreatorProfile() {
                         setCustomAmount('');
                       }}
                       className={`py-3 px-2 rounded-xl font-medium text-sm transition-all ${selectedAmount === amount
-                          ? 'bg-accent text-accent-foreground shadow-md scale-105'
-                          : 'bg-secondary hover:bg-secondary/80'
+                        ? 'bg-accent text-accent-foreground shadow-md scale-105'
+                        : 'bg-secondary hover:bg-secondary/80'
                         }`}
                     >
                       ৳{amount}
@@ -397,6 +448,37 @@ export default function CreatorProfile() {
                   </p>
                 </div>
 
+                {/* Pay with Tokens Toggle */}
+                {isSignedIn && userProfile && (
+                  <div className="mb-4 p-3 rounded-xl bg-secondary/50 border border-border">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Coins className="w-4 h-4 text-amber-500" />
+                        <span className="text-sm font-medium">Pay with Tokens</span>
+                        <span className="text-xs text-muted-foreground">(Balance: ৳{tokenBalance.toLocaleString()})</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPayWithTokens(!payWithTokens)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${payWithTokens ? 'bg-primary' : 'bg-muted'
+                          }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${payWithTokens ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                        />
+                      </button>
+                    </div>
+                    {payWithTokens && tokenBalance < (selectedAmount || parseFloat(customAmount) || 0) && (
+                      <p className="text-xs text-destructive mt-2 flex items-center gap-1">
+                        <Wallet className="w-3 h-3" />
+                        Insufficient balance.
+                        <Link to="/deposit" className="underline font-medium">Deposit tokens →</Link>
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Send Button */}
                 <Button
                   onClick={handleTip}
@@ -405,6 +487,11 @@ export default function CreatorProfile() {
                 >
                   {isSubmitting ? (
                     "Processing..."
+                  ) : payWithTokens ? (
+                    <>
+                      <Coins className="w-5 h-5 mr-2" />
+                      Pay ৳{selectedAmount || customAmount || 0} with Tokens
+                    </>
                   ) : (
                     <>
                       <Heart className="w-5 h-5 mr-2" />

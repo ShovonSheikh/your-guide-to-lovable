@@ -140,7 +140,7 @@ export default function AdminWithdrawalDetail() {
 
       if (error) throw error;
 
-      // Deduct from total_received if completed
+      // Deduct from total_received if completed (legacy)
       if (newStatus === 'completed') {
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
@@ -156,6 +156,18 @@ export default function AdminWithdrawalDetail() {
             .from('profiles')
             .update({ total_received: newTotal })
             .eq('id', withdrawal.profile_id);
+        }
+
+        // Also deduct from token balance if creator has one
+        try {
+          await supabase.rpc('process_token_withdrawal', {
+            p_profile_id: withdrawal.profile_id,
+            p_amount: withdrawal.amount,
+            p_reference_id: `withdrawal_${withdrawal.id}`,
+            p_description: `Withdrawal completed - ৳${withdrawal.amount}`,
+          });
+        } catch (tokenErr) {
+          console.log('Token withdrawal deduction skipped (non-critical):', tokenErr);
         }
       }
 

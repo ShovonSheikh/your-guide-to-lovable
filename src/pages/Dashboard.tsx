@@ -3,6 +3,7 @@ import { useUser } from "@clerk/clerk-react";
 import { Navigate, Link } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { useCreatorStats } from "@/hooks/useCreatorStats";
+import { useTokenBalance } from "@/hooks/useTokenBalance";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { TopNavbar } from "@/components/TopNavbar";
 import { NoticeBar } from "@/components/NoticeBar";
@@ -12,16 +13,17 @@ import { RecentTipsList } from "@/components/RecentTipsList";
 import { SupporterDashboard } from "@/components/SupporterDashboard";
 import { DashboardQuickActions } from "@/components/DashboardQuickActions";
 import { SetupChecklist } from "@/components/SetupChecklist";
-import { 
-  Heart, 
-  DollarSign, 
-  Users, 
-  TrendingUp, 
+import {
+  Heart,
+  DollarSign,
+  Users,
+  TrendingUp,
   TrendingDown,
   Settings,
   Wallet,
   ShieldAlert,
-  Bell
+  Bell,
+  Coins
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -29,6 +31,7 @@ export default function Dashboard() {
   const { isSignedIn, isLoaded } = useUser();
   const { profile, loading: profileLoading } = useProfile();
   const { stats, recentTips, loading: statsLoading } = useCreatorStats();
+  const { balance: tokenBalance, loading: tokenLoading } = useTokenBalance();
   const { notices } = useNotices('dashboard');
 
   if (!isLoaded || profileLoading) {
@@ -163,7 +166,7 @@ export default function Dashboard() {
             )}
 
             {/* Setup Checklist */}
-            <SetupChecklist 
+            <SetupChecklist
               hasWithdrawalPin={profile?.has_withdrawal_pin || false}
               isVerified={profile?.is_verified || false}
               hasSocialLinks={hasSocialLinks}
@@ -171,7 +174,7 @@ export default function Dashboard() {
             />
 
             {/* Quick Actions */}
-            <DashboardQuickActions 
+            <DashboardQuickActions
               username={profile?.username}
               profileId={profile?.id}
               displayName={`${profile?.first_name || ''} ${profile?.last_name || ''}`.trim()}
@@ -190,7 +193,7 @@ export default function Dashboard() {
                   ৳{stats?.totalReceived || profile?.total_received || 0}
                 </p>
               </div>
-              
+
               <div className="tipkoro-card">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-2 rounded-lg bg-success/20">
@@ -202,7 +205,7 @@ export default function Dashboard() {
                   {stats?.totalSupporters || profile?.total_supporters || 0}
                 </p>
               </div>
-              
+
               <div className="tipkoro-card">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-2 rounded-lg bg-primary/10">
@@ -217,7 +220,7 @@ export default function Dashboard() {
                   </p>
                 )}
               </div>
-              
+
               <div className="tipkoro-card">
                 <div className="flex items-center gap-3 mb-3">
                   <div className={`p-2 rounded-lg ${growthPositive ? 'bg-success/20' : 'bg-destructive/20'}`}>
@@ -234,6 +237,20 @@ export default function Dashboard() {
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">vs last month</p>
               </div>
+
+              {/* Token Balance Card */}
+              <Link to="/deposit" className="tipkoro-card hover:shadow-lg transition-shadow">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 rounded-lg bg-amber-500/20">
+                    <Coins className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <span className="text-sm text-muted-foreground">Token Balance</span>
+                </div>
+                <p className="text-2xl font-display font-bold">
+                  ৳{tokenLoading ? '...' : tokenBalance.toLocaleString()}
+                </p>
+                <p className="text-xs text-primary mt-1">Deposit / View Transactions →</p>
+              </Link>
             </div>
 
             {/* Recent Tips */}
