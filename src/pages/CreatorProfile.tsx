@@ -17,7 +17,6 @@ import { useProfile } from "@/hooks/useProfile";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
 import { useSupabase } from "@/hooks/useSupabase";
 import { supabase } from "@/integrations/supabase/client";
-import { createTipCheckout } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import SEO from "@/components/SEO";
 import {
@@ -77,7 +76,6 @@ export default function CreatorProfile() {
   const [customAmount, setCustomAmount] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [payWithTokens, setPayWithTokens] = useState(false);
   const [streamerTipOptions, setStreamerTipOptions] = useState<{
     isStreamerEnabled: boolean;
     tipSounds: TipSound[];
@@ -150,21 +148,7 @@ export default function CreatorProfile() {
       return;
     }
 
-    if (!isLoaded) {
-      toast({
-        title: "Please wait",
-        description: "Loading your account...",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const fullName = user
-      ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Anonymous'
-      : 'Anonymous';
-    const email = user?.primaryEmailAddress?.emailAddress || '';
-
-    if (!email) {
+    if (!isSignedIn || !userProfile?.id) {
       toast({
         title: "Sign in required",
         description: "Please sign in to send a tip.",
@@ -174,7 +158,7 @@ export default function CreatorProfile() {
     }
 
     // Prevent self-tipping
-    if (userProfile && userProfile.id === creator?.id) {
+    if (userProfile.id === creator?.id) {
       toast({
         title: "Cannot tip yourself",
         description: "You cannot send a tip to your own account.",
@@ -183,90 +167,60 @@ export default function CreatorProfile() {
       return;
     }
 
+    if (tokenBalance < amount) {
+      toast({
+        title: "Insufficient token balance",
+        description: `You need ৳${amount} but have ৳${tokenBalance}. Please deposit more tokens.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Anonymous';
+    const email = user?.primaryEmailAddress?.emailAddress || '';
+
     setIsSubmitting(true);
 
     try {
-      // Token-based tipping path
-      if (payWithTokens && userProfile?.id && creator?.id) {
-        if (tokenBalance < amount) {
-          toast({
-            title: "Insufficient token balance",
-            description: `You need ৳${amount} but have ৳${tokenBalance}. Please deposit more tokens.`,
-            variant: "destructive",
-          });
-          setIsSubmitting(false);
-          return;
-        }
+      const tokenTxnId = `token_tip_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-        const tokenTxnId = `token_tip_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      // Atomic token transfer via RPC
+      const { data: transferResult, error: transferError } = await supabaseAuth.rpc('process_token_transfer', {
+        p_sender_profile_id: userProfile.id,
+        p_receiver_profile_id: creator!.id,
+        p_amount: amount,
+        p_reference_id: tokenTxnId,
+        p_description: `Tip to ${creator!.first_name || creator!.username}${message ? ': ' + message.substring(0, 50) : ''}`,
+      });
 
-        // Atomic token transfer via RPC
-        const { data: transferResult, error: transferError } = await supabaseAuth.rpc('process_token_transfer', {
-          p_sender_profile_id: userProfile.id,
-          p_receiver_profile_id: creator.id,
-          p_amount: amount,
-          p_reference_id: tokenTxnId,
-          p_description: `Tip to ${creator.first_name || creator.username}${message ? ': ' + message.substring(0, 50) : ''}`,
-        });
-
-        if (transferError || !(transferResult as any)?.success) {
-          const errorMsg = (transferResult as any)?.error || transferError?.message || 'Transfer failed';
-          toast({ title: "Transfer failed", description: errorMsg, variant: "destructive" });
-          setIsSubmitting(false);
-          return;
-        }
-
-        // Record the tip via create-tip edge function
-        await supabase.functions.invoke('create-tip', {
-          body: {
-            transaction_id: tokenTxnId,
-            creator_id: creator.id,
-            supporter_name: fullName,
-            supporter_email: email,
-            amount,
-            message: message || null,
-            is_anonymous: false,
-            payment_method: 'tokens',
-          },
-        });
-
-        refetchBalance();
-        toast({
-          title: "Tip sent! 🎉",
-          description: `৳${amount} sent to ${creator.first_name || creator.username} from your token balance.`,
-        });
-        setMessage('');
-        setIsSubmitting(false);
+      if (transferError || !(transferResult as any)?.success) {
+        const errorMsg = (transferResult as any)?.error || transferError?.message || 'Transfer failed';
+        toast({ title: "Transfer failed", description: errorMsg, variant: "destructive" });
         return;
       }
 
-      // Standard payment gateway path
-      localStorage.setItem('tipkoro_tip_data', JSON.stringify({
-        creator_id: creator?.id,
-        amount,
-        message,
-        supporter_name: fullName,
-        supporter_email: email
-      }));
-
-      const result = await createTipCheckout({
-        fullname: fullName,
-        email,
-        amount,
-        creator_id: creator?.id,
+      // Record the tip via create-tip edge function
+      await supabase.functions.invoke('create-tip', {
+        body: {
+          transaction_id: tokenTxnId,
+          creator_id: creator!.id,
+          supporter_name: fullName,
+          supporter_email: email,
+          amount,
+          message: message || null,
+          is_anonymous: false,
+          payment_method: 'tokens',
+        },
       });
 
-      if (result.payment_url) {
-        window.location.href = result.payment_url;
-      } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to create payment link",
-          variant: "destructive",
-        });
-      }
+      refetchBalance();
+      toast({
+        title: "Tip sent! 🎉",
+        description: `৳${amount} sent to ${creator!.first_name || creator!.username} from your token balance.`,
+      });
+      setMessage('');
     } catch (error) {
-      console.error("Payment error:", error);
+      console.error("Tip error:", error);
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",
@@ -448,28 +402,17 @@ export default function CreatorProfile() {
                   </p>
                 </div>
 
-                {/* Pay with Tokens Toggle */}
+                {/* Token Balance Info */}
                 {isSignedIn && userProfile && (
                   <div className="mb-4 p-3 rounded-xl bg-secondary/50 border border-border">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Coins className="w-4 h-4 text-amber-500" />
-                        <span className="text-sm font-medium">Pay with Tokens</span>
-                        <span className="text-xs text-muted-foreground">(Balance: ৳{tokenBalance.toLocaleString()})</span>
+                        <span className="text-sm font-medium">Token Balance</span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setPayWithTokens(!payWithTokens)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${payWithTokens ? 'bg-primary' : 'bg-muted'
-                          }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${payWithTokens ? 'translate-x-6' : 'translate-x-1'
-                            }`}
-                        />
-                      </button>
+                      <span className="text-sm font-semibold">৳{tokenBalance.toLocaleString()}</span>
                     </div>
-                    {payWithTokens && tokenBalance < (selectedAmount || parseFloat(customAmount) || 0) && (
+                    {tokenBalance < (selectedAmount || parseFloat(customAmount) || 0) && (
                       <p className="text-xs text-destructive mt-2 flex items-center gap-1">
                         <Wallet className="w-3 h-3" />
                         Insufficient balance.
@@ -482,19 +425,16 @@ export default function CreatorProfile() {
                 {/* Send Button */}
                 <Button
                   onClick={handleTip}
-                  disabled={isSubmitting || (!selectedAmount && !customAmount)}
+                  disabled={isSubmitting || (!selectedAmount && !customAmount) || !isSignedIn}
                   className="w-full h-14 bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover font-semibold text-lg rounded-xl"
                 >
                   {isSubmitting ? (
                     "Processing..."
-                  ) : payWithTokens ? (
-                    <>
-                      <Coins className="w-5 h-5 mr-2" />
-                      Pay ৳{selectedAmount || customAmount || 0} with Tokens
-                    </>
+                  ) : !isSignedIn ? (
+                    "Sign in to Send Tip"
                   ) : (
                     <>
-                      <Heart className="w-5 h-5 mr-2" />
+                      <Coins className="w-5 h-5 mr-2" />
                       Send ৳{selectedAmount || customAmount || 0} Tip
                     </>
                   )}

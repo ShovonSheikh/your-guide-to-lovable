@@ -31,7 +31,8 @@ import { VerificationForm } from "@/components/VerificationForm";
 import { WithdrawalPinSetup } from "@/components/WithdrawalPinSetup";
 import { ChangePinDialog } from "@/components/ChangePinDialog";
 import { StreamerSettings } from "@/components/StreamerSettings";
-import { createCreatorCheckout, PLATFORM_FEE } from "@/lib/api";
+import { PLATFORM_FEE } from "@/lib/api";
+import { useTokenBalance } from "@/hooks/useTokenBalance";
 import { formatDistanceToNow } from "date-fns";
 
 const tabs = [
@@ -72,7 +73,7 @@ function SecurityTab({ profile }: { profile: any }) {
           <Shield className="w-5 h-5" />
           Security Settings
         </h2>
-        
+
         {/* Account Security via Clerk */}
         <div className="p-4 bg-secondary/50 rounded-xl mb-6">
           <h3 className="font-medium mb-2">Account Security</h3>
@@ -91,7 +92,7 @@ function SecurityTab({ profile }: { profile: any }) {
               <Lock className="w-4 h-4" />
               Withdrawal PIN
             </h3>
-            
+
             {hasPin ? (
               <div className="space-y-4">
                 <div className="flex items-center gap-4 p-4 bg-success/10 rounded-xl border border-success/20">
@@ -103,19 +104,19 @@ function SecurityTab({ profile }: { profile: any }) {
                     </p>
                   </div>
                 </div>
-                
-                <Button 
-                  variant="outline" 
+
+                <Button
+                  variant="outline"
                   className="gap-2"
                   onClick={() => setChangePinOpen(true)}
                 >
                   <Lock className="w-4 h-4" />
                   Change PIN
                 </Button>
-                
-                <ChangePinDialog 
-                  open={changePinOpen} 
-                  onOpenChange={setChangePinOpen} 
+
+                <ChangePinDialog
+                  open={changePinOpen}
+                  onOpenChange={setChangePinOpen}
                 />
               </div>
             ) : (
@@ -142,13 +143,13 @@ function NotificationsTab({ profile }: { profile: any }) {
   useEffect(() => {
     const fetchSettings = async () => {
       if (!profile?.id) return;
-      
+
       const { data } = await supabase
         .from('notification_settings')
         .select('*')
         .eq('profile_id', profile.id)
         .maybeSingle();
-      
+
       if (data) {
         setSettings({
           tips_enabled: data.tips_enabled ?? true,
@@ -158,13 +159,13 @@ function NotificationsTab({ profile }: { profile: any }) {
       }
       setLoading(false);
     };
-    
+
     fetchSettings();
   }, [profile?.id, supabase]);
 
   const handleSave = async () => {
     if (!profile?.id) return;
-    
+
     setSaving(true);
     const { error } = await supabase
       .from('notification_settings')
@@ -175,17 +176,17 @@ function NotificationsTab({ profile }: { profile: any }) {
         promotions_enabled: settings.promotions_enabled,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'profile_id' });
-    
+
     if (error) {
-      toast({ 
-        title: "Error", 
-        description: "Failed to save notification settings", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: "Failed to save notification settings",
+        variant: "destructive"
       });
     } else {
-      toast({ 
-        title: "Saved!", 
-        description: "Notification preferences updated" 
+      toast({
+        title: "Saved!",
+        description: "Notification preferences updated"
       });
     }
     setSaving(false);
@@ -211,42 +212,42 @@ function NotificationsTab({ profile }: { profile: any }) {
           <Bell className="w-5 h-5" />
           Email Notifications
         </h2>
-        
+
         <div className="space-y-4">
           <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl">
             <div className="flex-1 pr-4">
               <p className="font-medium">Tip Notifications</p>
               <p className="text-sm text-muted-foreground">Receive emails when you receive or send tips</p>
             </div>
-            <Switch 
+            <Switch
               checked={settings.tips_enabled}
               onCheckedChange={(checked) => setSettings(s => ({ ...s, tips_enabled: checked }))}
             />
           </div>
-          
+
           <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl">
             <div className="flex-1 pr-4">
               <p className="font-medium">Withdrawal Notifications</p>
               <p className="text-sm text-muted-foreground">Updates on withdrawal requests and OTP codes</p>
             </div>
-            <Switch 
+            <Switch
               checked={settings.withdrawals_enabled}
               onCheckedChange={(checked) => setSettings(s => ({ ...s, withdrawals_enabled: checked }))}
             />
           </div>
-          
+
           <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl">
             <div className="flex-1 pr-4">
               <p className="font-medium">Promotional Emails</p>
               <p className="text-sm text-muted-foreground">News, tips, and platform updates from TipKoro</p>
             </div>
-            <Switch 
+            <Switch
               checked={settings.promotions_enabled}
               onCheckedChange={(checked) => setSettings(s => ({ ...s, promotions_enabled: checked }))}
             />
           </div>
         </div>
-        
+
         <Button onClick={handleSave} disabled={saving} className="mt-6">
           {saving ? "Saving..." : "Save Preferences"}
         </Button>
@@ -265,7 +266,7 @@ function MyTicketsTab() {
   const filteredTickets = useMemo(() => {
     return tickets.filter(ticket => {
       const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
-      const matchesSearch = !searchQuery || 
+      const matchesSearch = !searchQuery ||
         ticket.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
         ticket.ticket_number.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesStatus && matchesSearch;
@@ -345,8 +346,8 @@ function MyTicketsTab() {
           <div className="text-center py-12">
             <TicketIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
             <p className="text-muted-foreground mb-4">
-              {tickets.length === 0 
-                ? "You haven't submitted any support tickets yet." 
+              {tickets.length === 0
+                ? "You haven't submitted any support tickets yet."
                 : "No tickets match your filters."}
             </p>
             {tickets.length === 0 && (
@@ -388,9 +389,9 @@ function MyTicketsTab() {
 }
 
 // Billing Tab Component  
-function BillingTab({ profile, subscription, subscriptionLoading, formatDate, supabase, refetchProfile }: { 
-  profile: any; 
-  subscription: any; 
+function BillingTab({ profile, subscription, subscriptionLoading, formatDate, supabase, refetchProfile }: {
+  profile: any;
+  subscription: any;
   subscriptionLoading: boolean;
   formatDate: (date: string | null) => string;
   supabase: any;
@@ -401,6 +402,7 @@ function BillingTab({ profile, subscription, subscriptionLoading, formatDate, su
   const [downgradeDialogOpen, setDowngradeDialogOpen] = useState(false);
   const [downgradeConfirmText, setDowngradeConfirmText] = useState('');
   const [downgrading, setDowngrading] = useState(false);
+  const { balance: tokenBalance, refetch: refetchBalance } = useTokenBalance();
 
   const creatorBenefits = [
     'Custom creator page (tipkoro.com/username)',
@@ -413,32 +415,53 @@ function BillingTab({ profile, subscription, subscriptionLoading, formatDate, su
 
   const handleUpgrade = async () => {
     if (!profile) return;
-    
+
+    if (tokenBalance < PLATFORM_FEE) {
+      toast({
+        title: "Insufficient token balance",
+        description: `You need ৳${PLATFORM_FEE} but have ৳${tokenBalance}. Please deposit tokens first.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setUpgrading(true);
     try {
-      // Create pending subscription
+      // Deduct creator fee from token balance
+      const { data: result, error: rpcError } = await supabase.rpc('process_token_withdrawal', {
+        p_profile_id: profile.id,
+        p_amount: PLATFORM_FEE,
+        p_reference_id: `creator_fee_${profile.id}_${Date.now()}`,
+        p_description: `Creator account upgrade fee - ৳${PLATFORM_FEE}`,
+      });
+
+      if (rpcError || !(result as any)?.success) {
+        const errorMsg = (result as any)?.error || rpcError?.message || 'Fee deduction failed';
+        toast({ title: "Upgrade failed", description: errorMsg, variant: "destructive" });
+        return;
+      }
+
+      // Create subscription record
       await supabase.from('creator_subscriptions').insert({
         profile_id: profile.id,
         amount: PLATFORM_FEE,
-        payment_status: 'pending',
+        payment_status: 'completed',
+        payment_method: 'tokens',
+        transaction_id: `token_upgrade_${Date.now()}`,
+        billing_start: new Date().toISOString(),
+        active_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       });
 
-      // Redirect to payment
-      const result = await createCreatorCheckout({
-        fullname: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User',
-        email: profile.email,
-        reference_id: profile.id,
-      });
+      // Update profile to creator
+      await supabase.from('profiles').update({ account_type: 'creator' }).eq('id', profile.id);
 
-      if (result.payment_url) {
-        window.location.href = result.payment_url;
-      } else if (result.error) {
-        toast({
-          title: "Error",
-          description: result.error,
-          variant: "destructive",
-        });
-      }
+      refetchBalance();
+      refetchProfile();
+      toast({
+        title: "Upgraded to Creator! 🎉",
+        description: `৳${PLATFORM_FEE} deducted from your token balance.`,
+      });
+      navigate('/dashboard');
     } catch (error: any) {
       toast({
         title: "Error",
@@ -472,7 +495,7 @@ function BillingTab({ profile, subscription, subscriptionLoading, formatDate, su
         title: "Account Downgraded",
         description: "You've been switched to a Supporter account. You can upgrade again anytime.",
       });
-      
+
       setDowngradeDialogOpen(false);
       refetchProfile();
       navigate('/dashboard');
@@ -575,8 +598,8 @@ function BillingTab({ profile, subscription, subscriptionLoading, formatDate, su
               <p className="text-xs text-muted-foreground mb-4">
                 Your tip history and withdrawal records will be preserved. You can upgrade again anytime.
               </p>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="border-destructive text-destructive hover:bg-destructive/10"
                 onClick={() => setDowngradeDialogOpen(true)}
               >
@@ -644,13 +667,29 @@ function BillingTab({ profile, subscription, subscriptionLoading, formatDate, su
             <p className="text-muted-foreground mb-4">
               Start receiving tips from your supporters and unlock all creator features.
             </p>
-            <Button 
-              onClick={handleUpgrade} 
-              disabled={upgrading}
+            <Button
+              onClick={handleUpgrade}
+              disabled={upgrading || tokenBalance < PLATFORM_FEE}
               className="w-full h-12 bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover font-semibold"
             >
-              {upgrading ? "Processing..." : `Upgrade for ৳${PLATFORM_FEE}/month`}
+              {upgrading ? "Processing..." : `Upgrade for ৳${PLATFORM_FEE} (from Tokens)`}
             </Button>
+
+            {/* Token Balance Info */}
+            <div className="p-3 rounded-xl bg-secondary/30 border border-border mt-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-amber-500" />
+                  <span className="text-sm">Token Balance</span>
+                </div>
+                <span className="text-sm font-semibold">৳{tokenBalance.toLocaleString()}</span>
+              </div>
+              {tokenBalance < PLATFORM_FEE && (
+                <p className="text-xs text-destructive mt-2">
+                  Insufficient balance. <a href="/deposit" className="underline font-medium">Deposit tokens →</a>
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Benefits List */}
@@ -693,7 +732,7 @@ export default function Settings() {
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
 
   // Filter tabs based on account type
-  const visibleTabs = tabs.filter(tab => 
+  const visibleTabs = tabs.filter(tab =>
     !tab.creatorOnly || profile?.account_type === 'creator'
   );
 
@@ -873,7 +912,7 @@ export default function Settings() {
                             <AccordionContent>
                               <Carousel className="w-full max-w-xs mx-auto">
                                 <CarouselContent>
-                              {[
+                                  {[
                                     'https://openpaste.vercel.app/i/e49c46b3',
                                     'https://openpaste.vercel.app/i/4ce9f165',
                                     'https://openpaste.vercel.app/i/c0a9268f',
@@ -1044,9 +1083,9 @@ export default function Settings() {
             )}
 
             {currentTab === 'billing' && (
-              <BillingTab 
-                profile={profile} 
-                subscription={subscription} 
+              <BillingTab
+                profile={profile}
+                subscription={subscription}
                 subscriptionLoading={subscriptionLoading}
                 formatDate={formatDate}
                 supabase={supabase}
