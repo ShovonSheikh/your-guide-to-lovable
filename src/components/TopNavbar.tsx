@@ -6,7 +6,8 @@ import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/clerk-re
 import { HeartIcon } from "./icons/PaymentIcons";
 import { useProfile } from "@/hooks/useProfile";
 import { useSupabase } from "@/hooks/useSupabase";
-import { Menu, X, Shield, ChevronDown, Users, Bell, Info, Mail, ShieldCheck } from "lucide-react";
+import { useTokenBalance } from "@/hooks/useTokenBalance";
+import { Menu, X, Shield, ChevronDown, Users, Bell, Info, Mail, ShieldCheck, Coins } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +20,7 @@ export function TopNavbar({ className }: { className?: string }) {
   const { isSignedIn, isLoaded } = useUser();
   const { profile } = useProfile();
   const supabase = useSupabase();
+  const { balance: tokenBalance } = useTokenBalance();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [unreadEmails, setUnreadEmails] = useState(0);
   const location = useLocation();
@@ -139,6 +141,14 @@ export function TopNavbar({ className }: { className?: string }) {
                           {unreadEmails > 0 && (
                             <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-destructive rounded-full border-2 border-background" />
                           )}
+                        </Button>
+                      </Link>
+                    )}
+                    {isSignedIn && (
+                      <Link to="/deposit">
+                        <Button variant="ghost" size="sm" className="rounded-full gap-1.5 text-xs font-medium h-8 px-3">
+                          <Coins className="w-3.5 h-3.5" />
+                          ৳{tokenBalance.toLocaleString()}
                         </Button>
                       </Link>
                     )}

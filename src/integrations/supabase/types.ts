@@ -766,6 +766,88 @@ export type Database = {
           },
         ]
       }
+      outbound_emails: {
+        Row: {
+          bcc_addresses: string | null
+          cc_addresses: string | null
+          created_at: string
+          created_by: string | null
+          html_body: string | null
+          id: string
+          in_reply_to: string | null
+          is_deleted: boolean
+          mailbox_id: string
+          resend_id: string | null
+          scheduled_at: string | null
+          sent_at: string | null
+          status: string
+          subject: string
+          text_body: string | null
+          to_addresses: string
+          updated_at: string
+        }
+        Insert: {
+          bcc_addresses?: string | null
+          cc_addresses?: string | null
+          created_at?: string
+          created_by?: string | null
+          html_body?: string | null
+          id?: string
+          in_reply_to?: string | null
+          is_deleted?: boolean
+          mailbox_id: string
+          resend_id?: string | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          text_body?: string | null
+          to_addresses: string
+          updated_at?: string
+        }
+        Update: {
+          bcc_addresses?: string | null
+          cc_addresses?: string | null
+          created_at?: string
+          created_by?: string | null
+          html_body?: string | null
+          id?: string
+          in_reply_to?: string | null
+          is_deleted?: boolean
+          mailbox_id?: string
+          resend_id?: string | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          text_body?: string | null
+          to_addresses?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outbound_emails_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outbound_emails_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outbound_emails_mailbox_id_fkey"
+            columns: ["mailbox_id"]
+            isOneToOne: false
+            referencedRelation: "mailboxes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pages: {
         Row: {
           content: string
@@ -1429,6 +1511,96 @@ export type Database = {
           },
         ]
       }
+      token_balances: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "token_balances_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "token_balances_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      token_transactions: {
+        Row: {
+          amount: number
+          balance_after: number
+          balance_before: number
+          created_at: string
+          description: string | null
+          id: string
+          profile_id: string
+          reference_id: string | null
+          type: string
+        }
+        Insert: {
+          amount: number
+          balance_after?: number
+          balance_before?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          profile_id: string
+          reference_id?: string | null
+          type: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          balance_before?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          profile_id?: string
+          reference_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "token_transactions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "token_transactions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       verification_requests: {
         Row: {
           admin_notes: string | null
@@ -1780,6 +1952,34 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_super_admin: { Args: { clerk_user_id: string }; Returns: boolean }
+      process_token_deposit: {
+        Args: {
+          p_amount: number
+          p_description?: string
+          p_profile_id: string
+          p_reference_id?: string
+        }
+        Returns: Json
+      }
+      process_token_transfer: {
+        Args: {
+          p_amount: number
+          p_description?: string
+          p_receiver_profile_id: string
+          p_reference_id?: string
+          p_sender_profile_id: string
+        }
+        Returns: Json
+      }
+      process_token_withdrawal: {
+        Args: {
+          p_amount: number
+          p_description?: string
+          p_profile_id: string
+          p_reference_id?: string
+        }
+        Returns: Json
+      }
       revoke_admin_role: {
         Args: { target_user_id: string }
         Returns: undefined

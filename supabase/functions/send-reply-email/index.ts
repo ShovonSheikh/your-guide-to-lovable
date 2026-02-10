@@ -166,6 +166,27 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Reply email sent successfully:", emailResponse);
 
+    // Get admin profile_id for created_by
+    const { data: adminProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("user_id", clerkUserId)
+      .single();
+
+    // Log to outbound_emails for Sent folder
+    await supabase.from("outbound_emails").insert({
+      mailbox_id: mailbox.id,
+      to_addresses: to_address,
+      subject: subject,
+      html_body: html_body || null,
+      text_body: text_body || null,
+      status: "sent",
+      sent_at: new Date().toISOString(),
+      resend_id: emailResponse.id || null,
+      in_reply_to: in_reply_to || null,
+      created_by: adminProfile?.id || null,
+    });
+
     // Log the sent email
     await supabase.from("email_logs").insert({
       email_type: "reply",

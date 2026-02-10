@@ -36,6 +36,8 @@ const Support = lazy(() => import("./pages/Support"));
 const SupportTickets = lazy(() => import("./pages/SupportTickets"));
 const Notices = lazy(() => import("./pages/Notices"));
 const SupportTicketDetail = lazy(() => import("./pages/SupportTicketDetail"));
+const Deposit = lazy(() => import("./pages/Deposit"));
+const Transactions = lazy(() => import("./pages/Transactions"));
 
 // Payment pages
 const CreatorPaymentSuccess = lazy(() => import("./pages/payments/CreatorPaymentSuccess"));
@@ -111,6 +113,8 @@ const App = () => (
                   <Route path="/support" element={<Support />} />
                   <Route path="/support/tickets" element={<SupportTickets />} />
                   <Route path="/support/ticket/:ticketId" element={<SupportTicketDetail />} />
+                  <Route path="/deposit" element={<Deposit />} />
+                  <Route path="/transactions" element={<Transactions />} />
                   {/* Admin routes */}
                   <Route path="/admin" element={<AdminLayout />}>
                     <Route index element={<AdminDashboard />} />
