@@ -35,6 +35,9 @@ interface ComposeEmailSheetProps {
   onOpenChange: (open: boolean) => void;
   mailboxes: Mailbox[];
   defaultMailboxId?: string;
+  draftId?: string | null;
+  initialData?: { to?: string; subject?: string; body?: string } | null;
+  onDraftSaved?: () => void;
 }
 
 export function ComposeEmailSheet({
@@ -42,15 +45,19 @@ export function ComposeEmailSheet({
   onOpenChange,
   mailboxes,
   defaultMailboxId,
+  draftId,
+  initialData,
+  onDraftSaved,
 }: ComposeEmailSheetProps) {
   const supabase = useSupabaseWithAuth();
   const isMobile = useIsMobile();
   
   const [selectedMailboxId, setSelectedMailboxId] = useState(defaultMailboxId || mailboxes[0]?.id || "");
-  const [toAddress, setToAddress] = useState("");
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
+  const [toAddress, setToAddress] = useState(initialData?.to || "");
+  const [subject, setSubject] = useState(initialData?.subject || "");
+  const [body, setBody] = useState(initialData?.body || "");
   const [sending, setSending] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
 
   const selectedMailbox = mailboxes.find(m => m.id === selectedMailboxId);
 
@@ -204,13 +211,48 @@ export function ComposeEmailSheet({
 
         {/* Actions */}
         <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button variant="outline" onClick={handleClose} disabled={sending}>
+          <Button variant="outline" onClick={handleClose} disabled={sending || savingDraft}>
             <X className="h-4 w-4 mr-2" />
             Cancel
           </Button>
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              if (!selectedMailbox) return;
+              setSavingDraft(true);
+              try {
+                const payload: any = {
+                  mailbox_id: selectedMailboxId,
+                  to_addresses: toAddress.trim(),
+                  subject: subject.trim(),
+                  text_body: body,
+                  status: 'draft',
+                };
+                if (draftId) {
+                  await supabase.from('outbound_emails').update(payload).eq('id', draftId);
+                } else {
+                  await supabase.from('outbound_emails').insert(payload);
+                }
+                toast.success("Draft saved");
+                onDraftSaved?.();
+                onOpenChange(false);
+              } catch (err: any) {
+                toast.error(err.message || "Failed to save draft");
+              } finally {
+                setSavingDraft(false);
+              }
+            }}
+            disabled={sending || savingDraft}
+          >
+            {savingDraft ? (
+              <><Spinner className="h-4 w-4 mr-2" />Saving...</>
+            ) : (
+              "Save Draft"
+            )}
+          </Button>
           <Button 
             onClick={handleSend} 
-            disabled={sending || !toAddress.trim() || !subject.trim() || !body.trim()}
+            disabled={sending || savingDraft || !toAddress.trim() || !subject.trim() || !body.trim()}
           >
             {sending ? (
               <>

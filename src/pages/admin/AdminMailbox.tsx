@@ -75,7 +75,7 @@ interface Email {
   message_id: string;
   from_address: string;
   from_name: string | null;
-  to_addresses: EmailAddress[];
+  to_addresses: EmailAddress[] | string;
   cc_addresses: EmailAddress[] | null;
   subject: string | null;
   html_body: string | null;
@@ -85,6 +85,9 @@ interface Email {
   is_read: boolean;
   is_deleted: boolean;
   created_at: string;
+  // For outbound emails
+  _source?: 'inbound' | 'outbound';
+  _status?: string;
 }
 
 type MobileView = 'list' | 'email';
@@ -223,16 +226,19 @@ const EmailListComponent = memo(function EmailList({
                 )}
               >
                 <div className="flex items-start gap-2">
-                  {!email.is_read && (
+                  {!email.is_read && email._source !== 'outbound' && (
                     <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
                   )}
-                  <div className={cn("flex-1 min-w-0", email.is_read && "ml-4")}>
+                  <div className={cn("flex-1 min-w-0", (email.is_read || email._source === 'outbound') && "ml-4")}>
                     <div className="flex items-center justify-between gap-2">
                       <span className={cn(
                         "text-sm truncate",
-                        !email.is_read && "font-semibold"
+                        !email.is_read && email._source !== 'outbound' && "font-semibold"
                       )}>
-                        {email.from_name || email.from_address}
+                        {email._source === 'outbound'
+                          ? `To: ${typeof email.to_addresses === 'string' ? email.to_addresses : (email.to_addresses as EmailAddress[])?.[0]?.address || ''}`
+                          : (email.from_name || email.from_address)
+                        }
                       </span>
                       <span className="text-xs text-muted-foreground flex-shrink-0">
                         {formatDistanceToNow(new Date(email.received_at), { addSuffix: true })}
@@ -240,7 +246,7 @@ const EmailListComponent = memo(function EmailList({
                     </div>
                     <p className={cn(
                       "text-sm truncate",
-                      !email.is_read ? "text-foreground" : "text-muted-foreground"
+                      !email.is_read && email._source !== 'outbound' ? "text-foreground" : "text-muted-foreground"
                     )}>
                       {email.subject || '(No Subject)'}
                     </p>
@@ -353,7 +359,10 @@ const EmailViewerComponent = memo(function EmailViewer({
           <div className="flex gap-2 flex-wrap">
             <span className="text-muted-foreground w-12 flex-shrink-0">To:</span>
             <span className="break-all">
-              {email.to_addresses.map(a => a.name ? `${a.name} <${a.address}>` : a.address).join(', ')}
+              {typeof email.to_addresses === 'string'
+                ? email.to_addresses
+                : (email.to_addresses as EmailAddress[]).map(a => a.name ? `${a.name} <${a.address}>` : a.address).join(', ')
+              }
             </span>
           </div>
           {email.cc_addresses && email.cc_addresses.length > 0 && (
@@ -514,35 +523,127 @@ export default function AdminMailbox() {
       setEmailsLoading(true);
     }
     try {
-      const { data, error } = await supabase
-        .from('inbound_emails')
-        .select('*')
-        .eq('mailbox_id', mailboxId)
-        .eq('is_deleted', false)
-        .order('received_at', { ascending: false })
-        .limit(50);
+      if (selectedFolder === 'inbox') {
+        // Inbox: inbound_emails where is_deleted = false
+        const { data, error } = await supabase
+          .from('inbound_emails')
+          .select('*')
+          .eq('mailbox_id', mailboxId)
+          .eq('is_deleted', false)
+          .order('received_at', { ascending: false })
+          .limit(50);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      const typedEmails: Email[] = (data || []).map(email => ({
-        ...email,
-        to_addresses: (email.to_addresses as unknown as EmailAddress[]) || [],
-        cc_addresses: email.cc_addresses ? (email.cc_addresses as unknown as EmailAddress[]) : null,
-        attachments: email.attachments ? (email.attachments as unknown as EmailAttachment[]) : null
-      }));
+        const typedEmails: Email[] = (data || []).map(email => ({
+          ...email,
+          to_addresses: (email.to_addresses as unknown as EmailAddress[]) || [],
+          cc_addresses: email.cc_addresses ? (email.cc_addresses as unknown as EmailAddress[]) : null,
+          attachments: email.attachments ? (email.attachments as unknown as EmailAttachment[]) : null,
+          _source: 'inbound' as const,
+        }));
 
-      // Only update emails list if data actually changed
-      setEmails(prev => {
-        const prevJson = JSON.stringify(prev);
-        const newJson = JSON.stringify(typedEmails);
-        if (prevJson === newJson) return prev;
-        return typedEmails;
-      });
+        setEmails(prev => {
+          const prevJson = JSON.stringify(prev);
+          const newJson = JSON.stringify(typedEmails);
+          if (prevJson === newJson) return prev;
+          return typedEmails;
+        });
+      } else if (selectedFolder === 'sent' || selectedFolder === 'drafts' || selectedFolder === 'outbox') {
+        // Outbound folders
+        const statusMap: Record<string, string> = {
+          sent: 'sent',
+          drafts: 'draft',
+          outbox: 'queued',
+        };
+        const { data, error } = await supabase
+          .from('outbound_emails')
+          .select('*')
+          .eq('mailbox_id', mailboxId)
+          .eq('status', statusMap[selectedFolder])
+          .eq('is_deleted', false)
+          .order('created_at', { ascending: false })
+          .limit(50);
 
-      // Update displayed email's read status if it changed (for toggle read button sync)
-      // But don't trigger a re-render of the email content
+        if (error) throw error;
+
+        const typedEmails: Email[] = (data || []).map((email: any) => ({
+          id: email.id,
+          mailbox_id: email.mailbox_id,
+          message_id: email.resend_id || email.id,
+          from_address: '',
+          from_name: null,
+          to_addresses: email.to_addresses || '',
+          cc_addresses: null,
+          subject: email.subject,
+          html_body: email.html_body,
+          text_body: email.text_body,
+          attachments: null,
+          received_at: email.sent_at || email.created_at,
+          is_read: true,
+          is_deleted: email.is_deleted,
+          created_at: email.created_at,
+          _source: 'outbound' as const,
+          _status: email.status,
+        }));
+
+        setEmails(typedEmails);
+      } else if (selectedFolder === 'trash') {
+        // Trash: both inbound and outbound where is_deleted = true
+        const [inbound, outbound] = await Promise.all([
+          supabase
+            .from('inbound_emails')
+            .select('*')
+            .eq('mailbox_id', mailboxId)
+            .eq('is_deleted', true)
+            .order('received_at', { ascending: false })
+            .limit(25),
+          supabase
+            .from('outbound_emails')
+            .select('*')
+            .eq('mailbox_id', mailboxId)
+            .eq('is_deleted', true)
+            .order('created_at', { ascending: false })
+            .limit(25),
+        ]);
+
+        const inboundEmails: Email[] = (inbound.data || []).map(email => ({
+          ...email,
+          to_addresses: (email.to_addresses as unknown as EmailAddress[]) || [],
+          cc_addresses: email.cc_addresses ? (email.cc_addresses as unknown as EmailAddress[]) : null,
+          attachments: email.attachments ? (email.attachments as unknown as EmailAttachment[]) : null,
+          _source: 'inbound' as const,
+        }));
+
+        const outboundEmails: Email[] = (outbound.data || []).map((email: any) => ({
+          id: email.id,
+          mailbox_id: email.mailbox_id,
+          message_id: email.resend_id || email.id,
+          from_address: '',
+          from_name: null,
+          to_addresses: email.to_addresses || '',
+          cc_addresses: null,
+          subject: email.subject,
+          html_body: email.html_body,
+          text_body: email.text_body,
+          attachments: null,
+          received_at: email.sent_at || email.created_at,
+          is_read: true,
+          is_deleted: true,
+          created_at: email.created_at,
+          _source: 'outbound' as const,
+          _status: email.status,
+        }));
+
+        const allTrash = [...inboundEmails, ...outboundEmails].sort(
+          (a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime()
+        );
+        setEmails(allTrash);
+      }
+
+      // Update displayed email ref
       if (displayedEmailRef.current) {
-        const updatedEmail = typedEmails.find(e => e.id === displayedEmailRef.current?.id);
+        const updatedEmail = emails.find(e => e.id === displayedEmailRef.current?.id);
         if (updatedEmail && updatedEmail.is_read !== displayedEmailRef.current.is_read) {
           displayedEmailRef.current = updatedEmail;
         }
@@ -554,7 +655,7 @@ export default function AdminMailbox() {
         setEmailsLoading(false);
       }
     }
-  }, [supabase]);
+  }, [supabase, selectedFolder]);
 
   useEffect(() => {
     fetchMailboxes();
@@ -566,7 +667,7 @@ export default function AdminMailbox() {
       setSelectedEmail(null);
       displayedEmailRef.current = null;
     }
-  }, [selectedMailbox, fetchEmails]);
+  }, [selectedMailbox, selectedFolder, fetchEmails]);
 
   // Unified refresh function (silent = no loading state, prevents flickering)
   const handleRefresh = useCallback(async (silent = false) => {
@@ -667,8 +768,9 @@ export default function AdminMailbox() {
   }, [supabase]);
 
   const deleteEmail = useCallback(async (email: Email) => {
+    const table = email._source === 'outbound' ? 'outbound_emails' : 'inbound_emails';
     await supabase
-      .from('inbound_emails')
+      .from(table)
       .update({ is_deleted: true })
       .eq('id', email.id);
 
@@ -682,7 +784,7 @@ export default function AdminMailbox() {
       }
     }
 
-    if (!email.is_read) {
+    if (!email.is_read && email._source !== 'outbound') {
       setMailboxes(prev =>
         prev.map(mb =>
           mb.id === email.mailbox_id
@@ -703,7 +805,9 @@ export default function AdminMailbox() {
   const handleSelectEmail = useCallback((email: Email) => {
     setSelectedEmail(email);
     displayedEmailRef.current = email;
-    markAsRead(email);
+    if (email._source !== 'outbound') {
+      markAsRead(email);
+    }
     if (isMobile) {
       setMobileView('email');
     }

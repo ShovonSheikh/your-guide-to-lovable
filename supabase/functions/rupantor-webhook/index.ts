@@ -93,7 +93,24 @@ serve(async (req) => {
     // Determine payment type from metadata or check both tables
     const paymentType = payload.metadata?.payment_type || payload.payment_type;
 
-    if (paymentType === 'tip') {
+    if (paymentType === 'token_deposit') {
+      // Handle token deposit
+      const profileId = payload.metadata?.profile_id;
+      if (profileId && verifiedStatus === 'completed') {
+        const { error: rpcError } = await supabase.rpc("process_token_deposit", {
+          p_profile_id: profileId,
+          p_amount: parseFloat(verifiedAmount),
+          p_reference_id: transactionId,
+          p_description: `Token deposit - ৳${verifiedAmount}`,
+        });
+        if (rpcError) {
+          console.error("Error processing token deposit:", rpcError);
+        } else {
+          console.log(`Token deposit processed: ${profileId} +${verifiedAmount}`);
+        }
+      }
+      console.log(`Token deposit webhook processed: ${transactionId} -> ${verifiedStatus}`);
+    } else if (paymentType === 'tip') {
       // Handle tip payment
       const { data: existingTip } = await supabase
         .from('tips')
