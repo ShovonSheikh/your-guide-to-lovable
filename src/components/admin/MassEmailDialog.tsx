@@ -24,10 +24,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/hooks/use-toast';
 import { useSupabaseWithAuth } from '@/hooks/useSupabaseWithAuth';
-import { Send, Users, UserCheck, Heart, AlertTriangle } from 'lucide-react';
+import { Send, Users, UserCheck, Heart, AlertTriangle, Mail } from 'lucide-react';
 
 interface MassEmailDialogProps {
   open: boolean;
@@ -35,6 +42,12 @@ interface MassEmailDialogProps {
 }
 
 type Audience = 'all' | 'creators' | 'supporters';
+
+interface Mailbox {
+  id: string;
+  email_address: string;
+  display_name: string | null;
+}
 
 export function MassEmailDialog({ open, onOpenChange }: MassEmailDialogProps) {
   const { user } = useUser();
@@ -50,12 +63,30 @@ export function MassEmailDialog({ open, onOpenChange }: MassEmailDialogProps) {
   const [isLoadingCount, setIsLoadingCount] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [mailboxes, setMailboxes] = useState<Mailbox[]>([]);
+  const [selectedMailboxId, setSelectedMailboxId] = useState<string>('');
   const [sendResult, setSendResult] = useState<{
     sent: number;
     failed: number;
     skipped: number;
     total: number;
   } | null>(null);
+
+  // Fetch mailboxes on open
+  useEffect(() => {
+    if (!open) return;
+    const fetchMailboxes = async () => {
+      const { data } = await supabaseAuth
+        .from('mailboxes')
+        .select('id, email_address, display_name')
+        .order('email_address');
+      if (data && data.length > 0) {
+        setMailboxes(data);
+        if (!selectedMailboxId) setSelectedMailboxId(data[0].id);
+      }
+    };
+    fetchMailboxes();
+  }, [open]);
 
   // Fetch recipient count when audience changes
   useEffect(() => {
@@ -114,6 +145,8 @@ export function MassEmailDialog({ open, onOpenChange }: MassEmailDialogProps) {
     return DOMPurify.sanitize(raw);
   }, [htmlBody, previewFirstName]);
 
+  const selectedMailbox = mailboxes.find(m => m.id === selectedMailboxId);
+
   const handleSend = async () => {
     if (!subject.trim() || !htmlBody.trim()) {
       toast({
@@ -123,7 +156,14 @@ export function MassEmailDialog({ open, onOpenChange }: MassEmailDialogProps) {
       });
       return;
     }
-
+    if (!selectedMailboxId) {
+      toast({
+        title: 'No sender selected',
+        description: 'Please select a mailbox to send from.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setShowConfirm(true);
   };
 
@@ -132,9 +172,15 @@ export function MassEmailDialog({ open, onOpenChange }: MassEmailDialogProps) {
     setIsSending(true);
     setSendResult(null);
 
+    const fromAddress = selectedMailbox
+      ? selectedMailbox.display_name
+        ? `${selectedMailbox.display_name} <${selectedMailbox.email_address}>`
+        : selectedMailbox.email_address
+      : undefined;
+
     try {
       const response = await supabaseAuth.functions.invoke('send-mass-email', {
-        body: { audience, subject, htmlBody },
+        body: { audience, subject, htmlBody, from_address: fromAddress },
         headers: {
           'x-clerk-user-id': user?.id || '',
         },
@@ -195,6 +241,7 @@ export function MassEmailDialog({ open, onOpenChange }: MassEmailDialogProps) {
     setSendResult(null);
     setPreviewFirstName('there');
     setShowPreview(false);
+    setSelectedMailboxId(mailboxes[0]?.id || '');
   };
 
   const handleClose = (isOpen: boolean) => {
@@ -227,6 +274,26 @@ export function MassEmailDialog({ open, onOpenChange }: MassEmailDialogProps) {
           </DialogHeader>
 
           <div className="space-y-6 py-4">
+            {/* Sender Selection */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Mail className="w-4 h-4" />
+                Send From
+              </Label>
+              <Select value={selectedMailboxId} onValueChange={setSelectedMailboxId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a mailbox..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {mailboxes.map((mb) => (
+                    <SelectItem key={mb.id} value={mb.id}>
+                      {mb.display_name ? `${mb.display_name} <${mb.email_address}>` : mb.email_address}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Audience Selection */}
             <div className="space-y-3">
               <Label>Select Audience</Label>
@@ -334,7 +401,7 @@ export function MassEmailDialog({ open, onOpenChange }: MassEmailDialogProps) {
                         title="Mass mail preview"
                         className="w-full h-full"
                         sandbox="allow-same-origin"
-                        srcDoc={renderedHtml || '<div style=\"font-family: system-ui; padding: 16px; color: #444;\">(No HTML body)</div>'}
+                        srcDoc={renderedHtml || '<div style="font-family: system-ui; padding: 16px; color: #444;">(No HTML body)</div>'}
                       />
                     </div>
                   </div>
@@ -372,7 +439,7 @@ export function MassEmailDialog({ open, onOpenChange }: MassEmailDialogProps) {
             <Button variant="outline" onClick={() => handleClose(false)} disabled={isSending}>
               Cancel
             </Button>
-            <Button onClick={handleSend} disabled={isSending || !subject.trim() || !htmlBody.trim()}>
+            <Button onClick={handleSend} disabled={isSending || !subject.trim() || !htmlBody.trim() || !selectedMailboxId}>
               {isSending ? (
                 <>
                   <Spinner className="w-4 h-4 mr-2" />
@@ -398,7 +465,8 @@ export function MassEmailDialog({ open, onOpenChange }: MassEmailDialogProps) {
               Confirm Mass Email
             </AlertDialogTitle>
             <AlertDialogDescription>
-              You are about to send an email to <strong>{recipientCount?.toLocaleString()}</strong> recipients.
+              You are about to send an email to <strong>{recipientCount?.toLocaleString()}</strong> recipients
+              from <strong>{selectedMailbox?.email_address}</strong>.
               This action cannot be undone. Are you sure you want to proceed?
             </AlertDialogDescription>
           </AlertDialogHeader>
