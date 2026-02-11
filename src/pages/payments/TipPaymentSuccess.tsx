@@ -35,6 +35,7 @@ const TipPaymentSuccess: React.FC = () => {
   const [tipData, setTipData] = useState<any>(null);
   const [creatorName, setCreatorName] = useState<string>("");
   const [creatorVerified, setCreatorVerified] = useState<boolean>(false);
+  const [creatorAvatarUrl, setCreatorAvatarUrl] = useState<string>("");
   const [transactionIdForCard, setTransactionIdForCard] = useState<string>("");
   const [showImageCreator, setShowImageCreator] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
@@ -108,7 +109,7 @@ const TipPaymentSuccess: React.FC = () => {
       // Fetch creator name and verification status using public view
       const { data: creator } = await supabase
         .from("public_profiles")
-        .select("first_name, last_name, username, is_verified")
+        .select("first_name, last_name, username, is_verified, avatar_url")
         .eq("id", tipInfo.creator_id)
         .single();
 
@@ -119,6 +120,7 @@ const TipPaymentSuccess: React.FC = () => {
             : `@${creator.username}`
         );
         setCreatorVerified(creator.is_verified || false);
+        setCreatorAvatarUrl(creator.avatar_url || '');
       }
 
       // Generate transaction ID for the card
@@ -306,6 +308,7 @@ const TipPaymentSuccess: React.FC = () => {
                   trxId={transactionIdForCard}
                   verified={creatorVerified}
                   currency="৳"
+                  avatarUrl={creatorAvatarUrl}
                 />
               </div>
             </div>

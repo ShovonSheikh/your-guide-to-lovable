@@ -36,7 +36,7 @@ export const defaultShareImageConfig: ShareImageConfig = {
 
 // Default JSX template with dynamic variable placeholders
 export const defaultJsxTemplate = `// TipKoro Share Image Template
-// Available variables: {{creatorName}}, {{tipAmount}}, {{userMessage}}, {{timestamp}}, {{supporterName}}, {{currency}}
+// Available variables: {{creatorName}}, {{tipAmount}}, {{userMessage}}, {{timestamp}}, {{supporterName}}, {{currency}}, {{avatarUrl}}
 
 <div className="tipkoro-card-wrapper">
   {/* Decorative confetti background */}

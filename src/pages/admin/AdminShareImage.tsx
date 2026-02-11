@@ -25,6 +25,7 @@ const DYNAMIC_VARIABLES = [
   { name: 'currency', description: 'Currency symbol', example: '৳' },
   { name: 'trxId', description: 'Unique transaction ID', example: 'TIP-2026012034AB' },
   { name: 'verified', description: 'Whether the creator is verified (true/false)', example: 'true' },
+  { name: 'avatarUrl', description: 'URL of the creator\'s avatar image', example: 'https://i.pravatar.cc/150' },
 ];
 
 // Default template code
@@ -337,6 +338,7 @@ const SAMPLE_VALUES = {
   currency: '৳',
   trxId: 'TIP-2026012034AB',
   verified: 'true',
+  avatarUrl: 'https://i.pravatar.cc/150',
 };
 
 export default function AdminShareImage() {

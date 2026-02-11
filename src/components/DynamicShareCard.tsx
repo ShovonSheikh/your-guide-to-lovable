@@ -17,6 +17,7 @@ interface DynamicShareCardProps {
   verified?: boolean;
   supporterName?: string;
   currency?: string;
+  avatarUrl?: string;
 }
 
 const DynamicShareCard = forwardRef<HTMLDivElement, DynamicShareCardProps>(
@@ -30,6 +31,7 @@ const DynamicShareCard = forwardRef<HTMLDivElement, DynamicShareCardProps>(
       verified = false,
       supporterName = '',
       currency = '৳',
+      avatarUrl = '',
     },
     ref
   ) => {
@@ -109,6 +111,7 @@ const DynamicShareCard = forwardRef<HTMLDivElement, DynamicShareCardProps>(
         verified: verified ? 'true' : 'false',
         supporterName: sanitizeText(supporterName),
         currency: sanitizeText(currency),
+        avatarUrl: sanitizeText(avatarUrl),
       };
 
       Object.entries(variables).forEach(([key, value]) => {
@@ -137,6 +140,7 @@ const DynamicShareCard = forwardRef<HTMLDivElement, DynamicShareCardProps>(
       verified,
       supporterName,
       currency,
+      avatarUrl,
     ]);
 
     if (loading) {
