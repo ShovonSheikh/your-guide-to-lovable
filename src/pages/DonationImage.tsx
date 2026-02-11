@@ -232,6 +232,7 @@ export default function DonationImage() {
                 timestamp={formatTimestamp()}
                 supporterName={isCreator ? supporterName : displayName}
                 currency="৳"
+                avatarUrl={profile?.avatar_url || ''}
               />
             </div>
             

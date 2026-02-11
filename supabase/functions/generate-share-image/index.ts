@@ -16,6 +16,7 @@ interface ShareImageParams {
   timestamp?: string;
   trxId?: string;
   verified?: boolean;
+  avatarUrl?: string;
 }
 
 // Escape HTML entities
@@ -30,7 +31,7 @@ function escapeHtml(str: string): string {
 
 // Generate SVG for the share image
 function generateSVG(params: ShareImageParams): string {
-  const { amount, creatorName, message, timestamp, isCreator, trxId, verified } = params;
+  const { amount, creatorName, message, timestamp, isCreator, trxId, verified, avatarUrl } = params;
   
   const statusText = isCreator ? 'You received a tip!' : `You just supported`;
   const displayMessage = message ? escapeHtml(message) : 'Thanks for being awesome!';
@@ -110,7 +111,10 @@ function generateSVG(params: ShareImageParams): string {
   
   <!-- Logo circle -->
   <circle cx="300" cy="125" r="35" fill="white" filter="url(#logoShadow)"/>
-  <image href="https://i.ibb.co.com/hF035hX2/2026-01-16-21-27-58-your-guide-to-lovable-Antigravity-tip-share-image-guide-txt-removebg-preview.png" x="270" y="95" width="60" height="60" clip-path="url(#logoClip)"/>
+  ${avatarUrl 
+    ? `<image href="${escapeHtml(avatarUrl)}" x="270" y="95" width="60" height="60" clip-path="url(#logoClip)"/>`
+    : `<image href="https://i.ibb.co.com/hF035hX2/2026-01-16-21-27-58-your-guide-to-lovable-Antigravity-tip-share-image-guide-txt-removebg-preview.png" x="270" y="95" width="60" height="60" clip-path="url(#logoClip)"/>`
+  }
   
   <!-- Main card -->
   <rect x="75" y="145" width="450" height="400" rx="30" fill="white" filter="url(#cardShadow)"/>
