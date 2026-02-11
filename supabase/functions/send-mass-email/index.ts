@@ -10,9 +10,9 @@ interface MassEmailRequest {
   audience: 'all' | 'creators' | 'supporters';
   subject: string;
   htmlBody: string;
+  from_address?: string;
 }
 
-// Helper function to send email via Resend API
 async function sendEmail(
   apiKey: string,
   from: string,
@@ -27,12 +27,7 @@ async function sendEmail(
         "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        from,
-        to: [to],
-        subject,
-        html,
-      }),
+      body: JSON.stringify({ from, to: [to], subject, html }),
     });
 
     if (!response.ok) {
@@ -48,7 +43,6 @@ async function sendEmail(
 }
 
 serve(async (req: Request): Promise<Response> => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -57,15 +51,11 @@ serve(async (req: Request): Promise<Response> => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const resendApiKey = Deno.env.get('RESEND_API_KEY')!;
-    const resendFrom = Deno.env.get('RESEND_FROM') || 'TipKoro <hello@tipkoro.com>';
+    const resendFromDefault = Deno.env.get('RESEND_FROM') || 'TipKoro <hello@tipkoro.com>';
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const getEmailDomain = (email: string) => {
-      const at = email.lastIndexOf('@');
-      return at >= 0 ? email.slice(at + 1) : '';
-    };
 
-    // Verify admin status via Clerk user ID header
+    // Verify admin
     const clerkUserId = req.headers.get('x-clerk-user-id');
     if (!clerkUserId) {
       return new Response(
@@ -74,7 +64,6 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Check if user is admin
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('id, is_admin')
@@ -88,9 +77,8 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    const { audience, subject, htmlBody }: MassEmailRequest = await req.json();
+    const { audience, subject, htmlBody, from_address }: MassEmailRequest = await req.json();
 
-    // Validate required fields
     if (!audience || !subject || !htmlBody) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields: audience, subject, htmlBody' }),
@@ -98,7 +86,27 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Build query based on audience
+    // Determine sender: validate from_address against mailboxes table if provided
+    let resendFrom = resendFromDefault;
+    if (from_address) {
+      // Extract email from "Display Name <email>" format
+      const emailMatch = from_address.match(/<(.+)>$/);
+      const emailToCheck = emailMatch ? emailMatch[1] : from_address;
+
+      const { data: mailbox } = await supabase
+        .from('mailboxes')
+        .select('id')
+        .eq('email_address', emailToCheck)
+        .single();
+
+      if (mailbox) {
+        resendFrom = from_address;
+      } else {
+        console.warn(`from_address "${from_address}" not found in mailboxes, using default`);
+      }
+    }
+
+    // Build recipient query
     let query = supabase
       .from('profiles')
       .select('id, email, first_name')
@@ -109,12 +117,10 @@ serve(async (req: Request): Promise<Response> => {
     } else if (audience === 'supporters') {
       query = query.eq('account_type', 'supporter');
     }
-    // 'all' gets everyone with an email
 
     const { data: recipients, error: recipientError } = await query;
 
     if (recipientError) {
-      console.error('Error fetching recipients:', recipientError);
       return new Response(
         JSON.stringify({ error: 'Failed to fetch recipients' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -123,46 +129,26 @@ serve(async (req: Request): Promise<Response> => {
 
     if (!recipients || recipients.length === 0) {
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          summary: { sent: 0, failed: 0, skipped: 0, total: 0 },
-          message: 'No recipients found for the selected audience'
-        }),
+        JSON.stringify({ success: true, summary: { sent: 0, failed: 0, skipped: 0, total: 0 }, message: 'No recipients found' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Filter out invalid emails
     const validRecipients = recipients.filter(r => r.email && r.email.includes('@'));
-    console.info('Mass email recipients prepared', {
-      audience,
-      total: recipients.length,
-      valid: validRecipients.length,
-      skipped: recipients.length - validRecipients.length,
-      from: resendFrom,
-    });
-    
+    console.info('Mass email', { audience, total: recipients.length, valid: validRecipients.length, from: resendFrom });
+
     let sent = 0;
     let failed = 0;
     const skipped = recipients.length - validRecipients.length;
     const errors: string[] = [];
-
-    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-    const minDelayMs = 550;
+    const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
     for (let i = 0; i < validRecipients.length; i++) {
       const recipient = validRecipients[i];
-
       const personalizedSubject = subject.replace(/\{\{first_name\}\}/g, recipient.first_name || 'there');
       const personalizedBody = htmlBody.replace(/\{\{first_name\}\}/g, recipient.first_name || 'there');
 
-      const result = await sendEmail(
-        resendApiKey,
-        resendFrom,
-        recipient.email,
-        personalizedSubject,
-        personalizedBody
-      );
+      const result = await sendEmail(resendApiKey, resendFrom, recipient.email, personalizedSubject, personalizedBody);
 
       await supabase.from('email_logs').insert({
         recipient_email: recipient.email,
@@ -176,30 +162,17 @@ serve(async (req: Request): Promise<Response> => {
       else {
         failed++;
         if (result.error) errors.push(result.error);
-        console.warn('Mass email send failed', {
-          audience,
-          recipient_id: recipient.id,
-          recipient_domain: getEmailDomain(recipient.email),
-          error: result.error,
-        });
       }
 
-      if (i < validRecipients.length - 1) {
-        await sleep(minDelayMs);
-      }
+      if (i < validRecipients.length - 1) await sleep(550);
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        summary: {
-          sent,
-          failed,
-          skipped,
-          total: recipients.length,
-        },
-        message: `Successfully sent ${sent} emails. Failed: ${failed}. Skipped (invalid email): ${skipped}.`,
-        errors: errors.slice(0, 5), // Return first 5 errors for debugging
+        summary: { sent, failed, skipped, total: recipients.length },
+        message: `Successfully sent ${sent} emails. Failed: ${failed}. Skipped: ${skipped}.`,
+        errors: errors.slice(0, 5),
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
