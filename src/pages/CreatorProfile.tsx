@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Navigate, Link } from "react-router-dom";
+import { useParams, Navigate, Link, useNavigate } from "react-router-dom";
 import DOMPurify from "dompurify";
 import { useUser } from "@clerk/clerk-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -58,6 +58,7 @@ const tipAmounts = [50, 100, 200, 500, 1000];
 
 export default function CreatorProfile() {
   const { username } = useParams<{ username: string }>();
+  const navigate = useNavigate();
   const { user, isLoaded, isSignedIn } = useUser();
   const [creator, setCreator] = useState<CreatorData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -214,11 +215,19 @@ export default function CreatorProfile() {
       });
 
       refetchBalance();
-      toast({
-        title: "Tip sent! 🎉",
-        description: `৳${amount} sent to ${creator!.first_name || creator!.username} from your token balance.`,
-      });
-      setMessage('');
+
+      // Store tip data for the success page
+      localStorage.setItem('tipkoro_tip_data', JSON.stringify({
+        creator_id: creator!.id,
+        supporter_name: fullName,
+        supporter_email: email,
+        amount,
+        message: message || null,
+      }));
+
+      // Navigate to success page
+      navigate(`/payments/tips/success?transactionId=${encodeURIComponent(tokenTxnId)}&paymentMethod=Tokens&paymentAmount=${amount}`);
+      return;
     } catch (error) {
       console.error("Tip error:", error);
       toast({
