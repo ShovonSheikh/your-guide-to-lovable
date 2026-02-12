@@ -217,10 +217,11 @@ serve(async (req) => {
       );
     }
 
-    // For non-dummy transactions, verify with Rupantor API
+    // For non-dummy and non-token transactions, verify with Rupantor API
     const isDummyPayment = transaction_id.startsWith('dummy_');
+    const isTokenPayment = transaction_id.startsWith('token_');
 
-    if (!isDummyPayment && apiKey && clientHost) {
+    if (!isDummyPayment && !isTokenPayment && apiKey && clientHost) {
       try {
         console.log("Verifying payment with Rupantor API:", transaction_id);
         const verifyResponse = await fetch(`${RUPANTOR_API_URL}/payment/verify-payment`, {
