@@ -1,73 +1,41 @@
 
 
-# Plan: Mass Email Sender Selection, Token Economy Confirmation, and Global Loader Optimization
+# Fix Token Tip Success Page + Add Avatar URL Preview Field
 
-## 1. Mass Email: Selectable Sender Address
+## Problem 1: Token tips don't show the success page
 
-### Problem
-The mass email feature uses a hardcoded `RESEND_FROM` env variable (`TipKoro <hello@tipkoro.com>`). You want to choose which mailbox to send from.
+After sending a token-based tip from `CreatorProfile.tsx`, the code only shows a toast message and never navigates to the tip success page (`/payments/tips/success`). The previous RupantorPay flow naturally redirected to this page, but the token flow bypasses it entirely.
 
-### Changes
+### Root Cause
 
-**Frontend: `src/components/admin/MassEmailDialog.tsx`**
-- Add a mailbox selector dropdown (same pattern as `ComposeEmailSheet`)
-- Fetch mailboxes from the `mailboxes` table on mount
-- Pass the selected `from_address` in the request body to the edge function
+In `CreatorProfile.tsx` (handleTip function), after the token transfer and tip creation succeed, it only calls `toast()` and resets the form. It never:
+1. Stores tip data in `localStorage` (which `TipPaymentSuccess.tsx` reads)
+2. Navigates to `/payments/tips/success` with the proper query parameters
 
-**Backend: `supabase/functions/send-mass-email/index.ts`**
-- Accept an optional `from_address` field in the request body
-- If provided, use it as the sender instead of `RESEND_FROM`
-- Validate the address exists in the `mailboxes` table for security (prevents spoofing arbitrary addresses)
+### Fix: `src/pages/CreatorProfile.tsx`
 
----
+After a successful token tip:
+1. Store tip data in `localStorage` under `tipkoro_tip_data` (matching what `TipPaymentSuccess.tsx` expects):
+   - `creator_id`, `supporter_name`, `supporter_email`, `amount`, `message`
+2. Navigate to `/payments/tips/success?transactionId={tokenTxnId}&paymentMethod=Tokens&paymentAmount={amount}`
 
-## 2. Token Economy Status: Confirmed Complete
+### Fix: `src/pages/payments/TipPaymentSuccess.tsx`
 
-After reviewing the codebase, the token economy is **fully implemented**:
+The success page currently calls `verifyPayment()` and then `create-tip` again. For token-based tips (where `transactionId` starts with `token_`), both steps have already been done. The fix:
 
-- **Database**: `token_balances`, `token_transactions` tables and all 3 RPC functions (`process_token_deposit`, `process_token_transfer`, `process_token_withdrawal`) are live
-- **Deposit flow**: `deposit-tokens` edge function with dummy/real payment support is working
-- **Token tipping**: `CreatorProfile.tsx` has "Pay with Tokens" flow using `process_token_transfer` RPC, then records via `create-tip`
-- **Withdrawal integration**: `AdminWithdrawalDetail.tsx`, `AdminWithdrawals.tsx`, `Settings.tsx`, and `Onboarding.tsx` all call `process_token_withdrawal`
-- **UI**: `useTokenBalance` hook, `/deposit` page, `/transactions` page, navbar balance badge -- all present
-- **Mailbox backend**: `outbound_emails` table, draft saving in `ComposeEmailSheet`, folder switching in `AdminMailbox` -- all present
-
-**No token economy changes needed.**
+1. Detect token transactions by checking if `transactionId` starts with `token_`
+2. For token transactions, skip the `verifyPayment()` call and the `create-tip` call (both already completed in `CreatorProfile.tsx`)
+3. Still fetch creator info and display the success UI with the share card as normal
 
 ---
 
-## 3. Build Error Fix: `send-push-notification`
+## Problem 2: No avatar URL input in Share Image Editor
 
-### Problem
-`npm:web-push@3.6.7` import fails in Deno/Lovable build. Deno npm specifiers require explicit config.
+The "Test Values" section in the share image editor has fields for creator name, tip amount, message, transaction ID, and verified status -- but no field for the `avatarUrl` variable, making it impossible to preview how avatar images render in the template.
 
-### Fix
-**`supabase/functions/send-push-notification/index.ts`**
-- Change `import webpush from "npm:web-push@3.6.7"` to `import webpush from "https://esm.sh/web-push@3.6.7"` (esm.sh works natively in Deno without config)
+### Fix: `src/pages/admin/AdminShareImage.tsx`
 
----
-
-## 4. Global Loader Optimization
-
-### Problems
-- **Laggy fadeout on PC**: The `filter: blur(32px)` transition is GPU-heavy and causes visible stuttering on desktop browsers. The scale + blur combo creates a "Thanos snap" effect.
-- **Too slow**: Total loader lifecycle is ~3.5 seconds (1500ms fake load + 800ms calm + 1200ms fade + 300ms buffer).
-
-### Fix
-
-**`src/contexts/GlobalLoaderContext.tsx`**
-- Reduce fake load time: 1500ms to 600ms
-- Remove calm phase: 800ms to 0ms (go straight to exit)
-- Reduce unmount buffer: 1500ms to 600ms (matching the new 500ms animation)
-
-**`src/components/GlobalLoader.tsx`**
-- Remove `filter: blur(32px)` transition entirely (this is the "Thanos snap" culprit)
-- Remove `transform: scale(1.05)` (causes layout repaints)
-- Keep only a simple `opacity` fade: 500ms duration with `ease-out`
-- Use `will-change: opacity` for GPU-optimized compositing
-- Fade the spinner faster (200ms)
-
-**Result**: Clean, smooth 500ms opacity fade. Total lifecycle drops from ~3.5s to ~1.2s.
+Add a new input field for "Avatar URL" in the Test Values card, wired to `previewValues.avatarUrl`. Place it alongside the existing fields (e.g., in a new row or alongside the verified field).
 
 ---
 
@@ -75,16 +43,62 @@ After reviewing the codebase, the token economy is **fully implemented**:
 
 | File | Changes |
 |------|---------|
-| `src/components/admin/MassEmailDialog.tsx` | Add mailbox selector dropdown |
-| `supabase/functions/send-mass-email/index.ts` | Accept + validate `from_address` |
-| `supabase/functions/send-push-notification/index.ts` | Fix `web-push` import to use esm.sh |
-| `src/contexts/GlobalLoaderContext.tsx` | Shorten all timers |
-| `src/components/GlobalLoader.tsx` | Remove blur/scale, use simple opacity fade |
+| `src/pages/CreatorProfile.tsx` | After successful token tip: store tip data in localStorage, navigate to success page |
+| `src/pages/payments/TipPaymentSuccess.tsx` | Skip verifyPayment + create-tip for `token_` transactions, go straight to success display |
+| `src/pages/admin/AdminShareImage.tsx` | Add avatarUrl input field in Test Values section |
 
-## Files to Deploy
+## Implementation Details
 
-| Edge Function |
-|--------------|
-| `send-mass-email` |
-| `send-push-notification` |
+### CreatorProfile.tsx changes (handleTip function)
+
+After the successful `create-tip` call, before the toast:
+
+```typescript
+// Store tip data for the success page
+localStorage.setItem('tipkoro_tip_data', JSON.stringify({
+  creator_id: creator!.id,
+  supporter_name: fullName,
+  supporter_email: email,
+  amount,
+  message: message || null,
+}));
+
+// Navigate to success page
+navigate(`/payments/tips/success?transactionId=${encodeURIComponent(tokenTxnId)}&paymentMethod=Tokens&paymentAmount=${amount}`);
+return; // Don't show toast, the success page handles the UX
+```
+
+### TipPaymentSuccess.tsx changes (handleVerification function)
+
+```typescript
+const isTokenPayment = transactionId.startsWith('token_');
+
+if (isTokenPayment) {
+  // Token tips are already verified and recorded in CreatorProfile.tsx
+  // Just display the success UI
+  setTipData(tipInfo);
+  // Fetch creator info...
+  setVerified(true);
+  setVerifying(false);
+  return;
+}
+
+// ... existing RupantorPay verification flow unchanged
+```
+
+### AdminShareImage.tsx changes (Test Values card)
+
+Add after the "Creator Verified" input:
+
+```jsx
+<div className="space-y-1">
+  <Label className="text-xs">Avatar URL</Label>
+  <Input
+    value={previewValues.avatarUrl}
+    onChange={(e) => setPreviewValues(prev => ({ ...prev, avatarUrl: e.target.value }))}
+    className="h-8 text-sm"
+    placeholder="https://example.com/avatar.png"
+  />
+</div>
+```
 
