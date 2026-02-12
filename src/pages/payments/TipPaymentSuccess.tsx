@@ -72,6 +72,37 @@ const TipPaymentSuccess: React.FC = () => {
       const tipInfo = JSON.parse(storedTipData);
       setTipData(tipInfo);
 
+      const isTokenPayment = transactionId.startsWith('token_');
+
+      if (isTokenPayment) {
+        // Token tips are already verified and recorded in CreatorProfile.tsx
+        // Just fetch creator info and display the success UI
+        const { data: creator } = await supabase
+          .from("public_profiles")
+          .select("first_name, last_name, username, is_verified, avatar_url")
+          .eq("id", tipInfo.creator_id)
+          .single();
+
+        if (creator) {
+          setCreatorName(
+            creator.first_name
+              ? `${creator.first_name} ${creator.last_name || ""}`.trim()
+              : `@${creator.username}`
+          );
+          setCreatorVerified(creator.is_verified || false);
+          setCreatorAvatarUrl(creator.avatar_url || '');
+        }
+
+        const shortId = transactionId.slice(0, 8).toUpperCase();
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        setTransactionIdForCard(`TIP-${dateStr}-${shortId}`);
+
+        localStorage.removeItem("tipkoro_tip_data");
+        setVerified(true);
+        setVerifying(false);
+        return;
+      }
+
       // Verify payment with RupantorPay
       const result = await verifyPayment({
         transaction_id: transactionId,

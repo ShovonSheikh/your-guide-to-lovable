@@ -749,6 +749,15 @@ export default function AdminShareImage() {
                     />
                   </div>
                 </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Avatar URL</Label>
+                  <Input
+                    value={previewValues.avatarUrl}
+                    onChange={(e) => setPreviewValues(prev => ({ ...prev, avatarUrl: e.target.value }))}
+                    className="h-8 text-sm"
+                    placeholder="https://example.com/avatar.png"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
