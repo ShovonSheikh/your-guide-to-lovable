@@ -76,6 +76,7 @@ export default function CreatorProfile() {
   const [selectedAmount, setSelectedAmount] = useState<number | null>(100);
   const [customAmount, setCustomAmount] = useState('');
   const [message, setMessage] = useState('');
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [streamerTipOptions, setStreamerTipOptions] = useState<{
     isStreamerEnabled: boolean;
@@ -200,8 +201,22 @@ export default function CreatorProfile() {
         return;
       }
 
-      // Record the tip via create-tip edge function
-      await supabase.functions.invoke('create-tip', {
+      refetchBalance();
+
+      // Store tip data for the success page
+      localStorage.setItem('tipkoro_tip_data', JSON.stringify({
+        creator_id: creator!.id,
+        supporter_name: isAnonymous ? 'Anonymous' : fullName,
+        supporter_email: email,
+        amount,
+        message: message || null,
+      }));
+
+      // Navigate to success page immediately for speed (streamer alert latency optimization)
+      navigate(`/payments/tips/success?transactionId=${encodeURIComponent(tokenTxnId)}&paymentMethod=Tokens&paymentAmount=${amount}`);
+
+      // Fire create-tip in background (don't await) for minimal latency
+      supabase.functions.invoke('create-tip', {
         body: {
           transaction_id: tokenTxnId,
           creator_id: creator!.id,
@@ -209,24 +224,25 @@ export default function CreatorProfile() {
           supporter_email: email,
           amount,
           message: message || null,
-          is_anonymous: false,
+          is_anonymous: isAnonymous,
           payment_method: 'tokens',
         },
-      });
+      }).then(({ error }) => {
+        if (error) {
+          console.error("Background create-tip failed:", error);
+          // Attempt auto-refund
+          supabaseAuth.rpc('process_token_deposit', {
+            p_profile_id: userProfile.id,
+            p_amount: amount,
+            p_reference_id: `refund_${tokenTxnId}`,
+            p_description: 'Auto-refund: tip recording failed'
+          }).then(() => {
+            toast({ title: "Tip recording failed", description: "Your tokens have been refunded.", variant: "destructive" });
+            refetchBalance();
+          });
+        }
+      }).catch(console.error);
 
-      refetchBalance();
-
-      // Store tip data for the success page
-      localStorage.setItem('tipkoro_tip_data', JSON.stringify({
-        creator_id: creator!.id,
-        supporter_name: fullName,
-        supporter_email: email,
-        amount,
-        message: message || null,
-      }));
-
-      // Navigate to success page
-      navigate(`/payments/tips/success?transactionId=${encodeURIComponent(tokenTxnId)}&paymentMethod=Tokens&paymentAmount=${amount}`);
       return;
     } catch (error) {
       console.error("Tip error:", error);
@@ -398,7 +414,7 @@ export default function CreatorProfile() {
                 </div>
 
                 {/* Message */}
-                <div className="mb-6">
+                <div className="mb-4">
                   <Textarea
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
@@ -410,6 +426,20 @@ export default function CreatorProfile() {
                     {message.length}/200
                   </p>
                 </div>
+
+                {/* Anonymous Toggle */}
+                {isSignedIn && (
+                  <div className="mb-6 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsAnonymous(!isAnonymous)}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isAnonymous ? 'bg-primary' : 'bg-secondary'}`}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-background transition-transform ${isAnonymous ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    </button>
+                    <span className="text-sm text-muted-foreground">Send as Anonymous</span>
+                  </div>
+                )}
 
                 {/* Token Balance Info */}
                 {isSignedIn && userProfile && (
