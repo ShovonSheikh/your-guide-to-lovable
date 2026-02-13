@@ -38,6 +38,7 @@ const Notices = lazy(() => import("./pages/Notices"));
 const SupportTicketDetail = lazy(() => import("./pages/SupportTicketDetail"));
 const Deposit = lazy(() => import("./pages/Deposit"));
 const Transactions = lazy(() => import("./pages/Transactions"));
+const PitchDeck = lazy(() => import("./pages/PitchDeck"));
 
 // Payment pages
 const CreatorPaymentSuccess = lazy(() => import("./pages/payments/CreatorPaymentSuccess"));
@@ -115,6 +116,7 @@ const App = () => (
                   <Route path="/support/ticket/:ticketId" element={<SupportTicketDetail />} />
                   <Route path="/deposit" element={<Deposit />} />
                   <Route path="/transactions" element={<Transactions />} />
+                  <Route path="/pitch" element={<PitchDeck />} />
                   {/* Admin routes */}
                   <Route path="/admin" element={<AdminLayout />}>
                     <Route index element={<AdminDashboard />} />
