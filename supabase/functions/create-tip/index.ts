@@ -293,99 +293,8 @@ serve(async (req) => {
       .eq('id', creator_id)
       .single();
 
-    // Helper to update goal progress and send milestone notifications
-    const updateGoalProgress = async (creatorId: string, tipAmount: number, supporterName: string, creatorName: string, creatorEmail: string) => {
-      try {
-        // Fetch active goal
-        const { data: goals } = await supabase
-          .from('funding_goals')
-          .select('*')
-          .eq('profile_id', creatorId)
-          .eq('is_active', true)
-          .limit(1);
-
-        if (!goals || goals.length === 0) return;
-
-        const goal = goals[0];
-        if (!goal.target_amount || goal.target_amount <= 0) return;
-
-        // Calculate progress
-        const oldAmount = goal.current_amount || 0;
-        const newAmount = oldAmount + tipAmount;
-
-        const oldPercentage = (oldAmount / goal.target_amount) * 100;
-        const newPercentage = (newAmount / goal.target_amount) * 100;
-
-        // Update goal amount
-        await supabase
-          .from('funding_goals')
-          .update({
-            current_amount: newAmount,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', goal.id);
-
-        console.log(`Goal updated: ${oldAmount} -> ${newAmount} (${oldPercentage.toFixed(1)}% -> ${newPercentage.toFixed(1)}%)`);
-
-        // Check for milestones (25, 50, 75, 100)
-        let milestoneCrossed: number | null = null;
-        let milestoneType: string | null = null;
-
-        if (oldPercentage < 100 && newPercentage >= 100) {
-          milestoneCrossed = 100;
-          milestoneType = 'goal_milestone_100';
-        } else if (oldPercentage < 75 && newPercentage >= 75 && newPercentage < 100) {
-          milestoneCrossed = 75;
-          milestoneType = 'goal_milestone_75';
-        } else if (oldPercentage < 50 && newPercentage >= 50 && newPercentage < 75) {
-          milestoneCrossed = 50;
-          milestoneType = 'goal_milestone_50';
-        } else if (oldPercentage < 25 && newPercentage >= 25 && newPercentage < 50) {
-          milestoneCrossed = 25;
-          milestoneType = 'goal_milestone_25';
-        }
-
-        if (milestoneCrossed && milestoneType) {
-          console.log(`Goal milestone reached: ${milestoneCrossed}%`);
-
-          // Insert database notification
-          await supabase.from('notifications').insert({
-            profile_id: creatorId,
-            type: milestoneType,
-            title: milestoneCrossed === 100 ? '🎉 Goal Achieved!' : `🎯 Goal Progress: ${milestoneCrossed}%`,
-            message: `${goal.title} reached ${milestoneCrossed}%`,
-            data: {
-              goal_id: goal.id,
-              goal_title: goal.title,
-              milestone: milestoneCrossed,
-              current_amount: newAmount,
-              target_amount: goal.target_amount,
-              percentage: newPercentage
-            }
-          });
-
-          // Send email notification
-          await supabase.functions.invoke('send-email-notification', {
-            body: {
-              profile_id: creatorId, // Send to creator based on ID
-              type: milestoneType,
-              data: {
-                goal_title: goal.title,
-                milestone: milestoneCrossed,
-                current_amount: newAmount,
-                target_amount: goal.target_amount,
-                percentage: newPercentage,
-                first_name: creatorName,
-                url: `https://tipkoro.com/dashboard`
-              },
-            },
-          });
-          console.log(`Milestone email sent: ${milestoneType}`);
-        }
-      } catch (err) {
-        console.error("Error updating goal progress:", err);
-      }
-    };
+    // Note: Funding goal progress is handled by the database trigger 
+    // 'update_funding_goal_on_tip' which fires on tip INSERT. No manual update needed here.
 
     // Define background tasks
     const processPostTipActions = async () => {
@@ -424,17 +333,6 @@ serve(async (req) => {
         console.log("Confirmation email sent to supporter");
       } catch (notifError) {
         console.log("Supporter email notification failed (non-critical):", notifError);
-      }
-
-      // 3. Update goal progress
-      if (creator_profile) {
-        await updateGoalProgress(
-          creator_id,
-          parsedAmount,
-          supporter_name,
-          creator_profile.first_name || creator_profile.username || 'Creator',
-          creator.email
-        );
       }
     };
 
