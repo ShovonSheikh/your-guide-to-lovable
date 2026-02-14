@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { useProfile } from "@/hooks/useProfile";
 import { useSupabaseWithAuth } from "@/hooks/useSupabaseWithAuth";
-import { useTokenBalance } from "@/hooks/useTokenBalance";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { HeartIcon } from "./icons/PaymentIcons";
 import { toast } from "@/hooks/use-toast";
-import { PLATFORM_FEE } from "@/lib/api";
+import { PLATFORM_FEE, createCreatorCheckout } from "@/lib/api";
 import { useUser } from "@clerk/clerk-react";
 import { useNavigate, Link } from "react-router-dom";
-import { Heart, Rocket, Link as LinkIcon, ArrowLeft, Check, Loader2, Coins, Wallet } from "lucide-react";
+import { Heart, Rocket, Link as LinkIcon, ArrowLeft, Check, Loader2, CreditCard } from "lucide-react";
 
 type OnboardingStep = 'account_type' | 'payment' | 'profile';
 
@@ -18,7 +17,7 @@ export function Onboarding() {
   const { user } = useUser();
   const { profile, updateProfile, refetch } = useProfile();
   const supabase = useSupabaseWithAuth();
-  const { balance: tokenBalance, refetch: refetchBalance } = useTokenBalance();
+  
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('account_type');
   const [isLoading, setIsLoading] = useState(false);
@@ -99,61 +98,31 @@ export function Onboarding() {
   };
 
   const handlePayment = async () => {
-    if (!profile?.id) {
-      toast({
-        title: "Error",
-        description: "Profile not found. Please refresh the page.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (tokenBalance < PLATFORM_FEE) {
-      toast({
-        title: "Insufficient token balance",
-        description: `You need ৳${PLATFORM_FEE} but have ৳${tokenBalance}. Please deposit tokens first.`,
-        variant: "destructive"
-      });
-      return;
-    }
-
     setIsLoading(true);
     try {
-      // Deduct creator fee from token balance
-      const { data: result, error: rpcError } = await supabase.rpc('process_token_withdrawal', {
-        p_profile_id: profile.id,
-        p_amount: PLATFORM_FEE,
-        p_reference_id: `creator_fee_${profile.id}_${Date.now()}`,
-        p_description: `Creator account fee - ৳${PLATFORM_FEE}`,
+      // Create a pending subscription record before redirecting
+      if (profile?.id) {
+        await supabase.from('creator_subscriptions').upsert({
+          profile_id: profile.id,
+          amount: PLATFORM_FEE,
+          payment_status: 'pending',
+          promo: false,
+        }, { onConflict: 'profile_id' });
+      }
+
+      const result = await createCreatorCheckout({
+        fullname: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Creator',
+        email: user?.primaryEmailAddress?.emailAddress || profile?.email || '',
       });
 
-      if (rpcError || !(result as any)?.success) {
-        const errorMsg = (result as any)?.error || rpcError?.message || 'Fee deduction failed';
-        toast({ title: "Payment failed", description: errorMsg, variant: "destructive" });
+      if (result.error) {
+        toast({ title: "Payment failed", description: result.error, variant: "destructive" });
         return;
       }
 
-      // Create subscription record
-      await supabase.from('creator_subscriptions').insert({
-        profile_id: profile.id,
-        amount: PLATFORM_FEE,
-        payment_status: 'completed',
-        payment_method: 'tokens',
-        transaction_id: `token_fee_${Date.now()}`,
-        promo: false,
-        billing_start: new Date().toISOString(),
-        active_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      });
-
-      // Update onboarding status
-      await updateProfile({ onboarding_status: 'profile' });
-      refetchBalance();
-      setCurrentStep('profile');
-
-      toast({
-        title: "Creator account activated! 🎉",
-        description: `৳${PLATFORM_FEE} deducted from your token balance.`,
-      });
+      if (result.payment_url) {
+        window.location.href = result.payment_url;
+      }
     } catch (error: any) {
       console.error("Payment error:", error);
       toast({
@@ -363,42 +332,24 @@ export function Onboarding() {
                   <span>৳{PLATFORM_FEE}</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Monthly subscription. Paid from your token balance.
+                  One-time monthly subscription fee. You'll be redirected to our payment gateway.
                 </p>
-              </div>
-
-              {/* Token Balance Info */}
-              <div className="p-3 rounded-xl bg-secondary/30 border border-border">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Coins className="w-4 h-4 text-amber-500" />
-                    <span className="text-sm font-medium">Your Token Balance</span>
-                  </div>
-                  <span className="text-sm font-semibold">৳{tokenBalance.toLocaleString()}</span>
-                </div>
-                {tokenBalance < PLATFORM_FEE && (
-                  <p className="text-xs text-destructive mt-2 flex items-center gap-1">
-                    <Wallet className="w-3 h-3" />
-                    You need ৳{PLATFORM_FEE} to activate.
-                    <Link to="/deposit" className="underline font-medium">Deposit tokens →</Link>
-                  </p>
-                )}
               </div>
 
               <Button
                 onClick={handlePayment}
-                disabled={isLoading || tokenBalance < PLATFORM_FEE}
+                disabled={isLoading}
                 className="w-full h-12 bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover"
               >
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Processing...
+                    Redirecting...
                   </>
                 ) : (
                   <>
-                    <Coins className="w-4 h-4 mr-2" />
-                    {`Pay ৳${PLATFORM_FEE} from Tokens`}
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    {`Pay ৳${PLATFORM_FEE} & Continue`}
                   </>
                 )}
               </Button>

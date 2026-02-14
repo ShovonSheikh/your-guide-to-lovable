@@ -95,16 +95,7 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Database-backed rate limiting
     const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
-    const rateLimit = await checkAndUpdateRateLimit(supabase, clientIP, 'create_tip');
-    
-    if (!rateLimit.allowed) {
-      return new Response(
-        JSON.stringify({ error: "Too many requests. Please try again later." }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     const {
       transaction_id,
@@ -181,12 +172,19 @@ serve(async (req) => {
     const apiKey = Deno.env.get('RUPANTOR_API_KEY');
     const clientHost = Deno.env.get('RUPANTOR_CLIENT_HOST');
 
-    // Check if tip already exists for this transaction (prevent duplicates)
-    const { data: existingTip } = await supabase
-      .from('tips')
-      .select('id')
-      .eq('transaction_id', transaction_id)
-      .maybeSingle();
+    // Parallelize: rate limit, duplicate check, and creator lookup
+    const [rateLimit, { data: existingTip }, { data: creator, error: creatorError }] = await Promise.all([
+      checkAndUpdateRateLimit(supabase, clientIP, 'create_tip'),
+      supabase.from('tips').select('id').eq('transaction_id', transaction_id).maybeSingle(),
+      supabase.from('profiles').select('id, account_type, total_received, total_supporters, email, first_name, username').eq('id', creator_id).maybeSingle(),
+    ]);
+
+    if (!rateLimit.allowed) {
+      return new Response(
+        JSON.stringify({ error: "Too many requests. Please try again later." }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (existingTip) {
       return new Response(
@@ -194,13 +192,6 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Verify the creator exists
-    const { data: creator, error: creatorError } = await supabase
-      .from('profiles')
-      .select('id, account_type, total_received, total_supporters, email')
-      .eq('id', creator_id)
-      .maybeSingle();
 
     if (creatorError || !creator) {
       return new Response(
@@ -286,13 +277,6 @@ serve(async (req) => {
 
     console.log("Tip created successfully:", tip.id);
 
-    // Get creator profile for name
-    const { data: creator_profile } = await supabase
-      .from('profiles')
-      .select('first_name, username')
-      .eq('id', creator_id)
-      .single();
-
     // Note: Funding goal progress is handled by the database trigger 
     // 'update_funding_goal_on_tip' which fires on tip INSERT. No manual update needed here.
 
@@ -321,11 +305,11 @@ serve(async (req) => {
       try {
         await supabase.functions.invoke('send-email-notification', {
           body: {
-            email: supporter_email, // Direct email for non-registered supporters
+            email: supporter_email,
             type: 'tip_sent',
             data: {
               amount: parsedAmount,
-              creator_name: creator_profile?.first_name || creator_profile?.username || 'a creator',
+              creator_name: creator?.first_name || creator?.username || 'a creator',
               message: message || null,
             },
           },
