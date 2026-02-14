@@ -1,109 +1,150 @@
+# Deposit Guard + Creator Signup Gateway + Backend Speed
 
+## Overview
 
-# Audit: Token Economy Compatibility with Existing Features
+Three changes are needed:
 
-## Issues Found
-
-### 1. CRITICAL: No Rollback if create-tip Fails After Token Transfer
-
-In `CreatorProfile.tsx`, the token transfer (RPC) and the `create-tip` edge function call happen sequentially. If the token transfer succeeds but `create-tip` fails (network error, timeout, edge function crash), the tokens are permanently deducted from the supporter but:
-- No tip is recorded in the database
-- No emails are sent
-- No streamer alert fires
-- No funding goal progress
-- The user still gets navigated to the success page (since we don't check the response)
-
-**Fix**: Check the `create-tip` response for errors. If it fails, attempt a token refund via `process_token_deposit` (crediting back the sender). Show an error toast instead of navigating to the success page.
-
-### 2. SPEED: Tip-to-Alert Latency is Too High for Live Streaming
-
-The user's core vision: a fan sees a funny moment on stream and wants to instantly play a sound. Current flow:
-
-```
-User clicks "Send Tip"
-  -> RPC: process_token_transfer (~200-500ms)
-  -> Edge Function: create-tip (~500-1500ms)  
-  -> Navigate to success page
-```
-
-The streamer alert fires when `create-tip` inserts into the `tips` table (via Supabase Realtime). So the total latency from click to alert is ~700-2000ms. The supporter also sees "Processing..." for the entire duration.
-
-**Fix**: After the token transfer succeeds, fire `create-tip` as a background call (don't await it). Navigate to the success page immediately. The tip insertion (and therefore the streamer alert) still happens within ~500ms of the click, but the supporter isn't blocked waiting for it.
-
-This reduces perceived latency for the supporter to ~200-500ms (just the RPC), and the streamer alert fires ~500ms later when create-tip completes in the background.
-
-### 3. BUG: Funding Goals Get Updated Twice Per Tip
-
-Two separate systems both increment `funding_goals.current_amount`:
-- The database trigger `update_funding_goal_on_tip` (fires on INSERT to `tips`)
-- The edge function's `updateGoalProgress()` in `processPostTipActions` background code
-
-This means every tip doubles the goal progress. This bug existed before the token economy but is still present.
-
-**Fix**: Remove the `updateGoalProgress` call from the `create-tip` edge function. The database trigger already handles it correctly, including milestone notifications.
-
-### 4. MINOR: Anonymous Tipping Not Supported in Token Flow
-
-The old RupantorPay flow allowed non-logged-in users to tip (anonymous supporters). The token flow requires `isSignedIn` and a `userProfile.id`. This is by design since tokens require an account, but it means the "anonymous tip" checkbox/option is no longer shown. The `is_anonymous` field is hardcoded to `false`.
-
-**Fix**: Add an "Send as Anonymous" toggle to the token tip form. Pass it through to `create-tip`. The supporter still needs to be logged in (for token balance), but their name can be hidden from the creator.
+1. **Deposit page** must block users whose onboarding is not completed
+2. **Creator signup payment** must use the live RupantorPay gateway (not tokens) since new users won't have tokens yet
+3. **create-tip edge function** should be optimized for speed by removing unnecessary sequential operations
 
 ---
 
-## What Already Works Correctly
+## 1. Deposit Page: Require Completed Onboarding
 
-- **Streamer alerts**: Triggered by Supabase Realtime on `tips` INSERT with `payment_status = 'completed'`. Works for token tips since create-tip inserts with that status.
-- **Creator/Supporter emails**: Sent by create-tip's background tasks. Token tips are not blocked by payment verification.
-- **Creator stats** (total_received, total_supporters): Updated by the `update_creator_stats_on_tip` database trigger on INSERT.
-- **Tip-to-Play sound matching**: StreamerAlert checks `tip.amount` against `tip_sounds.trigger_amount`. Amount-based matching works regardless of payment method.
-- **Success page**: Token tips correctly skip RupantorPay verification and display the share card.
-- **Duplicate prevention**: create-tip checks for existing `transaction_id` before inserting.
+**File:** `src/pages/Deposit.tsx`
+
+Currently the page only checks `isSignedIn`. It needs to also check `profile.onboarding_status === 'completed'`. If onboarding is not complete, show a message directing the user to complete their profile first, with a link to `/complete-profile`.
+
+**Changes:**
+
+- After loading profile, check `profile?.onboarding_status !== 'completed'`
+- If incomplete, render a card saying "Complete your profile first" with a button linking to `/complete-profile`
+
+---
+
+## 2. Creator Signup: Use Live Gateway Instead of Tokens
+
+**File:** `src/components/Onboarding.tsx`
+
+The `handlePayment` function (lines 101-167) currently deducts the creator fee from the user's token balance via `process_token_withdrawal`. This is wrong because new creators signing up won't have tokens yet. The creator fee should use the RupantorPay gateway (or dummy mode) like before.
+
+**Changes to `handlePayment`:**
+
+- Replace the token withdrawal logic with a call to `createCreatorCheckout()` from `src/lib/api.ts`
+- This redirects the user to RupantorPay (or dummy success URL)
+- On return to `/payments/creator/success`, the existing flow handles verification and subscription creation
+
+**Changes to the payment step UI (lines 344-419):**
+
+- Remove the "Token Balance" display and insufficient balance warning
+- Remove the `tokenBalance < PLATFORM_FEE` disabled condition
+- Change button text from "Pay from Tokens" to "Pay & Continue"
+- Add name/email fields (pre-filled from Clerk user data) since the gateway needs them
+- Remove the token-related imports (`useTokenBalance`, `Coins`, `Wallet`)
+
+**File:** `src/pages/payments/CreatorPaymentSuccess.tsx`
+
+Need to verify this page correctly creates the `creator_subscriptions` record and advances onboarding to `'profile'` step after gateway payment succeeds. This existing flow should work as-is since it was the original path before the token economy was added.
+
+---
+
+## 3. Speed Optimization: create-tip Edge Function
+
+**File:** `supabase/functions/create-tip/index.ts`
+
+Current bottlenecks in the critical path (before response is sent):
+
+- Rate limit check: DB query (~50-100ms)
+- Duplicate check: DB query (~50ms)
+- Creator lookup: DB query (~50ms)
+- Payment verification: External API call (~500-1000ms) -- already skipped for token payments
+- Tip insert: DB write (~50ms)
+- Creator profile fetch for name: DB query (~50ms)
+
+**Optimizations:**
+
+1. **Parallelize independent queries**: Run the duplicate check, creator lookup, and rate limit check concurrently using `Promise.all` instead of sequentially
+2. **Skip redundant creator profile fetch**: The creator name is already fetched in the creator verification step -- reuse it instead of fetching again (lines 290-294)
+3. **Remove the second `profiles` SELECT** (lines 290-294) since `creator` already has the data from line 199-203. Just add `first_name, username` to the initial select
+
+These changes reduce the critical path from ~5 sequential DB calls to ~3 (with 2 parallelized), saving ~100-200ms per tip.
 
 ---
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/pages/CreatorProfile.tsx` | 1. Check create-tip response for errors and refund tokens on failure. 2. Fire create-tip as background (don't await). 3. Add anonymous toggle. |
-| `supabase/functions/create-tip/index.ts` | Remove `updateGoalProgress` from `processPostTipActions` to prevent double goal updates (DB trigger handles it). |
+
+| File                                     | Changes                                                 |
+| ---------------------------------------- | ------------------------------------------------------- |
+| `src/pages/Deposit.tsx`                  | Add onboarding completion guard                         |
+| `src/components/Onboarding.tsx`          | Replace token payment with RupantorPay gateway checkout |
+| `supabase/functions/create-tip/index.ts` | Parallelize DB queries, remove redundant profile fetch  |
+
+
+---
 
 ## Technical Details
 
-### CreatorProfile.tsx handleTip changes
+### Deposit.tsx guard
 
-```typescript
-// After successful token transfer:
-
-// Store tip data for success page FIRST
-localStorage.setItem('tipkoro_tip_data', JSON.stringify({...}));
-
-// Fire create-tip in background (don't await) for speed
-supabase.functions.invoke('create-tip', {
-  body: { transaction_id: tokenTxnId, creator_id: creator.id, ... }
-}).then(({ error }) => {
-  if (error) {
-    console.error("Background create-tip failed:", error);
-    // Attempt refund
-    supabaseAuth.rpc('process_token_deposit', {
-      p_profile_id: userProfile.id,
-      p_amount: amount,
-      p_reference_id: `refund_${tokenTxnId}`,
-      p_description: 'Auto-refund: tip recording failed'
-    });
-  }
-}).catch(console.error);
-
-// Navigate immediately after token transfer
-navigate(`/payments/tips/success?transactionId=...`);
+```tsx
+// After profile loads, before the deposit form:
+if (profile && profile.onboarding_status !== 'completed') {
+  return (
+    // ... shell with navbar ...
+    <div className="tipkoro-card text-center">
+      <h2>Complete Your Profile First</h2>
+      <p>You need to finish setting up your account before depositing tokens.</p>
+      <Link to="/complete-profile">
+        <Button>Complete Profile</Button>
+      </Link>
+    </div>
+  );
+}
 ```
 
-### create-tip edge function changes
+### Onboarding.tsx handlePayment replacement
 
-Remove the `updateGoalProgress` helper function and its call in `processPostTipActions`. The database trigger `update_funding_goal_on_tip` already handles:
-- Incrementing `funding_goals.current_amount`
-- Detecting milestone crossings (50%, 75%, 100%)
-- Inserting milestone notifications
+```tsx
+const handlePayment = async () => {
+  setIsLoading(true);
+  try {
+    const result = await createCreatorCheckout({
+      fullname: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Creator',
+      email: user?.primaryEmailAddress?.emailAddress || profile?.email || '',
+    });
 
-Keep the email notifications in processPostTipActions (those are not duplicated).
+    if (result.error) {
+      toast({ title: "Payment failed", description: result.error, variant: "destructive" });
+      return;
+    }
 
+    if (result.payment_url) {
+      window.location.href = result.payment_url;
+    }
+  } catch (error: any) {
+    toast({ title: "Error", description: error.message, variant: "destructive" });
+  } finally {
+    setIsLoading(false);
+  }
+};
+```
+
+### create-tip parallelization
+
+```typescript
+// Before (sequential ~150-300ms):
+const rateLimit = await checkAndUpdateRateLimit(...);
+const { data: existingTip } = await supabase.from('tips')...
+const { data: creator } = await supabase.from('profiles')...
+
+// After (parallel ~50-100ms):
+const [rateLimit, { data: existingTip }, { data: creator }] = await Promise.all([
+  checkAndUpdateRateLimit(supabase, clientIP, 'create_tip'),
+  supabase.from('tips').select('id').eq('transaction_id', transaction_id).maybeSingle(),
+  supabase.from('profiles').select('id, account_type, total_received, total_supporters, email, first_name, username').eq('id', creator_id).maybeSingle(),
+]);
+```
+
+Then remove the second `profiles` SELECT (lines 290-294) and use `creator.first_name` / `creator.username` directly in the email notification.
