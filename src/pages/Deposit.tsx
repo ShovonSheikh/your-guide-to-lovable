@@ -48,6 +48,33 @@ export default function Deposit() {
 
   if (!isSignedIn) return <Navigate to="/" replace />;
 
+  // Block deposit if onboarding is not completed
+  if (profile && profile.onboarding_status !== 'completed') {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <TopNavbar />
+        <div className="h-24" />
+        <main className="container max-w-lg py-8 px-4 flex-1 animate-fade-in">
+          <div className="tipkoro-card text-center py-12">
+            <div className="p-3 rounded-full bg-primary/10 w-fit mx-auto mb-4">
+              <Coins className="w-8 h-8 text-primary" />
+            </div>
+            <h2 className="text-xl font-display font-bold mb-2">Complete Your Profile First</h2>
+            <p className="text-muted-foreground mb-6">
+              You need to finish setting up your account before depositing tokens.
+            </p>
+            <Link to="/complete-profile">
+              <Button className="bg-accent text-accent-foreground hover:bg-tipkoro-gold-hover">
+                Complete Profile
+              </Button>
+            </Link>
+          </div>
+        </main>
+        <MainFooter />
+      </div>
+    );
+  }
+
   const handleDeposit = async () => {
     const amount = selectedAmount || parseFloat(customAmount);
     if (!amount || amount < 10) {
